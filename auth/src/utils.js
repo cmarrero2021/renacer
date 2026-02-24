@@ -54,22 +54,61 @@ exports.generateSecureToken = () => {
   return crypto.randomBytes(32).toString('hex');
 };
 
-// Enviar correo electrónico
-exports.sendEmail = async (to, subject, text) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
+// Crear transporter SMTP reutilizable
+const createTransporter = () => {
+  return nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT) || 587,
+    secure: process.env.EMAIL_SECURE === 'true',
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    tls: {
+      rejectUnauthorized: false
+    }
   });
+};
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+// Enviar correo electrónico
+exports.sendEmail = async (to, subject, text, html = null) => {
+  const transporter = createTransporter();
+  const mailOptions = {
+    from: `"Sistema de Gestión" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
     subject,
     text,
-  });
+  };
+  if (html) mailOptions.html = html;
+  await transporter.sendMail(mailOptions);
+};
+
+// Generar código numérico de 6 dígitos
+exports.generateResetCode = () => {
+  return crypto.randomInt(100000, 999999).toString();
+};
+
+// Enviar email con código de recuperación
+exports.sendResetCodeEmail = async (to, code) => {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <h2 style="color: #273984; text-align: center;">Recuperación de Contraseña</h2>
+      <p>Ha solicitado recuperar su contraseña. Use el siguiente código de verificación:</p>
+      <div style="text-align: center; margin: 24px 0;">
+        <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #273984; background: #f5f5f5; padding: 12px 24px; border-radius: 8px;">${code}</span>
+      </div>
+      <p style="color: #666; font-size: 14px;">Este código es válido por <strong>10 minutos</strong>.</p>
+      <p style="color: #666; font-size: 14px;">Si no solicitó este cambio, ignore este correo.</p>
+      <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+      <p style="color: #999; font-size: 12px; text-align: center;">Sistema de Gestión de Usuarios y Permisos</p>
+    </div>
+  `;
+  await exports.sendEmail(
+    to,
+    'Código de Recuperación de Contraseña',
+    `Su código de recuperación es: ${code}. Válido por 10 minutos.`,
+    html
+  );
 };
 
 // Obtener duración de sesión (en minutos)

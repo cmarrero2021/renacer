@@ -36,7 +36,10 @@ const {
   listLoginLogs,
   listAuditLogs,
   getSessionSettings,
-  updateSessionSettings
+  updateSessionSettings,
+  requestPasswordReset,
+  verifyResetCode,
+  resetPassword
 } = require("./controllers");
 const { authenticate, authorize, checkBlacklist } = require("./middlewares");
 
@@ -45,6 +48,11 @@ router.get("/prueba", prueba);
 router.post("/login", login); // Inicio de sesión
 router.post("/verify-email", verifyEmail); // Verificación de correo electrónico
 router.post("/force-logout", forceLogout); // Cierre forzoso de sesión
+
+// Recuperación de contraseña (públicas)
+router.post("/request-reset", requestPasswordReset); // Solicitar código de recuperación
+router.post("/verify-reset-code", verifyResetCode); // Verificar código
+router.post("/reset-password", resetPassword); // Restablecer contraseña
 
 // Middleware para verificar tokens en la lista negra
 router.use(checkBlacklist);

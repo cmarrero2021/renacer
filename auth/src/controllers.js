@@ -8,6 +8,8 @@ const {
   sendEmail,
   validatePassword,
   getSessionTimeout,
+  generateResetCode,
+  sendResetCodeEmail,
 } = require("./utils");
 const moment = require("moment-timezone");
 const { withAuditContext } = require("./audit");
@@ -1089,6 +1091,281 @@ exports.updateSessionSettings = async (req, res) => {
   } catch (err) {
     console.error('Error al actualizar configuración de sesión:', err);
     res.status(500).json({ error: 'Error al actualizar configuración.' });
+  } finally {
+    client.release();
+  }
+};
+
+// ==========================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ==========================================
+
+// Solicitar código de recuperación
+exports.requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  const client = await pool.connect();
+
+  try {
+    if (!email) {
+      return res.status(400).json({ error: 'El correo electrónico es requerido.' });
+    }
+
+    // Buscar usuario por email
+    const userResult = await client.query(
+      'SELECT id, email, status, recovery_attempts, first_name FROM users WHERE email = $1 AND deleted_at IS NULL',
+      [email.toLowerCase().trim()]
+    );
+
+    if (!userResult.rows.length) {
+      // No revelar si el email existe o no (seguridad)
+      return res.status(200).json({ message: 'Si el correo existe, recibirá un código de recuperación.' });
+    }
+
+    const user = userResult.rows[0];
+    const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@gmail.com';
+
+    // Verificar si la cuenta está suspendida
+    if (user.status === 'suspended') {
+      return res.status(403).json({
+        error: `Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
+    }
+
+    // Verificar intentos de recuperación (máximo 3)
+    if (user.recovery_attempts >= 3) {
+      // Suspender cuenta
+      await client.query(
+        "UPDATE users SET status = 'suspended', updated_at = NOW() WHERE id = $1",
+        [user.id]
+      );
+      return res.status(403).json({
+        error: `Ha excedido el número máximo de intentos. Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
+    }
+
+    // Invalidar códigos anteriores
+    await client.query(
+      'DELETE FROM password_resets WHERE user_id = $1',
+      [user.id]
+    );
+
+    // Generar código de 6 dígitos
+    const code = generateResetCode();
+    const hashedCode = await hashPassword(code);
+
+    // Guardar código (expira en 10 minutos)
+    await client.query(
+      'INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1, $2, NOW() + INTERVAL \'10 minutes\')',
+      [user.id, hashedCode]
+    );
+
+    // Incrementar intentos de recuperación
+    await client.query(
+      'UPDATE users SET recovery_attempts = COALESCE(recovery_attempts, 0) + 1, last_recovery_attempt = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    // Enviar código por email
+    await sendResetCodeEmail(user.email, code);
+
+    const attemptsLeft = 3 - (user.recovery_attempts + 1);
+    res.status(200).json({
+      message: 'Se ha enviado un código de verificación a su correo electrónico.',
+      attemptsLeft
+    });
+  } catch (err) {
+    console.error('Error en requestPasswordReset:', err);
+    res.status(500).json({ error: 'Error al procesar la solicitud de recuperación.' });
+  } finally {
+    client.release();
+  }
+};
+
+// Verificar código de recuperación
+exports.verifyResetCode = async (req, res) => {
+  const { email, code } = req.body;
+  const client = await pool.connect();
+
+  try {
+    if (!email || !code) {
+      return res.status(400).json({ error: 'Email y código son requeridos.' });
+    }
+
+    // Buscar usuario
+    const userResult = await client.query(
+      'SELECT id, status FROM users WHERE email = $1 AND deleted_at IS NULL',
+      [email.toLowerCase().trim()]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(400).json({ error: 'Código inválido o expirado.' });
+    }
+
+    const user = userResult.rows[0];
+
+    if (user.status === 'suspended') {
+      const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@gmail.com';
+      return res.status(403).json({
+        error: `Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
+    }
+
+    // Buscar código válido (no expirado)
+    const resetResult = await client.query(
+      'SELECT id, token, expires_at FROM password_resets WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [user.id]
+    );
+
+    if (!resetResult.rows.length) {
+      return res.status(400).json({ error: 'Código inválido o expirado.' });
+    }
+
+    const resetRecord = resetResult.rows[0];
+
+    // Verificar expiración
+    if (new Date(resetRecord.expires_at) < new Date()) {
+      await client.query('DELETE FROM password_resets WHERE id = $1', [resetRecord.id]);
+      return res.status(400).json({ error: 'El código ha expirado. Solicite uno nuevo.' });
+    }
+
+    // Verificar código (comparando hash)
+    const isValid = await comparePassword(code, resetRecord.token);
+    if (!isValid) {
+      return res.status(400).json({ error: 'Código inválido.' });
+    }
+
+    // Código válido: generar token temporal de reset (10 min)
+    const resetToken = jwt.sign(
+      { userId: user.id, purpose: 'password-reset' },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    // Limpiar el código usado
+    await client.query('DELETE FROM password_resets WHERE id = $1', [resetRecord.id]);
+
+    res.status(200).json({
+      message: 'Código verificado correctamente.',
+      resetToken
+    });
+  } catch (err) {
+    console.error('Error en verifyResetCode:', err);
+    res.status(500).json({ error: 'Error al verificar el código.' });
+  } finally {
+    client.release();
+  }
+};
+
+// Restablecer contraseña
+exports.resetPassword = async (req, res) => {
+  const { resetToken, newPassword } = req.body;
+  const client = await pool.connect();
+
+  try {
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Token y nueva contraseña son requeridos.' });
+    }
+
+    // Verificar token de reset
+    let decoded;
+    try {
+      decoded = jwt.verify(resetToken, process.env.JWT_SECRET);
+      if (decoded.purpose !== 'password-reset') {
+        return res.status(400).json({ error: 'Token de recuperación inválido.' });
+      }
+    } catch (err) {
+      return res.status(400).json({ error: 'Token de recuperación inválido o expirado.' });
+    }
+
+    const userId = decoded.userId;
+
+    // Validar fortaleza de la contraseña
+    const passwordErrors = validatePassword(newPassword);
+    if (passwordErrors.length > 0) {
+      return res.status(400).json({
+        error: 'La contraseña no cumple los requisitos.',
+        details: passwordErrors
+      });
+    }
+
+    // Obtener usuario
+    const userResult = await client.query(
+      'SELECT id, password_hash, status FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [userId]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(400).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const user = userResult.rows[0];
+
+    // Verificar contra las últimas 5 contraseñas
+    const historyResult = await client.query(
+      'SELECT password_hash FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+      [userId]
+    );
+
+    // También verificar contra la contraseña actual
+    const isCurrentPassword = await comparePassword(newPassword, user.password_hash);
+    if (isCurrentPassword) {
+      return res.status(400).json({
+        error: 'La nueva contraseña no puede ser igual a la contraseña actual.'
+      });
+    }
+
+    // Verificar contra historial
+    for (const record of historyResult.rows) {
+      const isOldPassword = await comparePassword(newPassword, record.password_hash);
+      if (isOldPassword) {
+        return res.status(400).json({
+          error: 'La nueva contraseña no puede ser igual a ninguna de las últimas 5 contraseñas utilizadas.'
+        });
+      }
+    }
+
+    // Todo válido: actualizar contraseña
+    const newHash = await hashPassword(newPassword);
+
+    await client.query('BEGIN');
+
+    // Guardar contraseña actual en historial
+    await client.query(
+      'INSERT INTO password_history (user_id, password_hash) VALUES ($1, $2)',
+      [userId, user.password_hash]
+    );
+
+    // Mantener solo las últimas 5 en historial
+    await client.query(`
+      DELETE FROM password_history
+      WHERE user_id = $1 AND id NOT IN (
+        SELECT id FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5
+      )`,
+      [userId]
+    );
+
+    // Actualizar contraseña del usuario
+    await client.query(
+      'UPDATE users SET password_hash = $1, recovery_attempts = 0, is_temporary_password = false, updated_at = NOW() WHERE id = $2',
+      [newHash, userId]
+    );
+
+    // Limpiar cualquier código de reset pendiente
+    await client.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+
+    await client.query('COMMIT');
+
+    res.status(200).json({ message: 'Contraseña actualizada exitosamente. Ya puede iniciar sesión.' });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => { });
+    console.error('Error en resetPassword:', err);
+    res.status(500).json({ error: 'Error al restablecer la contraseña.' });
   } finally {
     client.release();
   }

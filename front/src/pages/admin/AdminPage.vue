@@ -286,7 +286,7 @@
                         <div class="row q-col-gutter-md q-mt-sm">
                             <div class="col-6">
                                 <q-input v-model="permissionForm.resource" label="Recurso"
-                                    :rules="[val => !!val || 'Requerido']" hint="Ej: users, roles, revistas" />
+                                    :rules="[val => !!val || 'Requerido']" hint="Ej: users, roles, sessions" />
                             </div>
                             <div class="col-6">
                                 <q-select v-model="permissionForm.action" label="Acción"

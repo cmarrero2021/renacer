@@ -5,10 +5,7 @@
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
 
         <q-toolbar-title>
-          <q-avatar>
-            <img src="https://cdn.quasar.dev/logo-v2/svg/logo-mono-white.svg">
-          </q-avatar>
-          Directorio de Revistas Científicas Venezolanas
+          Sistema de Gestión de Usuarios y Permisos
         </q-toolbar-title>
 
         <q-space />
@@ -22,58 +19,12 @@
       <q-list>
         <q-item-label header>Menú Principal</q-item-label>
 
-        <q-item clickable v-ripple to="/inicio">
+        <q-item clickable v-ripple to="/admin">
           <q-item-section avatar>
             <q-icon name="home" />
           </q-item-section>
           <q-item-section>Inicio</q-item-section>
         </q-item>
-        <q-item clickable v-ripple to="/admin" v-if="hasPermission('view_admin')">
-          <q-item-section avatar>
-            <q-icon name="menu_book" />
-          </q-item-section>
-          <q-item-section>Revistas</q-item-section>
-        </q-item>
-
-        <!-- Menú expandible de Mantenedores -->
-        <q-expansion-item v-if="isAdmin() || hasPermission('view_mantenedores_menu')" icon="settings"
-          label="Mantenedores" expand-separator>
-          <q-item clickable v-ripple to="/admin/mantenedores/areas-conocimiento"
-            v-if="isAdmin() || hasPermission('view_areas_conocimiento')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="school" /></q-item-section>
-            <q-item-section>Áreas de Conocimiento</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/editoriales"
-            v-if="isAdmin() || hasPermission('view_editoriales')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="business" /></q-item-section>
-            <q-item-section>Editoriales</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/estados" v-if="isAdmin() || hasPermission('view_estados')"
-            class="q-pl-lg">
-            <q-item-section avatar><q-icon name="place" /></q-item-section>
-            <q-item-section>Estados</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/formatos"
-            v-if="isAdmin() || hasPermission('view_formatos')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="description" /></q-item-section>
-            <q-item-section>Formatos</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/idiomas" v-if="isAdmin() || hasPermission('view_idiomas')"
-            class="q-pl-lg">
-            <q-item-section avatar><q-icon name="language" /></q-item-section>
-            <q-item-section>Idiomas</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/indices" v-if="isAdmin() || hasPermission('view_indices')"
-            class="q-pl-lg">
-            <q-item-section avatar><q-icon name="format_list_numbered" /></q-item-section>
-            <q-item-section>Índices</q-item-section>
-          </q-item>
-          <q-item clickable v-ripple to="/admin/mantenedores/periodicidad"
-            v-if="isAdmin() || hasPermission('view_periodicidad')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="event_repeat" /></q-item-section>
-            <q-item-section>Periodicidad</q-item-section>
-          </q-item>
-        </q-expansion-item>
 
         <q-item clickable v-ripple to="/admin/administracion" v-if="isAdmin() || hasPermission('view_admin_panel')">
           <q-item-section avatar>

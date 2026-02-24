@@ -6,7 +6,7 @@
   <div class="content-container">
     <img alt="Directorio" src="img/directorio1.png" class="directorio-image" />
     <div class="login-box">
-      <h5>Directorio de Revistas Científicas</h5>
+      <h5>Sistema de Gestión</h5>
       <h4>Iniciar Sesión</h4>
       <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" />
       <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'">
@@ -91,8 +91,7 @@ const handleLogin = async () => {
         position: "top",
         timeout: 3000,
       });
-      router.push("/inicio");
-      // router.push("/admin");
+      router.push("/admin");
     } else {
       Notify.create({
         message: "Credenciales inválidas",

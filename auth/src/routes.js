@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const {
-  deleteRevista,
   createUser,
   verifyEmail,
   changePassword,
@@ -22,9 +21,6 @@ const {
   logout,
   forceLogout,
   prueba,
-  uploadPortada,
-  updateRevista,
-  insertRevista,
   getGlobalSessionTimeout,
   updateGlobalSessionTimeout,
   updateUserSessionTimeout,
@@ -37,9 +33,6 @@ const {
   removeRoleFromUser,
   updateRole,
   deleteRole,
-  testUpload,
-  insertRevistaWithUpload,
-  getRevista,
   listLoginLogs,
   listAuditLogs,
   getSessionSettings,
@@ -47,19 +40,14 @@ const {
 } = require("./controllers");
 const { authenticate, authorize, checkBlacklist } = require("./middlewares");
 
-// Endpoint de prueba para upload de archivos
-router.post("/test-upload", testUpload);
-
 // Rutas Públicas
 router.get("/prueba", prueba);
 router.post("/login", login); // Inicio de sesión
 router.post("/verify-email", verifyEmail); // Verificación de correo electrónico
 router.post("/force-logout", forceLogout); // Cierre forzoso de sesión
 
-// Rutas Protegidas
-router.delete("/revistas/:id", authenticate, deleteRevista); // Eliminar revista
-
-router.use(checkBlacklist); // Middleware para verificar tokens en la lista negra
+// Middleware para verificar tokens en la lista negra
+router.use(checkBlacklist);
 
 // Sesiones
 router.get(
@@ -86,6 +74,7 @@ router.patch(
   authorize("update_role_session_timeout"),
   updateRoleSessionTimeout
 );
+
 // Mantenimiento - Sesión
 router.get(
   "/maintenance/session",
@@ -99,15 +88,16 @@ router.put(
   authorize("edit_session_settings"),
   updateSessionSettings
 );
+
 // Usuarios
-router.post("/users", authenticate, authorize("create_user"), createUser); // Crear usuario (solo administradores)
-router.get("/users", authenticate, authorize("list_users"), listUsers); // Listar usuarios
+router.post("/users", authenticate, authorize("create_user"), createUser);
+router.get("/users", authenticate, authorize("list_users"), listUsers);
 router.put(
   "/users/:userId",
   authenticate,
   authorize("update_user"),
   updateUser
-); // Actualizar usuario
+);
 router.delete(
   "/users/:userId",
   authenticate,
@@ -122,44 +112,38 @@ router.delete(
 ); // Borrado físico
 
 // Cambio de Contraseña
-router.post("/change-password", authenticate, changePassword); // Cambiar contraseña
+router.post("/change-password", authenticate, changePassword);
 
 // Logout
-router.post("/logout", logout); // Cerrar sesión
+router.post("/logout", logout);
 
 // Roles
-router.get("/roles", authenticate, authorize("list_roles"), listRoles); // Listar roles
-router.post("/roles", authenticate, authorize("create_role"), createRole); // Crear rol
-router.put('/roles/:roleId', authenticate, authorize('update_role'), updateRole); // Actualizar rol
-router.delete('/roles/:roleId', authenticate, authorize('delete_role'), deleteRole); // Borrado lógico/físico
+router.get("/roles", authenticate, authorize("list_roles"), listRoles);
+router.post("/roles", authenticate, authorize("create_role"), createRole);
+router.put('/roles/:roleId', authenticate, authorize('update_role'), updateRole);
+router.delete('/roles/:roleId', authenticate, authorize('delete_role'), deleteRole);
 
 // Permisos
-router.get("/permissions", listPermissions); // Listar permisos
-router.post("/permissions", authenticate, authorize("create_permission"), createPermission); // Crear permiso
-router.put("/permissions/:permissionId", authenticate, authorize("update_permission"), updatePermission); // Actualizar permiso
-router.delete("/permissions/:permissionId", authenticate, authorize("delete_permission"), deletePermission); // Eliminar permiso
-router.get("/roles_permissions", listRolesPermissions); // Listar permisos roles
-router.get("/users_permissions", listUserssPermissions); // Listar permisos usuarios
-router.get("/users_roles", listUserRoles); // Listar roles usuarios
+router.get("/permissions", listPermissions);
+router.post("/permissions", authenticate, authorize("create_permission"), createPermission);
+router.put("/permissions/:permissionId", authenticate, authorize("update_permission"), updatePermission);
+router.delete("/permissions/:permissionId", authenticate, authorize("delete_permission"), deletePermission);
+router.get("/roles_permissions", listRolesPermissions);
+router.get("/users_permissions", listUserssPermissions);
+router.get("/users_roles", listUserRoles);
 
 // Asignaciones
-router.post('/assign-role', authenticate, authorize('assign_role'), assignRoleToUser); // Asignar rol a usuario
-router.post('/remove-role', authenticate, authorize('remove_role'), removeRoleFromUser); // Remover rol de usuario
+router.post('/assign-role', authenticate, authorize('assign_role'), assignRoleToUser);
+router.post('/remove-role', authenticate, authorize('remove_role'), removeRoleFromUser);
 
-router.post('/assign-rolepermission', authenticate, authorize('assign_permission'), assignPermissionToRole); // Asignar permiso a rol
-router.post('/remove-rolepermission', authenticate, authorize('remove_permission'), removePermissionFromRole); // Remover permiso de rol
+router.post('/assign-rolepermission', authenticate, authorize('assign_permission'), assignPermissionToRole);
+router.post('/remove-rolepermission', authenticate, authorize('remove_permission'), removePermissionFromRole);
 
-router.post('/assign-userpermission', authenticate, authorize('assign_permission'), assignPermissionToUser); // Asignar permiso a usuario
-router.post('/remove-userpermission', authenticate, authorize('remove_permission'), removePermissionFromUser); // Remover permiso de usuario
+router.post('/assign-userpermission', authenticate, authorize('assign_permission'), assignPermissionToUser);
+router.post('/remove-userpermission', authenticate, authorize('remove_permission'), removePermissionFromUser);
 
-// Mantenedores Revistas (requieren autenticación)
-router.post("/upload-portada/:id", authenticate, uploadPortada);
-router.get("/revistas/:id", authenticate, getRevista);
-router.patch("/revistas/:id", authenticate, updateRevista);
-router.post("/revista", authenticate, insertRevista);
-router.post("/revista-con-portada", authenticate, insertRevistaWithUpload);
+// Logs y auditoría
+router.get("/login-logs", authenticate, authorize('view_login_logs'), listLoginLogs);
+router.get("/audit-logs", authenticate, authorize('view_action_logs'), listAuditLogs);
 
-// Logs y auditoria
-router.get("/login-logs", authenticate, authorize('view_login_logs'), listLoginLogs); // Listar registros de ingreso
-router.get("/audit-logs", authenticate, authorize('view_action_logs'), listAuditLogs); // Listar registros de acciones
 module.exports = router;

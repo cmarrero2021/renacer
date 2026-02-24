@@ -1,206 +1,21 @@
-// Eliminar revista (borrado físico)
-exports.deleteRevista = async (req, res) => {
-  const { id } = req.params;
-  const client = await pool.connect();
-  try {
-    const result = await client.query('DELETE FROM revistas WHERE id = $1 RETURNING *', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Revista no encontrada.' });
-    }
-    res.status(200).json({ message: 'Revista eliminada exitosamente.' });
-  } catch (err) {
-    console.error('Error al eliminar la revista:', err);
-    res.status(500).json({ error: 'Error al eliminar la revista.' });
-  } finally {
-    client.release();
-  }
-};
-// Obtener una revista por ID
-exports.getRevista = async (req, res) => {
-  const { id } = req.params;
-  const client = await pool.connect();
-  try {
-    const result = await client.query('SELECT * FROM revistas WHERE id = $1', [id]);
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Revista no encontrada' });
-    }
-    const revista = result.rows[0];
-    // Construir la URL pública de la portada si existe
-    let portadaUrl = null;
-    if (revista.portada) {
-      // Usar la variable VITE_IMAGE_BASE_URL para la URL pública
-      portadaUrl = `${process.env.VITE_IMAGE_BASE_URL}${revista.portada}`;
-    } else {
-      revista.portadaUrl = null;
-    }
-    res.json({ ...revista, portadaUrl });
-  } catch (err) {
-    console.error('Error al obtener la revista por ID:', err);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  } finally {
-    client.release();
-  }
-};
 const jwt = require("jsonwebtoken");
 const pool = require("./db");
 const {
   hashPassword,
   comparePassword,
-  generateToken, // may be used elsewhere
+  generateToken,
   generateSecureToken,
   sendEmail,
   validatePassword,
   getSessionTimeout,
 } = require("./utils");
-const multer = require("multer");
-const path = require("path");
-const fs = require("fs");
-const crypto = require("crypto");
 const moment = require("moment-timezone");
-
-// Ensure destination directory exists
-function ensureDir(dir) {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
-// Multer configuration (10 MB max)
-const uploadStorage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    // Usar variable de entorno PORTADAS_PATH si está definida (producción)
-    // Si no, usar la ruta relativa (desarrollo local)
-    const dir = process.env.PORTADAS_PATH || path.join(__dirname, "../../backend/public/portadas");
-    ensureDir(dir);
-    cb(null, dir);
-  },
-  filename: function (req, file, cb) {
-    // Generar UUID lowercase para evitar problemas de case-sensitivity en Linux
-    const uuid = crypto.randomUUID();
-    const ext = path.extname(file.originalname).toLowerCase();
-    const newFilename = `${uuid}${ext}`;
-    cb(null, newFilename);
-  },
-});
-const uploadAny = multer({
-  storage: uploadStorage,
-  limits: { fileSize: 1024 * 1024 * 2 }, // Límite de 2MB
-}).any();
-
-const REVISTA_ALLOWED_COLUMNS = [
-  "area_conocimiento_id",
-  "indice_id",
-  "idioma_id",
-  "revista",
-  "correo_revista",
-  "editorial_id",
-  "periodicidad_id",
-  "formato_id",
-  "estado_id",
-  "nombres_editor",
-  "apellidos_editor",
-  "correo_editor",
-  "deposito_legal_impreso",
-  "deposito_legal_digital",
-  "issn_impreso",
-  "issn_digital",
-  "url",
-  "anio_inicial",
-  "direccion",
-  "telefono",
-  "resumen",
-  "portada",
-];
+const { withAuditContext } = require("./audit");
 
 // Simple health/prueba endpoint
 exports.prueba = async (req, res) => {
   res.status(200).json({ message: "Prueba exitosa." });
 };
-
-// Endpoint de prueba para upload de archivos (sin DB)
-exports.testUpload = [
-  uploadAny,
-  async (req, res) => {
-    try {
-      const file = req.file || (Array.isArray(req.files) && req.files[0]);
-      if (!file) {
-        return res.status(400).json({ error: "No se proporcionó archivo" });
-      }
-      res.status(200).json({ filename: file.originalname });
-    } catch (err) {
-      console.error("[testUpload] Error:", err);
-      res.status(500).json({ error: "Error al subir el archivo" });
-    }
-  },
-];
-
-// Upload de portada y actualización en DB (revistas.portada)
-exports.uploadPortada = [
-  uploadAny,
-  async (req, res) => {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ error: "ID de revista es requerido" });
-    }
-
-    const file = req.file || (Array.isArray(req.files) && req.files[0]);
-    if (!file) {
-      return res.status(400).json({ error: "No se proporcionó archivo" });
-    }
-
-    // Usar file.filename (el nombre UUID generado por multer) en lugar de originalname
-    const savedFilename = file.filename;
-    const client = await pool.connect();
-
-    try {
-      // Obtener la portada anterior
-      const oldRevista = await client.query("SELECT portada FROM revistas WHERE id = $1", [id]);
-      const oldFilename = oldRevista.rows[0]?.portada;
-
-      const result = await client.query(
-        "UPDATE revistas SET portada = $1 WHERE id = $2 RETURNING *",
-        [savedFilename, id]
-      );
-
-      if (!result.rows.length) {
-        return res.status(404).json({ error: "Revista no encontrada" });
-      }
-
-      // Eliminar archivo anterior si existe y es diferente
-      if (oldFilename && oldFilename !== savedFilename) {
-        const dir = process.env.PORTADAS_PATH || path.join(__dirname, "../../backend/public/portadas");
-        const oldFilePath = path.join(dir, oldFilename);
-        if (fs.existsSync(oldFilePath)) {
-          try {
-            fs.unlinkSync(oldFilePath);
-          } catch (unlinkErr) {
-            console.error("[uploadPortada] Error al eliminar portada anterior:", unlinkErr);
-          }
-        }
-      }
-
-      res.status(200).json({
-        message: "Portada subida y actualizada exitosamente",
-        filename: savedFilename,
-        revista: result.rows[0],
-      });
-    } catch (err) {
-      // Eliminar archivo subido si la DB falla
-      try {
-        const f = req.file || (Array.isArray(req.files) && req.files[0]);
-        if (f?.path && fs.existsSync(f.path)) {
-          fs.unlinkSync(f.path);
-        }
-      } catch (unlinkErr) {
-        console.error("[uploadPortada] Error al eliminar archivo temporal:", unlinkErr);
-      }
-      console.error("[uploadPortada] Error:", err);
-      res.status(500).json({ error: "Error al subir la portada" });
-    } finally {
-      client.release();
-    }
-  },
-];
 
 // Verificar Correo Electrónico
 exports.verifyEmail = async (req, res) => {
@@ -808,237 +623,6 @@ exports.forceLogout = async (req, res) => {
   }
 };
 
-// Insertar revista (con upload de portada opcional)
-// exports.insertRevista = [
-//   uploadAny,
-//   async (req, res) => {
-//     const insertFields = req.body || {};
-
-//     // Si viene archivo, usar su nombre como portada (el archivo ya fue guardado por multer)
-//     const file = req.file || (Array.isArray(req.files) && req.files[0]);
-//     if (file) {
-//       insertFields.portada = file.originalname;
-//     } else if (!("portada" in insertFields)) {
-//       insertFields.portada = null;
-//     }
-
-//     // Campos a forzar en minúsculas
-//     const columnasMinusculas = ["correo_revista", "correo_editor", "url"];
-
-//     for (const key in insertFields) {
-//       if (typeof insertFields[key] === "string") {
-//         if (columnasMinusculas.includes(key)) {
-//           insertFields[key] = insertFields[key].toLowerCase();
-//         } else {
-//           insertFields[key] = insertFields[key].toUpperCase();
-//         }
-//       }
-//     }
-
-//     const client = await pool.connect();
-//     try {
-//       const keys = Object.keys(insertFields);
-//       if (keys.length === 0) {
-//         return res
-//           .status(400)
-//           .json({ error: "No se proporcionaron campos para insertar." });
-//       }
-
-//       const columns = keys.join(", ");
-//       const placeholders = keys.map((_, index) => `${index + 1}`).join(", ");
-//       const values = keys.map((key) => insertFields[key]);
-
-//       const query = `
-//         INSERT INTO revistas (${columns})
-//         VALUES (${placeholders})
-//         RETURNING *;
-//       `;
-
-//       const result = await client.query(query, values);
-
-//       if (result.rows.length === 0) {
-//         return res.status(500).json({ error: "Error al insertar la revista." });
-//       }
-
-//       res.status(201).json({
-//         message: "Revista insertada exitosamente.",
-//         revista: result.rows[0],
-//         filename: file ? file.originalname : null,
-//       });
-//     } catch (err) {
-//       console.error("Error al insertar la revista:", err);
-//       // Si ocurrió un error y se subió archivo, eliminarlo
-//       try {
-//         if (file?.path && fs.existsSync(file.path)) {
-//           fs.unlinkSync(file.path);
-//         }
-//       } catch (unlinkErr) {
-//         console.error("[insertRevista] Error al eliminar archivo temporal:", unlinkErr);
-//       }
-//       res.status(500).json({ error: "Error al insertar la revista." });
-//     } finally {
-//       client.release();
-//     }
-//   },
-// ];
-exports.insertRevista = async (req, res) => {
-  const insertFields = req.body; // Campos a insertar
-
-  // Lista de columnas que deben estar en minúsculas
-  const columnasMinusculas = ["correo_revista", "correo_editor", "url", "portada"];
-
-  // Convertir cadenas a mayúsculas o minúsculas según corresponda
-  for (const key in insertFields) {
-    if (typeof insertFields[key] === "string") {
-      if (columnasMinusculas.includes(key)) {
-        // Forzar a minúsculas para columnas específicas
-        insertFields[key] = insertFields[key].toLowerCase();
-      } else {
-        // Convertir a mayúsculas para el resto de las columnas
-        insertFields[key] = insertFields[key].toUpperCase();
-      }
-    }
-  }
-
-  const client = await pool.connect();
-  try {
-    // Construir la consulta dinámicamente
-    // Filtrar claves permitidas para evitar SQL Injection
-    const keys = Object.keys(insertFields).filter(key => REVISTA_ALLOWED_COLUMNS.includes(key));
-
-    if (keys.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No se proporcionaron campos válidos para insertar." });
-    }
-
-    const columns = keys.join(", ");
-    // Corregir los placeholders para usar $1, $2, etc.
-    const placeholders = keys.map((_, index) => `$${index + 1}`).join(", ");
-    const values = keys.map((key) => insertFields[key]);
-
-    const query = `
-            INSERT INTO revistas (${columns})
-            VALUES (${placeholders})
-            RETURNING *;
-        `;
-
-    // console.log('Consulta SQL:', query); // Para depuración
-    // console.log('Valores:', values); // Para depuración
-
-    // Ejecutar la consulta
-    const result = await client.query(query, values);
-
-    if (result.rows.length === 0) {
-      console.log("No se pudo insertar la revista.");
-      return res.status(500).json({ error: "Error al insertar la revista." });
-    }
-
-    res.status(201).json({
-      message: "Revista insertada exitosamente.",
-      revista: result.rows[0],
-    });
-  } catch (err) {
-    console.error("Error al insertar la revista:", err);
-    res.status(500).json({ error: "Error al insertar la revista." });
-  } finally {
-    client.release();
-  }
-};
-// Actualizar revista (PATCH)
-exports.updateRevista = async (req, res) => {
-  const { id } = req.params;
-  const updateFields = req.body;
-
-  console.log('🔍 [updateRevista] Datos recibidos ANTES de sanitizar:', JSON.stringify(updateFields, null, 2));
-
-  // Sanitizar campos que vienen de q-select (pueden venir como objetos {label, value})
-  const selectFields = [
-    'area_conocimiento_id',
-    'idioma_id',
-    'indice_id',
-    'editorial_id',
-    'periodicidad_id',
-    'formato_id',
-    'estado_id'
-  ];
-
-  selectFields.forEach(field => {
-    if (updateFields[field]) {
-      console.log(`🔍 Campo ${field}:`, typeof updateFields[field], updateFields[field]);
-      if (typeof updateFields[field] === 'object' && updateFields[field].value !== undefined) {
-        console.log(`✅ Extrayendo value de ${field}:`, updateFields[field].value);
-        updateFields[field] = updateFields[field].value;
-      }
-    }
-  });
-
-  console.log('🔍 [updateRevista] Datos DESPUÉS de sanitizar:', JSON.stringify(updateFields, null, 2));
-
-  if (updateFields.portada) {
-    const match = updateFields.portada.match(/\/([^\/?]+)\?/);
-    if (match && match[1]) {
-      updateFields.portada = match[1].toLowerCase();
-    }
-  }
-
-  const columnasMinusculas = [
-    "correo_revista",
-    "correo_editor",
-    "url",
-    "portada",
-  ];
-
-  for (const key in updateFields) {
-    if (typeof updateFields[key] === "string") {
-      if (columnasMinusculas.includes(key)) {
-        updateFields[key] = updateFields[key].toLowerCase();
-      } else {
-        updateFields[key] = updateFields[key].toUpperCase();
-      }
-    }
-  }
-
-  const client = await pool.connect();
-  try {
-    // Filtrar claves permitidas para evitar SQL Injection
-    const keys = Object.keys(updateFields).filter(key => REVISTA_ALLOWED_COLUMNS.includes(key));
-
-    if (keys.length === 0) {
-      return res
-        .status(400)
-        .json({ error: "No se proporcionaron campos válidos para actualizar." });
-    }
-
-    const setClause = keys.map((key, index) => `${key} = $${index + 1}`).join(", ");
-    const values = keys.map((key) => updateFields[key]);
-    values.push(id);
-
-    const query = `
-      UPDATE revistas
-      SET ${setClause}
-      WHERE id = $${values.length}
-      RETURNING *;
-    `;
-
-    const result = await client.query(query, values);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: "Revista no encontrada." });
-    }
-
-    res.status(200).json({
-      message: "Revista actualizada exitosamente.",
-      revista: result.rows[0],
-    });
-  } catch (err) {
-    console.error("Error al actualizar la revista:", err);
-    res.status(500).json({ error: "Error al actualizar la revista." });
-  } finally {
-    client.release();
-  }
-};
-
 // ================================
 // Configuración de sesión
 // ================================
@@ -1158,10 +742,7 @@ exports.updateRoleSessionTimeout = async (req, res) => {
   }
 };
 
-// ================================
-// Placeholders para endpoints no implementados en este refactor
-// ================================
-
+// Crear Usuario
 exports.createUser = async (req, res) => {
   const { first_name, last_name, cedula, email, password, session_timeout_min } = req.body;
 
@@ -1234,10 +815,7 @@ exports.updateRole = async (req, res) => {
   }
 };
 
-// Eliminar Rol (Borrado Lógico) - No hay columna deleted_at en roles según dump, pero sí en users.
-// Revisando dump: roles tiene created_at, updated_at, session_timeout_min. NO tiene deleted_at.
-// Se hará borrado físico si no hay dependencias, o se agregará columna deleted_at si se requiere.
-// Por ahora, asumiremos borrado físico con validación de dependencias o borrado en cascada (user_roles tiene ON DELETE CASCADE).
+// Eliminar Rol
 exports.deleteRole = async (req, res) => {
   const { roleId } = req.params;
   const client = await pool.connect();
@@ -1255,7 +833,6 @@ exports.deleteRole = async (req, res) => {
 // Asignar Rol a Usuario
 exports.assignRoleToUser = async (req, res) => {
   const { userId, roleId } = req.body;
-  console.log("Assigning role:", { userId, roleId }); // Debug log
 
   if (!userId || !roleId) {
     return res.status(400).json({ error: "userId y roleId son requeridos." });
@@ -1308,7 +885,6 @@ exports.removeRoleFromUser = async (req, res) => {
 // Asignar Permiso a Rol
 exports.assignPermissionToRole = async (req, res) => {
   const { roleId, permissionId } = req.body;
-  console.log("Assigning permission to role:", { roleId, permissionId });
 
   if (!roleId || !permissionId) {
     return res.status(400).json({ error: "roleId y permissionId son requeridos." });
@@ -1341,7 +917,6 @@ exports.assignPermissionToRole = async (req, res) => {
 // Remover Permiso de Rol
 exports.removePermissionFromRole = async (req, res) => {
   const { roleId, permissionId } = req.body;
-  console.log("Removing permission from role:", { roleId, permissionId });
 
   if (!roleId || !permissionId) {
     return res.status(400).json({ error: "roleId y permissionId son requeridos." });
@@ -1355,7 +930,6 @@ exports.removePermissionFromRole = async (req, res) => {
     );
 
     if (result.rowCount === 0) {
-      console.warn("No se encontró la asignación para eliminar:", { roleId, permissionId });
       return res.status(404).json({ error: "No se encontró la asignación para eliminar." });
     }
 
@@ -1404,133 +978,6 @@ exports.removePermissionFromUser = async (req, res) => {
   }
 };
 
-// Inserta una revista con su portada en una sola operación
-exports.insertRevistaWithUpload = [
-  uploadAny, // Middleware de Multer para procesar el archivo
-  async (req, res) => {
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📥 Datos recibidos en req.body:', Object.keys(req.body));
-    console.log('📄 Valores completos de req.body:', req.body);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-    const insertFields = req.body; // Datos de la revista
-    const file = req.file || (Array.isArray(req.files) && req.files[0]);
-
-    // VALIDAR CAMPOS OBLIGATORIOS ANTES DE PROCESAR
-    if (!insertFields.area_conocimiento_id || insertFields.area_conocimiento_id === '') {
-      return res.status(400).json({
-        error: 'El campo "Área de Conocimiento" es obligatorio. Por favor selecciona un área de conocimiento.'
-      });
-    }
-
-    if (!insertFields.idioma_id || insertFields.idioma_id === '') {
-      return res.status(400).json({
-        error: 'El campo "Idioma" es obligatorio. Por favor selecciona un idioma.'
-      });
-    }
-
-    // Si se subió un archivo, usar el nombre UUID generado por multer (file.filename)
-    if (file) {
-      console.log('📁 Archivo recibido:');
-      console.log('   - originalname:', file.originalname);
-      console.log('   - filename (UUID):', file.filename);
-      console.log('   - path:', file.path);
-      insertFields.portada = file.filename;
-      console.log('   - portada asignada:', insertFields.portada);
-    }
-
-    // Limpiar y validar datos antes de insertar
-    const columnasMinusculas = ["correo_revista", "correo_editor", "url", "portada"];
-
-    // Límites de longitud para campos varchar
-    const fieldLimits = {
-      'deposito_legal_impreso': 25,
-      'deposito_legal_digital': 25,
-      'issn_impreso': 25,
-      'issn_digital': 25,
-      'portada': 255
-    };
-
-    for (const key in insertFields) {
-      // Convertir cadenas vacías a null para campos numéricos
-      if (insertFields[key] === '' || insertFields[key] === undefined) {
-        insertFields[key] = null;
-        continue;
-      }
-
-      if (typeof insertFields[key] === "string") {
-        // Trim para eliminar espacios
-        insertFields[key] = insertFields[key].trim();
-
-        // Si después del trim queda vacío, convertir a null
-        if (insertFields[key] === '') {
-          insertFields[key] = null;
-          continue;
-        }
-
-        // Aplicar límites de longitud si existen
-        if (fieldLimits[key] && insertFields[key].length > fieldLimits[key]) {
-          console.warn(`Campo ${key} truncado de ${insertFields[key].length} a ${fieldLimits[key]} caracteres`);
-          insertFields[key] = insertFields[key].substring(0, fieldLimits[key]);
-        }
-
-        if (columnasMinusculas.includes(key)) {
-          insertFields[key] = insertFields[key].toLowerCase();
-        } else {
-          insertFields[key] = insertFields[key].toUpperCase();
-        }
-      }
-    }
-
-    const client = await pool.connect();
-    try {
-      // Filtrar campos null y validar columnas permitidas antes de construir la query
-      const validFields = {};
-      for (const key in insertFields) {
-        if (insertFields[key] !== null && REVISTA_ALLOWED_COLUMNS.includes(key)) {
-          validFields[key] = insertFields[key];
-        }
-      }
-
-      const keys = Object.keys(validFields);
-      if (keys.length === 0) {
-        return res.status(400).json({ error: "No se proporcionaron campos válidos para insertar." });
-      }
-
-      const columns = keys.join(", ");
-      const placeholders = keys.map((_, index) => `$${index + 1}`).join(", ");
-      const values = keys.map((key) => validFields[key]);
-
-      const query = `INSERT INTO revistas (${columns}) VALUES (${placeholders}) RETURNING *;`;
-
-      console.log('Insertando revista con campos:', keys);
-      console.log('Valores:', values);
-
-      const result = await client.query(query, values);
-
-      if (result.rows.length === 0) {
-        return res.status(500).json({ error: "Error al insertar la revista." });
-      }
-
-      res.status(201).json({
-        message: "Revista y portada insertadas exitosamente.",
-        revista: result.rows[0],
-      });
-    } catch (err) {
-      console.error("Error en insertRevistaWithUpload:", err);
-      // Si algo falla, eliminar el archivo que se subió
-      if (file && fs.existsSync(file.path)) {
-        fs.unlinkSync(file.path);
-      }
-      res.status(500).json({
-        error: "Error al insertar la revista.",
-        details: err.message
-      });
-    } finally {
-      client.release();
-    }
-  },
-];
 // ================================
 // AUDITORÍA - LOGIN LOGS
 // ================================
@@ -1591,6 +1038,7 @@ exports.listAuditLogs = async (req, res) => {
     client.release();
   }
 };
+
 // ==========================================
 // CONFIGURACIÓN DE SESIÓN (MANTENIMIENTO)
 // ==========================================

@@ -1,0 +1,54 @@
+# Ignorar archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos de configuración sensibles
+.env
+*.env
+*.env.local
+*.env.development
+*.env.production
+
+# Ignorar directorios generados por Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# Ignorar archivos de compilación o temporales
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Ignorar archivos de pruebas
+coverage/
+test-results/
+
+# Ignorar archivos específicos del IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Ignorar archivos de bases de datos locales (si aplica)
+*.db
+*.sqlite
+*.sqlitedb
+
+# Ignorar archivos de Docker (si no quieres incluirlos en el repo)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Ignorar archivos de logs personalizados
+logs/
+*.log.*
+
+# Ignorar archivos de caché
+.cache/
+src/hash.js
+,env
+src/ambiente.js

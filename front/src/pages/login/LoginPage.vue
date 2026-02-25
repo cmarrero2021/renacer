@@ -7,16 +7,41 @@
     <img alt="Directorio" src="img/directorio1.png" class="directorio-image" />
     <div class="login-box">
       <h5>Sistema de Gestión</h5>
-      <h4>Iniciar Sesión</h4>
-      <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" />
-      <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'">
-        <template v-slot:append>
-          <q-btn :icon="isPasswordVisible ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
-            @click="isPasswordVisible = !isPasswordVisible" />
-        </template>
-      </q-input>
-      <q-btn label="Ingresar" class="q-mt-md" color="primary" @click="handleLogin" />
-      <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
+
+      <!-- Fase 1: Credenciales -->
+      <template v-if="!show2FA">
+        <h4>Iniciar Sesión</h4>
+        <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" @keyup.enter="handleLogin" />
+        <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'"
+          @keyup.enter="handleLogin">
+          <template v-slot:append>
+            <q-btn :icon="isPasswordVisible ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
+              @click="isPasswordVisible = !isPasswordVisible" />
+          </template>
+        </q-input>
+        <q-btn label="Ingresar" class="q-mt-md" color="primary" @click="handleLogin" :loading="loginLoading" />
+        <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
+      </template>
+
+      <!-- Fase 2: Código 2FA -->
+      <template v-if="show2FA">
+        <h4>Verificación de Código</h4>
+        <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a su correo electrónico.</p>
+        <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
+        <q-input filled outlined v-model="twoFACode" label="Código de Verificación" mask="######" maxlength="6"
+          class="code-input" @keyup.enter="handleVerify2FA">
+          <template v-slot:prepend>
+            <q-icon name="pin" />
+          </template>
+        </q-input>
+        <q-btn label="Verificar" class="q-mt-md" color="primary" @click="handleVerify2FA" :loading="verifyLoading" />
+        <div class="q-mt-sm">
+          <q-btn flat dense label="Reenviar código" color="grey" icon="refresh" @click="handleLogin"
+            :loading="loginLoading" :disable="loginLoading" />
+          <q-btn flat dense label="Volver al login" color="grey" icon="arrow_back" @click="resetToLogin" />
+        </div>
+        <p v-if="attemptsLeftMsg" class="text-caption text-warning q-mt-sm">{{ attemptsLeftMsg }}</p>
+      </template>
     </div>
   </div>
 
@@ -127,9 +152,19 @@ import axios from "axios";
 const email = ref("");
 const password = ref("");
 const isPasswordVisible = ref(false);
+const loginLoading = ref(false);
 const router = useRouter();
 const loginUrl = import.meta.env.VITE_LOGIN_URL;
 const authApiUrl = import.meta.env.VITE_AUTH_API_URL || '/auth';
+
+// ==========================================
+// 2FA
+// ==========================================
+const show2FA = ref(false);
+const twoFACode = ref("");
+const tempToken = ref("");
+const verifyLoading = ref(false);
+const attemptsLeftMsg = ref("");
 
 // Validación de email
 const validateEmail = (email) => {
@@ -137,7 +172,14 @@ const validateEmail = (email) => {
   return emailPattern.test(email);
 };
 
-// Login
+const resetToLogin = () => {
+  show2FA.value = false;
+  twoFACode.value = "";
+  tempToken.value = "";
+  attemptsLeftMsg.value = "";
+};
+
+// Login (Fase 1 → enviar código 2FA)
 const handleLogin = async () => {
   if (!email.value) {
     Notify.create({ message: "El correo electrónico no puede estar vacío.", color: "negative", position: "top", timeout: 3000 });
@@ -151,6 +193,7 @@ const handleLogin = async () => {
     return;
   }
 
+  loginLoading.value = true;
   try {
     const response = await axios.post(loginUrl, {
       username: email.value,
@@ -160,21 +203,72 @@ const handleLogin = async () => {
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' }
     });
 
-    if (response.data.message === "Inicio de sesión exitoso.") {
-      LocalStorage.set('token', response.data.token);
-      LocalStorage.set('permissions', response.data.permissions);
-      LocalStorage.set('role', response.data.role);
-      Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000 });
-      router.push("/admin");
-    } else {
-      Notify.create({ message: "Credenciales inválidas", color: "negative", position: "top", timeout: 3000 });
+    if (response.data.requires2FA) {
+      // Fase 2: mostrar input de código
+      tempToken.value = response.data.tempToken;
+      twoFACode.value = "";
+      attemptsLeftMsg.value = response.data.attemptsLeft <= 1
+        ? `Atención: le quedan ${response.data.attemptsLeft} solicitud(es) de código antes de que su cuenta sea suspendida.`
+        : "";
+      show2FA.value = true;
+      Notify.create({ message: response.data.message, color: "positive", position: "top", timeout: 4000, icon: "email" });
+    } else if (response.data.message === "Inicio de sesión exitoso.") {
+      // Login directo (por si se deshabilita 2FA en el futuro)
+      completeLogin(response.data);
     }
   } catch (error) {
-    const mensaje = error == 'AxiosError: Request failed with status code 403'
-      ? 'El usuario ya tiene una sesión abierta. Ciérrela e intente de nuevo'
-      : 'Error de conexión. Intente nuevamente.';
-    Notify.create({ message: mensaje, color: "negative", position: "top", timeout: 3000 });
+    const mensaje = error.response?.data?.error || 'Error de conexión. Intente nuevamente.';
+    Notify.create({ message: mensaje, color: "negative", position: "top", timeout: 4000 });
+    if (error.response?.data?.suspended) {
+      resetToLogin();
+    }
+  } finally {
+    loginLoading.value = false;
   }
+};
+
+// Verificar código 2FA (Fase 2)
+const handleVerify2FA = async () => {
+  if (!twoFACode.value || twoFACode.value.length !== 6) {
+    Notify.create({ message: "Ingrese el código de 6 dígitos.", color: "negative", position: "top", timeout: 3000 });
+    return;
+  }
+
+  verifyLoading.value = true;
+  try {
+    const response = await axios.post(`${authApiUrl}/verify-2fa`, {
+      tempToken: tempToken.value,
+      code: twoFACode.value
+    });
+
+    if (response.data.message === "Inicio de sesión exitoso.") {
+      completeLogin(response.data);
+    }
+  } catch (error) {
+    const data = error.response?.data;
+    const mensaje = data?.error || "Error al verificar el código.";
+    Notify.create({ message: mensaje, color: "negative", position: "top", timeout: 4000 });
+
+    if (data?.codeInvalidated || data?.expired) {
+      // Código invalidado: volver al login para solicitar nuevo
+      attemptsLeftMsg.value = "Código invalidado. Presione 'Reenviar código' para solicitar uno nuevo.";
+      twoFACode.value = "";
+    }
+    if (data?.suspended) {
+      resetToLogin();
+    }
+  } finally {
+    verifyLoading.value = false;
+  }
+};
+
+// Completar login exitoso
+const completeLogin = (data) => {
+  LocalStorage.set('token', data.token);
+  LocalStorage.set('permissions', data.permissions);
+  LocalStorage.set('role', data.role);
+  Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000, icon: "check_circle" });
+  router.push("/admin");
 };
 
 // ==========================================
@@ -290,7 +384,6 @@ const handleVerifyCode = async () => {
 
 // Paso 3: Cambiar contraseña
 const handleResetPassword = async () => {
-  // Validar que todos los requisitos se cumplan
   const allMet = passwordRequirements.value.every(r => r.met);
   if (!allMet) {
     Notify.create({ message: "La contraseña no cumple todos los requisitos.", color: "negative", position: "top", timeout: 3000 });

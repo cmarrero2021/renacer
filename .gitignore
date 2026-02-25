@@ -9,3 +9,6 @@ bd/20250605_directorio.sql
 revistas.sql
 TODO.md
 TODO_FILTROS.md
+bd/*.*
+*.sql
+recursos/*.*

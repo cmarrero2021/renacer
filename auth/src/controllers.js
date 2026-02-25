@@ -381,7 +381,7 @@ exports.listUserRoles = async (req, res) => {
   }
 };
 
-// Login
+// Login (Fase 1: validar credenciales + enviar código 2FA)
 exports.login = async (req, res) => {
   const { username, password } = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
@@ -411,7 +411,7 @@ exports.login = async (req, res) => {
 
     // Buscar usuario
     const result = await client.query(
-      "SELECT id, password_hash, status, failed_login_attempts, last_failed_login FROM users WHERE email = $1",
+      "SELECT id, email, password_hash, status, failed_login_attempts, last_failed_login FROM users WHERE email = $1",
       [username]
     );
 
@@ -426,6 +426,7 @@ exports.login = async (req, res) => {
     }
 
     const user = result.rows[0];
+    const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@minaamp.gob.ve';
 
     // Estados de usuario
     if (user.status === "deleted") {
@@ -440,7 +441,11 @@ exports.login = async (req, res) => {
         "INSERT INTO login_logs (username, ip_address, login_status) VALUES ($1, $2, $3)",
         [username, ip, "failed"]
       );
-      return res.status(403).json({ error: "El usuario está suspendido." });
+      return res.status(403).json({
+        error: `El usuario está suspendido. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
     }
 
     // Intentos fallidos recientes
@@ -459,8 +464,9 @@ exports.login = async (req, res) => {
         [username, ip, "blocked"]
       );
       return res.status(403).json({
-        error:
-          "El usuario ha sido bloqueado debido a múltiples intentos fallidos.",
+        error: `El usuario ha sido bloqueado debido a múltiples intentos fallidos. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
       });
     }
 
@@ -480,26 +486,210 @@ exports.login = async (req, res) => {
         .json({ error: "Nombre de usuario o contraseña incorrectos." });
     }
 
-    // Reiniciar contador de intentos fallidos
+    // Reiniciar contador de intentos fallidos de login
     await client.query(
       "UPDATE users SET failed_login_attempts = 0, last_failed_login = NULL WHERE id = $1",
       [user.id]
     );
 
+    // ============================================
+    // 2FA: Enviar código en lugar de completar login
+    // ============================================
+
+    // Contar solicitudes de código 2FA en los últimos 30 minutos
+    const recentCodesResult = await client.query(
+      "SELECT MAX(request_count) as max_requests FROM two_factor_codes WHERE user_id = $1 AND created_at > NOW() - INTERVAL '30 minutes'",
+      [user.id]
+    );
+    const currentRequestCount = recentCodesResult.rows[0]?.max_requests || 0;
+
+    if (currentRequestCount >= 3) {
+      // Suspender cuenta
+      await client.query(
+        "UPDATE users SET status = 'suspended', updated_at = NOW() WHERE id = $1",
+        [user.id]
+      );
+      await client.query(
+        "INSERT INTO login_logs (username, ip_address, login_status) VALUES ($1, $2, $3)",
+        [username, ip, "blocked"]
+      );
+      return res.status(403).json({
+        error: `Ha excedido el número máximo de solicitudes de código. Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
+    }
+
+    // Invalidar códigos anteriores
+    await client.query("DELETE FROM two_factor_codes WHERE user_id = $1", [user.id]);
+
+    // Generar código 2FA
+    const code = generateResetCode();
+    const hashedCode = await hashPassword(code);
+
+    // Guardar código (expira en 10 min)
+    await client.query(
+      "INSERT INTO two_factor_codes (user_id, code_hash, expires_at, request_count) VALUES ($1, $2, NOW() + INTERVAL '10 minutes', $3)",
+      [user.id, hashedCode, currentRequestCount + 1]
+    );
+
+    // Enviar código por email
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <h2 style="color: #273984; text-align: center;">Código de Verificación</h2>
+        <p>Se ha solicitado un código de verificación para iniciar sesión en su cuenta.</p>
+        <div style="text-align: center; margin: 24px 0;">
+          <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #273984; background: #f5f5f5; padding: 12px 24px; border-radius: 8px;">${code}</span>
+        </div>
+        <p style="color: #666; font-size: 14px;">Este código es válido por <strong>10 minutos</strong>.</p>
+        <p style="color: #666; font-size: 14px;">Si no solicitó este código, cambie su contraseña inmediatamente.</p>
+        <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+        <p style="color: #999; font-size: 12px; text-align: center;">Sistema de Gestión de Usuarios y Permisos</p>
+      </div>
+    `;
+    await sendEmail(
+      user.email,
+      'Código de Verificación - Inicio de Sesión',
+      `Su código de verificación es: ${code}. Válido por 10 minutos.`,
+      html
+    );
+
+    // Generar token temporal para la fase 2FA (10 min)
+    const tempToken = jwt.sign(
+      { userId: user.id, purpose: '2fa-pending' },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    await client.query(
+      "INSERT INTO login_logs (user_id, username, ip_address, login_status) VALUES ($1, $2, $3, $4)",
+      [user.id, username, ip, "2fa-pending"]
+    );
+
+    const attemptsLeft = 3 - (currentRequestCount + 1);
+    res.status(200).json({
+      requires2FA: true,
+      tempToken,
+      message: 'Se ha enviado un código de verificación a su correo electrónico.',
+      attemptsLeft
+    });
+  } catch (err) {
+    console.error("❌ Error en login:", err.message);
+    res.status(500).json({ error: "Error en el inicio de sesión." });
+  } finally {
+    client.release();
+  }
+};
+
+// Verificar código 2FA (Fase 2: completar login)
+exports.verify2FA = async (req, res) => {
+  const { tempToken, code } = req.body;
+  const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const client = await pool.connect();
+
+  try {
+    if (!tempToken || !code) {
+      return res.status(400).json({ error: 'Token temporal y código son requeridos.' });
+    }
+
+    // Verificar token temporal
+    let decoded;
+    try {
+      decoded = jwt.verify(tempToken, process.env.JWT_SECRET);
+      if (decoded.purpose !== '2fa-pending') {
+        return res.status(400).json({ error: 'Token de verificación inválido.' });
+      }
+    } catch (err) {
+      return res.status(400).json({ error: 'Token de verificación inválido o expirado.' });
+    }
+
+    const userId = decoded.userId;
+    const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@minaamp.gob.ve';
+
+    // Verificar estado del usuario
+    const userCheck = await client.query(
+      'SELECT email, status FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [userId]
+    );
+    if (!userCheck.rows.length || userCheck.rows[0].status === 'suspended') {
+      return res.status(403).json({
+        error: `Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
+        suspended: true,
+        adminContact
+      });
+    }
+
+    // Buscar código 2FA vigente
+    const codeResult = await client.query(
+      'SELECT id, code_hash, expires_at, attempts FROM two_factor_codes WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1',
+      [userId]
+    );
+
+    if (!codeResult.rows.length) {
+      return res.status(400).json({ error: 'No hay código de verificación pendiente. Inicie sesión nuevamente.' });
+    }
+
+    const codeRecord = codeResult.rows[0];
+
+    // Verificar expiración
+    if (new Date(codeRecord.expires_at) < new Date()) {
+      await client.query('DELETE FROM two_factor_codes WHERE id = $1', [codeRecord.id]);
+      return res.status(400).json({ error: 'El código ha expirado. Inicie sesión nuevamente para recibir un nuevo código.', expired: true });
+    }
+
+    // Verificar intentos (máx 3)
+    if (codeRecord.attempts >= 3) {
+      await client.query('DELETE FROM two_factor_codes WHERE id = $1', [codeRecord.id]);
+      return res.status(400).json({
+        error: 'Ha excedido el número máximo de intentos. Inicie sesión nuevamente para recibir un nuevo código.',
+        codeInvalidated: true
+      });
+    }
+
+    // Verificar código
+    const isValid = await comparePassword(code, codeRecord.code_hash);
+    if (!isValid) {
+      // Incrementar intentos
+      const newAttempts = codeRecord.attempts + 1;
+      await client.query(
+        'UPDATE two_factor_codes SET attempts = $1 WHERE id = $2',
+        [newAttempts, codeRecord.id]
+      );
+      const remaining = 3 - newAttempts;
+      if (remaining <= 0) {
+        await client.query('DELETE FROM two_factor_codes WHERE id = $1', [codeRecord.id]);
+        return res.status(400).json({
+          error: 'Código incorrecto. Ha excedido el número máximo de intentos. Inicie sesión nuevamente para recibir un nuevo código.',
+          codeInvalidated: true
+        });
+      }
+      return res.status(400).json({
+        error: `Código incorrecto. Le quedan ${remaining} intento(s).`,
+        attemptsLeft: remaining
+      });
+    }
+
+    // ============================================
+    // CÓDIGO CORRECTO: Completar login
+    // ============================================
+
+    // Limpiar códigos 2FA
+    await client.query('DELETE FROM two_factor_codes WHERE user_id = $1', [userId]);
+
     // Duración de sesión
-    const timeoutMin = await getSessionTimeout(user.id);
-    const expiresInSeconds = Math.max(parseInt(timeoutMin, 10) || 20, 1) * 60; // fallback seguro
-    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+    const timeoutMin = await getSessionTimeout(userId);
+    const expiresInSeconds = Math.max(parseInt(timeoutMin, 10) || 20, 1) * 60;
+    const token = jwt.sign({ userId: userId }, process.env.JWT_SECRET, {
       expiresIn: expiresInSeconds,
     });
 
     // Registrar sesión
     await client.query(
       "INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, CURRENT_TIMESTAMP + $3 * INTERVAL '1 minute')",
-      [user.id, token, parseInt(timeoutMin, 10) || 20]
+      [userId, token, parseInt(timeoutMin, 10) || 20]
     );
 
-    // Permisos del usuario (combinando permisos directos y permisos del rol)
+    // Permisos del usuario
     const permissionsQuery = `
       SELECT DISTINCT p.name, p.description, p.action, p.resource
       FROM user_permissions up
@@ -513,37 +703,25 @@ exports.login = async (req, res) => {
       WHERE ur.user_id = $1
       ORDER BY resource, action
     `;
-    const permissionsResult = await client.query(permissionsQuery, [user.id]);
+    const permissionsResult = await client.query(permissionsQuery, [userId]);
     const permissions = permissionsResult.rows;
 
-    // Log de permisos del usuario
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`✅ Usuario logueado: ${username} (ID: ${user.id})`);
-    console.log(`📋 Permisos del usuario (${permissions.length} permisos):`);
-    if (permissions.length > 0) {
-      permissions.forEach((perm, index) => {
-        console.log(`   ${index + 1}. ${perm.name} - ${perm.description || 'Sin descripción'} (Acción: ${perm.action})`);
-      });
-    } else {
-      console.log('   ⚠️  El usuario no tiene permisos asignados');
-    }
+    console.log(`✅ Usuario logueado (2FA): ${userCheck.rows[0].email} (ID: ${userId})`);
+    console.log(`📋 Permisos del usuario (${permissions.length} permisos)`);
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Rol del usuario
     const roleQuery = `
-      SELECT r.name
-      FROM roles r
-      JOIN user_roles ur ON ur.role_id = r.id
-      WHERE ur.user_id = $1
-      LIMIT 1
+      SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
     `;
-    const roleResult = await client.query(roleQuery, [user.id]);
+    const roleResult = await client.query(roleQuery, [userId]);
     const role = roleResult.rows[0]?.name || null;
 
     // Auditoría
     await client.query(
       "INSERT INTO login_logs (user_id, username, ip_address, login_status, session_token) VALUES ($1, $2, $3, $4, $5)",
-      [user.id, username, ip, "success", token]
+      [userId, userCheck.rows[0].email, ip, "success", token]
     );
 
     res.status(200).json({
@@ -554,8 +732,8 @@ exports.login = async (req, res) => {
       permissions,
     });
   } catch (err) {
-    console.error("❌ Error en login:", err.message);
-    res.status(500).json({ error: "Error en el inicio de sesión." });
+    console.error("❌ Error en verify2FA:", err.message);
+    res.status(500).json({ error: "Error al verificar el código." });
   } finally {
     client.release();
   }
@@ -1099,6 +1277,44 @@ exports.updateSessionSettings = async (req, res) => {
 // ==========================================
 // RECUPERACIÓN DE CONTRASEÑA
 // ==========================================
+
+// Cambiar estado de usuario (suspender/reactivar)
+exports.toggleUserStatus = async (req, res) => {
+  const { userId } = req.params;
+  const { status } = req.body; // 'active' o 'suspended'
+  const client = await pool.connect();
+
+  try {
+    if (!['active', 'suspended'].includes(status)) {
+      return res.status(400).json({ error: "Estado inválido. Use 'active' o 'suspended'." });
+    }
+
+    const userResult = await client.query(
+      'SELECT id, first_name, status FROM users WHERE id = $1 AND deleted_at IS NULL',
+      [userId]
+    );
+
+    if (!userResult.rows.length) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    // Si se reactiva, resetear intentos de recuperación
+    const extraFields = status === 'active' ? ', recovery_attempts = 0, failed_attempts = 0, lock_until = NULL' : '';
+
+    await client.query(
+      `UPDATE users SET status = $1${extraFields}, updated_at = NOW() WHERE id = $2`,
+      [status, userId]
+    );
+
+    const action = status === 'active' ? 'reactivado' : 'suspendido';
+    res.status(200).json({ message: `Usuario ${action} exitosamente.` });
+  } catch (err) {
+    console.error('Error al cambiar estado del usuario:', err);
+    res.status(500).json({ error: 'Error al cambiar el estado del usuario.' });
+  } finally {
+    client.release();
+  }
+};
 
 // Solicitar código de recuperación
 exports.requestPasswordReset = async (req, res) => {

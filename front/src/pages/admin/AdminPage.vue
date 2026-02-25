@@ -29,11 +29,27 @@
                             </q-input>
                             <q-btn color="primary" icon="add" label="Nuevo Usuario" @click="openUserModal()" />
                         </template>
+                        <template v-slot:body-cell-status="props">
+                            <q-td :props="props">
+                                <q-badge :color="props.row.status === 'active' ? 'positive' : 'negative'"
+                                    :label="props.row.status === 'active' ? 'Activo' : 'Suspendido'" />
+                            </q-td>
+                        </template>
                         <template v-slot:body-cell-actions="props">
                             <q-td :props="props">
-                                <q-btn flat round dense color="primary" icon="edit" @click="openUserModal(props.row)" />
+                                <q-btn flat round dense color="primary" icon="edit" @click="openUserModal(props.row)">
+                                    <q-tooltip>Editar</q-tooltip>
+                                </q-btn>
+                                <q-btn flat round dense :color="props.row.status === 'active' ? 'warning' : 'positive'"
+                                    :icon="props.row.status === 'active' ? 'block' : 'check_circle'"
+                                    @click="confirmToggleStatus(props.row)">
+                                    <q-tooltip>{{ props.row.status === 'active' ? 'Suspender' : 'Reactivar'
+                                        }}</q-tooltip>
+                                </q-btn>
                                 <q-btn flat round dense color="negative" icon="delete"
-                                    @click="confirmDeleteUser(props.row)" />
+                                    @click="confirmDeleteUser(props.row)">
+                                    <q-tooltip>Eliminar</q-tooltip>
+                                </q-btn>
                                 <q-btn flat round dense color="secondary" icon="admin_panel_settings"
                                     @click="openAssignRoleModal(props.row)">
                                     <q-tooltip>Asignar Roles</q-tooltip>
@@ -325,6 +341,7 @@ const userColumns = [
     { name: 'last_name', label: 'Apellido', field: 'last_name', align: 'left' },
     { name: 'cedula', label: 'Cédula', field: 'cedula', align: 'left' },
     { name: 'email', label: 'Email', field: 'email', align: 'left' },
+    { name: 'status', label: 'Estado', field: 'status', align: 'center' },
     { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
 ]
 const userModalOpen = ref(false)
@@ -487,6 +504,26 @@ const confirmDeleteUser = (user) => {
             fetchUsers()
         } catch (error) {
             $q.notify({ type: 'negative', message: 'Error al eliminar usuario' })
+        }
+    })
+}
+
+const confirmToggleStatus = (user) => {
+    const isSuspending = user.status === 'active'
+    const action = isSuspending ? 'suspender' : 'reactivar'
+    const newStatus = isSuspending ? 'suspended' : 'active'
+    $q.dialog({
+        title: 'Confirmar',
+        message: `¿${isSuspending ? 'Suspender' : 'Reactivar'} al usuario ${user.first_name} ${user.last_name}?${isSuspending ? ' El usuario no podrá iniciar sesión.' : ' Se resetearán sus intentos de recuperación.'}`,
+        cancel: true,
+        persistent: true
+    }).onOk(async () => {
+        try {
+            await api.patch(`/users/${user.id}/status`, { status: newStatus })
+            $q.notify({ type: 'positive', message: `Usuario ${action === 'suspender' ? 'suspendido' : 'reactivado'} exitosamente` })
+            fetchUsers()
+        } catch (error) {
+            $q.notify({ type: 'negative', message: `Error al ${action} usuario` })
         }
     })
 }

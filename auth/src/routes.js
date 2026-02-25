@@ -39,7 +39,9 @@ const {
   updateSessionSettings,
   requestPasswordReset,
   verifyResetCode,
-  resetPassword
+  resetPassword,
+  toggleUserStatus,
+  verify2FA
 } = require("./controllers");
 const { authenticate, authorize, checkBlacklist } = require("./middlewares");
 
@@ -48,6 +50,7 @@ router.get("/prueba", prueba);
 router.post("/login", login); // Inicio de sesión
 router.post("/verify-email", verifyEmail); // Verificación de correo electrónico
 router.post("/force-logout", forceLogout); // Cierre forzoso de sesión
+router.post("/verify-2fa", verify2FA); // Verificar código 2FA
 
 // Recuperación de contraseña (públicas)
 router.post("/request-reset", requestPasswordReset); // Solicitar código de recuperación
@@ -118,6 +121,12 @@ router.delete(
   authorize("delete_user_permanently"),
   deleteUserPermanently
 ); // Borrado físico
+router.patch(
+  "/users/:userId/status",
+  authenticate,
+  authorize("update_user"),
+  toggleUserStatus
+); // Suspender/Reactivar
 
 // Cambio de Contraseña
 router.post("/change-password", authenticate, changePassword);

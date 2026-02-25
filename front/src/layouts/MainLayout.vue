@@ -1,7 +1,7 @@
 <template>
   <q-layout view="hHh lpR fFf">
     <q-header elevated class="bg-primary text-white">
-      <img src="img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
+      <img src="/img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
       <q-toolbar>
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
 
@@ -25,6 +25,13 @@
             <q-icon name="home" />
           </q-item-section>
           <q-item-section>Inicio</q-item-section>
+        </q-item>
+
+        <q-item clickable v-ripple to="/admin/marco-legal">
+          <q-item-section avatar>
+            <q-icon name="gavel" />
+          </q-item-section>
+          <q-item-section>Marco Legal</q-item-section>
         </q-item>
 
         <q-item clickable v-ripple to="/admin/administracion" v-if="isAdmin() || hasPermission('view_admin_panel')">

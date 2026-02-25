@@ -24,6 +24,10 @@ const routes = [
         component: () => import("pages/DashboardPage.vue"),
       },
       {
+        path: "marco-legal",
+        component: () => import("pages/MarcoLegalPage.vue"),
+      },
+      {
         path: "administracion",
         component: () => import("pages/admin/AdminPage.vue"),
       },

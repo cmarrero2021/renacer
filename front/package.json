@@ -1,8 +1,8 @@
 {
   "name": "directorio-revistas",
   "version": "0.0.1",
-  "description": " Directorio de Revistas del Observatorio Nacional de Ciencia, Tecnología e Innovación )ONCTI)",
-  "productName": "Directorio de Revistas del Observatorio Nacional de Ciencia, Tecnología e Innovación )ONCTI)",
+  "description": "RENACER - Registro Nacional de Centros de Atención al Adulto Mayor",
+  "productName": "RENACER - Registro Nacional de Centros de Atención al Adulto Mayor",
   "author": "cmarrerodb <cmarrerodb@gmail.com>",
   "private": true,
   "scripts": {

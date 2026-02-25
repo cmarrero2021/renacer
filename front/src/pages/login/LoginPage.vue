@@ -1,146 +1,149 @@
 <template>
-  <div class="header">
-    <img alt="Logo" src="img/logo-nobg1.png" class="logo-left" />
-    <img alt="Observatorio Nacional de Ciencia, Tecnología e Innovación" src="img/oncti-nobg.png" class="logo-right" />
-  </div>
-  <div class="content-container">
-    <img alt="Directorio" src="img/directorio1.png" class="directorio-image" />
-    <div class="login-box">
-      <h5>Sistema de Gestión</h5>
-
-      <!-- Fase 1: Credenciales -->
-      <template v-if="!show2FA">
-        <h4>Iniciar Sesión</h4>
-        <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" @keyup.enter="handleLogin" />
-        <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'"
-          @keyup.enter="handleLogin">
-          <template v-slot:append>
-            <q-btn :icon="isPasswordVisible ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
-              @click="isPasswordVisible = !isPasswordVisible" />
-          </template>
-        </q-input>
-        <q-btn label="Ingresar" class="q-mt-md" color="primary" @click="handleLogin" :loading="loginLoading" />
-        <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
-      </template>
-
-      <!-- Fase 2: Código 2FA -->
-      <template v-if="show2FA">
-        <h4>Verificación de Código</h4>
-        <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a su correo electrónico.</p>
-        <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
-        <q-input filled outlined v-model="twoFACode" label="Código de Verificación" mask="######" maxlength="6"
-          class="code-input" @keyup.enter="handleVerify2FA">
-          <template v-slot:prepend>
-            <q-icon name="pin" />
-          </template>
-        </q-input>
-        <q-btn label="Verificar" class="q-mt-md" color="primary" @click="handleVerify2FA" :loading="verifyLoading" />
-        <div class="q-mt-sm">
-          <q-btn flat dense label="Reenviar código" color="grey" icon="refresh" @click="handleLogin"
-            :loading="loginLoading" :disable="loginLoading" />
-          <q-btn flat dense label="Volver al login" color="grey" icon="arrow_back" @click="resetToLogin" />
-        </div>
-        <p v-if="attemptsLeftMsg" class="text-caption text-warning q-mt-sm">{{ attemptsLeftMsg }}</p>
-      </template>
+  <div class="login-page" :style="{ backgroundImage: `url(${bgImage})` }">
+    <div class="header">
+      <img alt="Logo" src="img/logo-nobg2.png" class="logo-left" />
+      <img alt="Observatorio Nacional de Ciencia, Tecnología e Innovación" src="img/oncti-nobg.png"
+        class="logo-right" />
     </div>
-  </div>
+    <div class="content-container">
+      <div class="login-box">
+        <h5>RENACER</h5>
 
-  <!-- Diálogo de recuperación de contraseña -->
-  <q-dialog v-model="showRecoveryDialog" persistent>
-    <q-card style="min-width: 400px; max-width: 500px;">
-      <q-card-section class="bg-primary text-white">
-        <div class="text-h6">
-          <q-icon name="lock_reset" class="q-mr-sm" />
-          Recuperar Contraseña
-        </div>
-      </q-card-section>
+        <!-- Fase 1: Credenciales -->
+        <template v-if="!show2FA">
+          <h4>Iniciar Sesión</h4>
+          <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" @keyup.enter="handleLogin" />
+          <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'"
+            @keyup.enter="handleLogin">
+            <template v-slot:append>
+              <q-btn :icon="isPasswordVisible ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
+                @click="isPasswordVisible = !isPasswordVisible" />
+            </template>
+          </q-input>
+          <q-btn label="Ingresar" class="q-mt-md" color="primary" @click="handleLogin" :loading="loginLoading" />
+          <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
+        </template>
 
-      <!-- Paso 1: Ingresar email -->
-      <q-card-section v-if="recoveryStep === 1">
-        <p class="text-body2 q-mb-md">Ingrese su correo electrónico para recibir un código de verificación.</p>
-        <q-input filled v-model="recoveryEmail" label="Correo Electrónico" type="email"
-          :rules="[val => !!val || 'Requerido', val => validateEmail(val) || 'Email inválido']">
-          <template v-slot:prepend>
-            <q-icon name="email" />
-          </template>
-        </q-input>
-      </q-card-section>
-
-      <!-- Paso 2: Ingresar código -->
-      <q-card-section v-if="recoveryStep === 2">
-        <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a <strong>{{ recoveryEmail }}</strong></p>
-        <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
-        <q-input filled v-model="recoveryCode" label="Código de Verificación" mask="######" maxlength="6"
-          class="code-input" :rules="[val => !!val || 'Requerido', val => val.length === 6 || 'Debe ser de 6 dígitos']">
-          <template v-slot:prepend>
-            <q-icon name="pin" />
-          </template>
-        </q-input>
-      </q-card-section>
-
-      <!-- Paso 3: Nueva contraseña -->
-      <q-card-section v-if="recoveryStep === 3">
-        <p class="text-body2 q-mb-md">Ingrese su nueva contraseña.</p>
-
-        <q-input filled v-model="newPassword" label="Nueva Contraseña" :type="showNewPassword ? 'text' : 'password'"
-          class="q-mb-sm" :rules="passwordRules">
-          <template v-slot:append>
-            <q-btn :icon="showNewPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
-              @click="showNewPassword = !showNewPassword" />
-          </template>
-        </q-input>
-
-        <q-input filled v-model="confirmPassword" label="Confirmar Contraseña"
-          :type="showConfirmPassword ? 'text' : 'password'"
-          :rules="[val => !!val || 'Requerido', val => val === newPassword || 'Las contraseñas no coinciden']">
-          <template v-slot:append>
-            <q-btn :icon="showConfirmPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
-              @click="showConfirmPassword = !showConfirmPassword" />
-          </template>
-        </q-input>
-
-        <!-- Indicador de requisitos -->
-        <div class="q-mt-sm">
-          <p class="text-caption text-weight-medium q-mb-xs">Requisitos de la contraseña:</p>
-          <div v-for="req in passwordRequirements" :key="req.label" class="req-item">
-            <q-icon :name="req.met ? 'check_circle' : 'cancel'" :color="req.met ? 'positive' : 'grey-5'" size="16px" />
-            <span :class="req.met ? 'text-positive' : 'text-grey'" class="text-caption q-ml-xs">{{ req.label }}</span>
+        <!-- Fase 2: Código 2FA -->
+        <template v-if="show2FA">
+          <h4>Verificación de Código</h4>
+          <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a su correo electrónico.</p>
+          <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
+          <q-input filled outlined v-model="twoFACode" label="Código de Verificación" mask="######" maxlength="6"
+            class="code-input" @keyup.enter="handleVerify2FA">
+            <template v-slot:prepend>
+              <q-icon name="pin" />
+            </template>
+          </q-input>
+          <q-btn label="Verificar" class="q-mt-md" color="primary" @click="handleVerify2FA" :loading="verifyLoading" />
+          <div class="q-mt-sm">
+            <q-btn flat dense label="Reenviar código" color="grey" icon="refresh" @click="handleLogin"
+              :loading="loginLoading" :disable="loginLoading" />
+            <q-btn flat dense label="Volver al login" color="grey" icon="arrow_back" @click="resetToLogin" />
           </div>
-        </div>
-      </q-card-section>
+          <p v-if="attemptsLeftMsg" class="text-caption text-warning q-mt-sm">{{ attemptsLeftMsg }}</p>
+        </template>
+      </div>
+    </div>
+    <!-- Diálogo de recuperación de contraseña -->
+    <q-dialog v-model="showRecoveryDialog" persistent>
+      <q-card style="min-width: 400px; max-width: 500px;">
+        <q-card-section class="bg-primary text-white">
+          <div class="text-h6">
+            <q-icon name="lock_reset" class="q-mr-sm" />
+            Recuperar Contraseña
+          </div>
+        </q-card-section>
 
-      <!-- Mensaje de cuenta suspendida -->
-      <q-card-section v-if="accountSuspended">
-        <q-banner class="bg-negative text-white" rounded>
-          <template v-slot:avatar>
-            <q-icon name="warning" />
-          </template>
-          Su cuenta ha sido suspendida por exceder el número máximo de intentos.
-          <br />
-          Comuníquese con el administrador:
-          <br />
-          <strong>{{ adminContactEmail }}</strong>
-        </q-banner>
-      </q-card-section>
+        <!-- Paso 1: Ingresar email -->
+        <q-card-section v-if="recoveryStep === 1">
+          <p class="text-body2 q-mb-md">Ingrese su correo electrónico para recibir un código de verificación.</p>
+          <q-input filled v-model="recoveryEmail" label="Correo Electrónico" type="email"
+            :rules="[val => !!val || 'Requerido', val => validateEmail(val) || 'Email inválido']">
+            <template v-slot:prepend>
+              <q-icon name="email" />
+            </template>
+          </q-input>
+        </q-card-section>
 
-      <!-- Stepper indicador -->
-      <q-card-section v-if="!accountSuspended" class="q-pt-none">
-        <div class="row justify-center q-gutter-sm">
-          <q-badge v-for="s in 3" :key="s" :color="s <= recoveryStep ? 'primary' : 'grey-4'" rounded />
-        </div>
-      </q-card-section>
+        <!-- Paso 2: Ingresar código -->
+        <q-card-section v-if="recoveryStep === 2">
+          <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a <strong>{{ recoveryEmail }}</strong></p>
+          <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
+          <q-input filled v-model="recoveryCode" label="Código de Verificación" mask="######" maxlength="6"
+            class="code-input"
+            :rules="[val => !!val || 'Requerido', val => val.length === 6 || 'Debe ser de 6 dígitos']">
+            <template v-slot:prepend>
+              <q-icon name="pin" />
+            </template>
+          </q-input>
+        </q-card-section>
 
-      <q-card-actions align="right" class="q-px-md q-pb-md">
-        <q-btn flat label="Cancelar" color="grey" @click="closeRecoveryDialog" />
-        <q-btn v-if="recoveryStep === 1 && !accountSuspended" label="Enviar Código" color="primary"
-          :loading="recoveryLoading" @click="handleRequestReset" />
-        <q-btn v-if="recoveryStep === 2" label="Verificar Código" color="primary" :loading="recoveryLoading"
-          @click="handleVerifyCode" />
-        <q-btn v-if="recoveryStep === 3" label="Cambiar Contraseña" color="primary" :loading="recoveryLoading"
-          @click="handleResetPassword" />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+        <!-- Paso 3: Nueva contraseña -->
+        <q-card-section v-if="recoveryStep === 3">
+          <p class="text-body2 q-mb-md">Ingrese su nueva contraseña.</p>
+
+          <q-input filled v-model="newPassword" label="Nueva Contraseña" :type="showNewPassword ? 'text' : 'password'"
+            class="q-mb-sm" :rules="passwordRules">
+            <template v-slot:append>
+              <q-btn :icon="showNewPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
+                @click="showNewPassword = !showNewPassword" />
+            </template>
+          </q-input>
+
+          <q-input filled v-model="confirmPassword" label="Confirmar Contraseña"
+            :type="showConfirmPassword ? 'text' : 'password'"
+            :rules="[val => !!val || 'Requerido', val => val === newPassword || 'Las contraseñas no coinciden']">
+            <template v-slot:append>
+              <q-btn :icon="showConfirmPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
+                @click="showConfirmPassword = !showConfirmPassword" />
+            </template>
+          </q-input>
+
+          <!-- Indicador de requisitos -->
+          <div class="q-mt-sm">
+            <p class="text-caption text-weight-medium q-mb-xs">Requisitos de la contraseña:</p>
+            <div v-for="req in passwordRequirements" :key="req.label" class="req-item">
+              <q-icon :name="req.met ? 'check_circle' : 'cancel'" :color="req.met ? 'positive' : 'grey-5'"
+                size="16px" />
+              <span :class="req.met ? 'text-positive' : 'text-grey'" class="text-caption q-ml-xs">{{ req.label }}</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <!-- Mensaje de cuenta suspendida -->
+        <q-card-section v-if="accountSuspended">
+          <q-banner class="bg-negative text-white" rounded>
+            <template v-slot:avatar>
+              <q-icon name="warning" />
+            </template>
+            Su cuenta ha sido suspendida por exceder el número máximo de intentos.
+            <br />
+            Comuníquese con el administrador:
+            <br />
+            <strong>{{ adminContactEmail }}</strong>
+          </q-banner>
+        </q-card-section>
+
+        <!-- Stepper indicador -->
+        <q-card-section v-if="!accountSuspended" class="q-pt-none">
+          <div class="row justify-center q-gutter-sm">
+            <q-badge v-for="s in 3" :key="s" :color="s <= recoveryStep ? 'primary' : 'grey-4'" rounded />
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancelar" color="grey" @click="closeRecoveryDialog" />
+          <q-btn v-if="recoveryStep === 1 && !accountSuspended" label="Enviar Código" color="primary"
+            :loading="recoveryLoading" @click="handleRequestReset" />
+          <q-btn v-if="recoveryStep === 2" label="Verificar Código" color="primary" :loading="recoveryLoading"
+            @click="handleVerifyCode" />
+          <q-btn v-if="recoveryStep === 3" label="Cambiar Contraseña" color="primary" :loading="recoveryLoading"
+            @click="handleResetPassword" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+  </div>
 </template>
 
 <script setup>
@@ -155,6 +158,7 @@ const isPasswordVisible = ref(false);
 const loginLoading = ref(false);
 const router = useRouter();
 const loginUrl = import.meta.env.VITE_LOGIN_URL;
+const bgImage = new URL('/img/centro_adultos_mayores_venezuela.jpg', import.meta.url).href;
 const authApiUrl = import.meta.env.VITE_AUTH_API_URL || '/auth';
 
 // ==========================================
@@ -414,45 +418,57 @@ const handleResetPassword = async () => {
 </script>
 
 <style lang="scss" scoped>
+.login-page {
+  min-height: 100vh;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  position: relative;
+}
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px;
+  padding: 16px 24px;
+  position: absolute;
+  top: 0px;
+  left: 0;
+  right: 0;
+  z-index: 10;
 }
 
 .logo-left {
-  width: 400px;
-  height: 100px;
+  width: 300px;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .logo-right {
-  width: 150px;
-  height: 100px;
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
 }
 
 .content-container {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  width: 100%;
+  min-height: 100vh;
   padding: 20px;
-}
-
-.directorio-image {
-  width: 60%;
-  max-width: 600px;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  border-radius: 5%;
 }
 
 .login-box {
-  background-color: white;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  width: 300px;
+  background-color: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  padding: 32px 28px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+  width: 340px;
+  max-width: 90vw;
   text-align: center;
+  z-index: 5;
 }
 
 .code-input :deep(.q-field__native) {
@@ -470,35 +486,22 @@ const handleResetPassword = async () => {
 
 @media (max-width: 768px) {
   .header {
-    padding: 10px;
+    padding: 8px 12px;
   }
 
   .logo-left {
-    width: 180px;
-    height: 50px;
+    width: 160px;
   }
 
   .logo-right {
-    width: 100px;
-    height: 50px;
-  }
-
-  .content-container {
-    flex-direction: column;
-    align-items: center;
-    gap: 20px;
-  }
-
-  .directorio-image {
-    width: 100%;
-    max-width: 300px;
-    border-radius: 5%;
-    order: -1;
+    width: 45px;
+    height: 45px;
   }
 
   .login-box {
     width: 100%;
-    max-width: 300px;
+    max-width: 320px;
+    padding: 24px 20px;
   }
 }
 </style>

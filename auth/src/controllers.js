@@ -8,6 +8,7 @@ const {
   sendEmail,
   validatePassword,
   getSessionTimeout,
+  getCooldownMinutes,
   generateResetCode,
   sendResetCodeEmail,
 } = require("./utils");
@@ -411,7 +412,7 @@ exports.login = async (req, res) => {
 
     // Buscar usuario
     const result = await client.query(
-      "SELECT id, email, password_hash, status, failed_login_attempts, last_failed_login FROM users WHERE email = $1",
+      "SELECT id, email, password_hash, status, failed_login_attempts, last_failed_login, last_login_attempt FROM users WHERE email = $1",
       [username]
     );
 
@@ -426,6 +427,35 @@ exports.login = async (req, res) => {
     }
 
     const user = result.rows[0];
+
+    // ============================================
+    // Verificar cooldown entre intentos de login
+    // ============================================
+    const cooldownMin = await getCooldownMinutes(user.id);
+    if (cooldownMin > 0 && user.last_login_attempt) {
+      const lastAttempt = moment.tz(user.last_login_attempt, "America/Caracas");
+      const cooldownEnd = lastAttempt.clone().add(cooldownMin, 'minutes');
+      const now = moment.tz("America/Caracas");
+      if (now.isBefore(cooldownEnd)) {
+        const remainingSec = cooldownEnd.diff(now, 'seconds');
+        const remainingMin = Math.ceil(remainingSec / 60);
+        await client.query(
+          "INSERT INTO login_logs (username, ip_address, login_status) VALUES ($1, $2, $3)",
+          [username, ip, "cooldown"]
+        );
+        return res.status(429).json({
+          error: `Debe esperar ${remainingMin} minuto(s) antes de volver a intentar iniciar sesión.`,
+          cooldown: true,
+          remainingSeconds: remainingSec
+        });
+      }
+    }
+
+    // Registrar timestamp de este intento de login
+    await client.query(
+      "UPDATE users SET last_login_attempt = NOW() WHERE id = $1",
+      [user.id]
+    );
     const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@minaamp.gob.ve';
 
     // Estados de usuario
@@ -1331,7 +1361,7 @@ exports.requestPasswordReset = async (req, res) => {
 
     // Buscar usuario por email
     const userResult = await client.query(
-      'SELECT id, email, status, recovery_attempts, first_name FROM users WHERE email = $1 AND deleted_at IS NULL',
+      'SELECT id, email, status, recovery_attempts, first_name, last_recovery_attempt FROM users WHERE email = $1 AND deleted_at IS NULL',
       [email.toLowerCase().trim()]
     );
 
@@ -1342,6 +1372,25 @@ exports.requestPasswordReset = async (req, res) => {
 
     const user = userResult.rows[0];
     const adminContact = process.env.ADMIN_CONTACT_EMAIL || 'recam@gmail.com';
+
+    // ============================================
+    // Verificar cooldown entre intentos de recuperación
+    // ============================================
+    const cooldownMin = await getCooldownMinutes(user.id);
+    if (cooldownMin > 0 && user.last_recovery_attempt) {
+      const lastAttempt = moment.tz(user.last_recovery_attempt, "America/Caracas");
+      const cooldownEnd = lastAttempt.clone().add(cooldownMin, 'minutes');
+      const now = moment.tz("America/Caracas");
+      if (now.isBefore(cooldownEnd)) {
+        const remainingSec = cooldownEnd.diff(now, 'seconds');
+        const remainingMin = Math.ceil(remainingSec / 60);
+        return res.status(429).json({
+          error: `Debe esperar ${remainingMin} minuto(s) antes de volver a intentar recuperar su contraseña.`,
+          cooldown: true,
+          remainingSeconds: remainingSec
+        });
+      }
+    }
 
     // Verificar si la cuenta está suspendida
     if (user.status === 'suspended') {
@@ -1590,6 +1639,59 @@ exports.resetPassword = async (req, res) => {
     await client.query('ROLLBACK').catch(() => { });
     console.error('Error en resetPassword:', err);
     res.status(500).json({ error: 'Error al restablecer la contraseña.' });
+  } finally {
+    client.release();
+  }
+};
+
+// ================================
+// Configuración de enfriamiento (cooldown)
+// ================================
+
+exports.getCooldownSettings = async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const result = await client.query('SELECT cooldown_minutes FROM session_settings ORDER BY id ASC LIMIT 1');
+    if (result.rows.length === 0) {
+      return res.json({ cooldown_minutes: 10 });
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al obtener configuración de cooldown:', err);
+    res.status(500).json({ error: 'Error al obtener configuración.' });
+  } finally {
+    client.release();
+  }
+};
+
+exports.updateCooldownSettings = async (req, res) => {
+  const { cooldown_minutes } = req.body;
+  if (cooldown_minutes === undefined || cooldown_minutes === null || isNaN(cooldown_minutes) || cooldown_minutes < 0) {
+    return res.status(400).json({ error: 'El tiempo de enfriamiento debe ser un número válido mayor o igual a 0 (0 = desactivado).' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await withAuditContext(client, req);
+
+    const check = await client.query('SELECT id FROM session_settings LIMIT 1');
+
+    if (check.rows.length > 0) {
+      await client.query(
+        'UPDATE session_settings SET cooldown_minutes = $1, updated_at = NOW() WHERE id = $2',
+        [cooldown_minutes, check.rows[0].id]
+      );
+    } else {
+      await client.query(
+        'INSERT INTO session_settings (cooldown_minutes) VALUES ($1)',
+        [cooldown_minutes]
+      );
+    }
+
+    res.json({ message: 'Configuración de enfriamiento actualizada correctamente.' });
+  } catch (err) {
+    console.error('Error al actualizar configuración de cooldown:', err);
+    res.status(500).json({ error: 'Error al actualizar configuración.' });
   } finally {
     client.release();
   }

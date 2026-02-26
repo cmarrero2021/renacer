@@ -41,7 +41,9 @@ const {
   verifyResetCode,
   resetPassword,
   toggleUserStatus,
-  verify2FA
+  verify2FA,
+  getCooldownSettings,
+  updateCooldownSettings
 } = require("./controllers");
 const { authenticate, authorize, checkBlacklist } = require("./middlewares");
 
@@ -98,6 +100,20 @@ router.put(
   authenticate,
   authorize("edit_session_settings"),
   updateSessionSettings
+);
+
+// Mantenimiento - Enfriamiento (Cooldown)
+router.get(
+  "/maintenance/cooldown",
+  authenticate,
+  authorize("view_attempts_settings"),
+  getCooldownSettings
+);
+router.put(
+  "/maintenance/cooldown",
+  authenticate,
+  authorize("edit_attempts_settings"),
+  updateCooldownSettings
 );
 
 // Usuarios

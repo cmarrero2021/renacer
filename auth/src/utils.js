@@ -168,6 +168,46 @@ exports.getSessionTimeout = async (userId) => {
   }
 };
 
+// Obtener tiempo de enfriamiento (cooldown) en minutos
+// Prioridad: users.cooldown_minutes > roles.cooldown_minutes > session_settings.cooldown_minutes
+// Valor 0 = cooldown desactivado, NULL = hereda del nivel superior
+exports.getCooldownMinutes = async (userId) => {
+  const client = await pool.connect();
+  try {
+    // 1. Verificar si el usuario tiene configuración específica (no null)
+    const userRes = await client.query(
+      'SELECT cooldown_minutes FROM users WHERE id = $1',
+      [userId]
+    );
+    const userCooldown = userRes.rows[0]?.cooldown_minutes;
+    if (userCooldown !== null && userCooldown !== undefined) {
+      return userCooldown; // 0 = desactivado, >0 = tiempo en minutos
+    }
+
+    // 2. Verificar si el rol del usuario tiene configuración específica (no null)
+    const roleRes = await client.query(`
+      SELECT r.cooldown_minutes 
+      FROM user_roles ur
+      JOIN roles r ON ur.role_id = r.id
+      WHERE ur.user_id = $1 AND r.cooldown_minutes IS NOT NULL
+      ORDER BY r.cooldown_minutes DESC
+      LIMIT 1
+    `, [userId]);
+    const roleCooldown = roleRes.rows[0]?.cooldown_minutes;
+    if (roleCooldown !== null && roleCooldown !== undefined) {
+      return roleCooldown; // 0 = desactivado, >0 = tiempo en minutos
+    }
+
+    // 3. Usar configuración global
+    const globalRes = await client.query(
+      'SELECT cooldown_minutes FROM session_settings WHERE id = 1'
+    );
+    return globalRes.rows[0]?.cooldown_minutes ?? 10; // Fallback de 10 minutos
+  } finally {
+    client.release();
+  }
+};
+
 // Generar token JWT con duración dinámica
 exports.generateToken = async (userId) => {
   const timeoutMin = await exports.getSessionTimeout(userId);

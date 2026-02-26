@@ -45,6 +45,10 @@ const routes = [
         path: "mantenimiento/sesion",
         component: () => import("pages/admin/maintenance/SessionMaintenancePage.vue"),
       },
+      {
+        path: "mantenimiento/enfriamiento",
+        component: () => import("pages/admin/maintenance/CooldownMaintenancePage.vue"),
+      },
     ],
   },
   {

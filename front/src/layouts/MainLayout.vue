@@ -64,6 +64,11 @@
             <q-item-section avatar><q-icon name="timer" /></q-item-section>
             <q-item-section>Sesión</q-item-section>
           </q-item>
+          <q-item clickable v-ripple to="/admin/mantenimiento/enfriamiento"
+            v-if="isAdmin() || hasPermission('view_attempts_settings')" class="q-pl-lg">
+            <q-item-section avatar><q-icon name="hourglass_empty" /></q-item-section>
+            <q-item-section>Enfriamiento</q-item-section>
+          </q-item>
         </q-expansion-item>
       </q-list>
     </q-drawer>

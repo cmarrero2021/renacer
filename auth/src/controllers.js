@@ -1569,9 +1569,14 @@ exports.resetPassword = async (req, res) => {
       [userId]
     );
 
-    // Actualizar contraseña del usuario
+    // Actualizar contraseña del usuario y reiniciar contadores de intentos
+    // Solo reactivar la cuenta si fue suspendida automáticamente por intentos fallidos (failed_login_attempts >= 3)
+    // Si fue suspendida por un administrador, el status se mantiene como está
     await client.query(
-      'UPDATE users SET password_hash = $1, recovery_attempts = 0, is_temporary_password = false, updated_at = NOW() WHERE id = $2',
+      `UPDATE users SET password_hash = $1, recovery_attempts = 0,
+        status = CASE WHEN failed_login_attempts >= 3 THEN 'active' ELSE status END,
+        failed_login_attempts = 0, last_failed_login = NULL,
+        is_temporary_password = false, updated_at = NOW() WHERE id = $2`,
       [newHash, userId]
     );
 

@@ -39,7 +39,7 @@ app.get('/list-endpoints', (req, res) => {
     res.json(endpoints);
 });
 
-const PORT = process.env.PORT_AUTH || 4100;
+const PORT = process.env.PORT_AUTH || 4110;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });

@@ -536,6 +536,9 @@ exports.login = async (req, res) => {
     // Enviar código por email
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+        <div style="text-align: center; margin-bottom: 16px;">
+          <img src="cid:logo@app" alt="${process.env.APP_NAME || 'Logo'}" style="max-width: 300px; height: auto;" />
+        </div>
         <h2 style="color: #273984; text-align: center;">Código de Verificación</h2>
         <p>Se ha solicitado un código de verificación para iniciar sesión en su cuenta.</p>
         <div style="text-align: center; margin: 24px 0;">
@@ -544,7 +547,7 @@ exports.login = async (req, res) => {
         <p style="color: #666; font-size: 14px;">Este código es válido por <strong>10 minutos</strong>.</p>
         <p style="color: #666; font-size: 14px;">Si no solicitó este código, cambie su contraseña inmediatamente.</p>
         <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-        <p style="color: #999; font-size: 12px; text-align: center;">Sistema de Gestión de Usuarios y Permisos</p>
+        <p style="color: #999; font-size: 12px; text-align: center;">${process.env.APP_NAME || 'Sistema'}</p>
       </div>
     `;
     await sendEmail(

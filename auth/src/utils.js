@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
+const fs = require('fs');
+const path = require('path');
 const pool = require('./db'); // Importar pool al inicio
 
 // Generar hash de contraseña
@@ -74,12 +76,25 @@ const createTransporter = () => {
 exports.sendEmail = async (to, subject, text, html = null) => {
   const transporter = createTransporter();
   const mailOptions = {
-    from: `"Sistema de Gestión" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    from: `"${process.env.APP_NAME || 'Sistema'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
     to,
     subject,
     text,
   };
   if (html) mailOptions.html = html;
+
+  // Adjuntar logo como CID si existe la ruta configurada
+  if (process.env.EMAIL_LOGO_PATH) {
+    const logoPath = path.resolve(process.cwd(), process.env.EMAIL_LOGO_PATH);
+    if (fs.existsSync(logoPath)) {
+      mailOptions.attachments = [{
+        filename: 'logo.png',
+        path: logoPath,
+        cid: 'logo@app'
+      }];
+    }
+  }
+
   await transporter.sendMail(mailOptions);
 };
 
@@ -92,6 +107,9 @@ exports.generateResetCode = () => {
 exports.sendResetCodeEmail = async (to, code) => {
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+      <div style="text-align: center; margin-bottom: 16px;">
+        <img src="cid:logo@app" alt="${process.env.APP_NAME || 'Logo'}" style="max-width: 300px; height: auto;" />
+      </div>
       <h2 style="color: #273984; text-align: center;">Recuperación de Contraseña</h2>
       <p>Ha solicitado recuperar su contraseña. Use el siguiente código de verificación:</p>
       <div style="text-align: center; margin: 24px 0;">
@@ -100,7 +118,7 @@ exports.sendResetCodeEmail = async (to, code) => {
       <p style="color: #666; font-size: 14px;">Este código es válido por <strong>10 minutos</strong>.</p>
       <p style="color: #666; font-size: 14px;">Si no solicitó este cambio, ignore este correo.</p>
       <hr style="border: none; border-top: 1px solid #e0e0e0; margin: 20px 0;">
-      <p style="color: #999; font-size: 12px; text-align: center;">Sistema de Gestión de Usuarios y Permisos</p>
+      <p style="color: #999; font-size: 12px; text-align: center;">${process.env.APP_NAME || 'Sistema'}</p>
     </div>
   `;
   await exports.sendEmail(

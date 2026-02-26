@@ -11,7 +11,25 @@
 
         <q-space />
 
-        <q-btn flat round dense icon="logout" @click="logout" />
+        <q-btn-dropdown flat round dense icon="account_circle" dropdown-icon="arrow_drop_down" class="user-menu-btn">
+          <q-list style="min-width: 220px">
+            <q-item>
+              <q-item-section>
+                <q-item-label>{{ userEmail }}</q-item-label>
+                <q-item-label caption>
+                  <q-badge color="primary" :label="userRole" />
+                </q-item-label>
+              </q-item-section>
+            </q-item>
+            <q-separator />
+            <q-item clickable v-close-popup @click="logout">
+              <q-item-section avatar>
+                <q-icon name="logout" />
+              </q-item-section>
+              <q-item-section>Cerrar Sesión</q-item-section>
+            </q-item>
+          </q-list>
+        </q-btn-dropdown>
       </q-toolbar>
     </q-header>
 
@@ -80,7 +98,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { LocalStorage, Notify } from 'quasar'
 import axios from 'axios'
@@ -88,6 +106,12 @@ import axios from 'axios'
 const leftDrawerOpen = ref(false)
 const router = useRouter()
 const logoutUrl = import.meta.env.VITE_LOGOUT_URL
+
+const userEmail = computed(() => LocalStorage.getItem('userEmail') || '')
+const userRole = computed(() => {
+  const role = LocalStorage.getItem('role') || ''
+  return role.charAt(0).toUpperCase() + role.slice(1)
+})
 
 const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -118,6 +142,8 @@ const logout = async () => {
     // Limpiar el almacenamiento local
     LocalStorage.remove('token')
     LocalStorage.remove('permissions')
+    LocalStorage.remove('role')
+    LocalStorage.remove('userEmail')
 
     Notify.create({
       message: 'Sesión cerrada correctamente',

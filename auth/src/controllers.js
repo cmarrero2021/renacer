@@ -760,6 +760,7 @@ exports.verify2FA = async (req, res) => {
     res.status(200).json({
       message: "Inicio de sesión exitoso.",
       token,
+      email: userCheck.rows[0].email,
       sessionDuration: expiresInSeconds / 60,
       role,
       permissions,

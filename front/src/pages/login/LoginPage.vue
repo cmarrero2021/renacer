@@ -271,6 +271,7 @@ const completeLogin = (data) => {
   LocalStorage.set('token', data.token);
   LocalStorage.set('permissions', data.permissions);
   LocalStorage.set('role', data.role);
+  LocalStorage.set('userEmail', data.email || email.value);
   Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000, icon: "check_circle" });
   router.push("/admin");
 };

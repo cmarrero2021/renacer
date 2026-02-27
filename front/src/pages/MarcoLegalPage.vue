@@ -48,6 +48,20 @@
                             <q-icon name="open_in_new" color="grey" />
                         </q-item-section>
                     </q-item>
+
+                    <q-item clickable tag="a" href="/documentos/3853-2004_requisitos_residencias.pdf" target="_blank">
+                        <q-item-section avatar>
+                            <q-icon name="picture_as_pdf" color="red" />
+                        </q-item-section>
+                        <q-item-section>
+                            <q-item-label>Requisitos para el diseño, construcción y funcionamiento de
+                                residencias para personas adultas mayores</q-item-label>
+                            <q-item-label caption>FONDONORMA 3853:2004</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                            <q-icon name="open_in_new" color="grey" />
+                        </q-item-section>
+                    </q-item>
                 </q-list>
             </q-card-section>
         </q-card>

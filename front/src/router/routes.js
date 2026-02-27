@@ -28,6 +28,10 @@ const routes = [
         component: () => import("pages/MarcoLegalPage.vue"),
       },
       {
+        path: "ficha-establecimiento",
+        component: () => import("pages/FichaEstablecimientoPage.vue"),
+      },
+      {
         path: "administracion",
         component: () => import("pages/admin/AdminPage.vue"),
       },

@@ -580,12 +580,19 @@ exports.login = async (req, res) => {
         <p style="color: #999; font-size: 12px; text-align: center;">${process.env.APP_NAME || 'Sistema'}</p>
       </div>
     `;
+    // Enviar código por email (DESACTIVADO TEMPORALMENTE PARA DIAGNÓSTICO)
+
     await sendEmail(
       user.email,
       'Código de Verificación - Inicio de Sesión',
       `Su código de verificación es: ${code}. Válido por 10 minutos.`,
       html
     );
+
+    console.log(`\n==========================================`);
+    console.log(`🔐 CÓDIGO 2FA GENERADO (DEBUG): ${code}`);
+    console.log(`📧 DESTINATARIO: ${user.email}`);
+    console.log(`==========================================\n`);
 
     // Generar token temporal para la fase 2FA (10 min)
     const tempToken = jwt.sign(

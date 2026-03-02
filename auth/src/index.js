@@ -12,6 +12,9 @@ dotenv.config();
 
 const app = express();
 
+// Confiar en el proxy inverso (Nginx) para obtener la IP real del cliente
+app.set('trust proxy', true);
+
 // Configuración de CORS
 if (!process.env.ALLOWED_ORIGINS) {
     throw new Error('ALLOWED_ORIGINS no está definido en el archivo .env');

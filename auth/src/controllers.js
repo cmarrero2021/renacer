@@ -11,6 +11,7 @@ const {
   getCooldownMinutes,
   generateResetCode,
   sendResetCodeEmail,
+  isTwoFactorEnabled,
 } = require("./utils");
 const moment = require("moment-timezone");
 const { withAuditContext } = require("./audit");
@@ -92,7 +93,7 @@ exports.listUsers = async (req, res) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      "SELECT id, first_name,last_name,cedula,email, is_email_verified, status, session_timeout_min FROM users WHERE deleted_at IS NULL"
+      "SELECT id, first_name,last_name,cedula,email, is_email_verified, status, session_timeout_min, two_factor_enabled FROM users WHERE deleted_at IS NULL"
     );
     res.status(200).json(result.rows);
   } catch (err) {
@@ -105,12 +106,21 @@ exports.listUsers = async (req, res) => {
 // Actualizar Usuario
 exports.updateUser = async (req, res) => {
   const { userId } = req.params;
-  const { first_name, last_name, cedula, email, password, session_timeout_min } = req.body;
+  const { first_name, last_name, cedula, email, password, session_timeout_min, two_factor_enabled } = req.body;
 
   const client = await pool.connect();
   try {
     // Convertir session_timeout_min a número o null
     const timeout = session_timeout_min ? parseInt(session_timeout_min, 10) : null;
+    // Manejar two_factor_enabled (si viene en el body, lo usamos; si no, true por defecto)
+    // Convertir explícitamente a booleano si es posible
+    let twoFactor = true;
+    if (two_factor_enabled === 'false' || two_factor_enabled === false) {
+      twoFactor = false;
+    } else if (two_factor_enabled === 'true' || two_factor_enabled === true) {
+      twoFactor = true;
+    }
+    console.log(`[DEBUG] updateUser: userId=${userId}, body.two_factor_enabled=${two_factor_enabled}, final=${twoFactor}`);
 
     if (password) {
       // Validar fortaleza de la contraseña si se proporciona
@@ -121,13 +131,13 @@ exports.updateUser = async (req, res) => {
       const hashedPassword = await hashPassword(password);
 
       await client.query(
-        "UPDATE users SET first_name = $1, last_name = $2, cedula = $3, email = $4, password_hash = $5, session_timeout_min = $6, updated_at = NOW() WHERE id = $7",
-        [first_name, last_name, cedula, email, hashedPassword, timeout, userId]
+        "UPDATE users SET first_name = $1, last_name = $2, cedula = $3, email = $4, password_hash = $5, session_timeout_min = $6, two_factor_enabled = $7, updated_at = NOW() WHERE id = $8",
+        [first_name, last_name, cedula, email, hashedPassword, timeout, twoFactor, userId]
       );
     } else {
       await client.query(
-        "UPDATE users SET first_name = $1, last_name = $2, cedula = $3, email = $4, session_timeout_min = $5, updated_at = NOW() WHERE id = $6",
-        [first_name, last_name, cedula, email, timeout, userId]
+        "UPDATE users SET first_name = $1, last_name = $2, cedula = $3, email = $4, session_timeout_min = $5, two_factor_enabled = $6, updated_at = NOW() WHERE id = $7",
+        [first_name, last_name, cedula, email, timeout, twoFactor, userId]
       );
     }
     res.status(200).json({ message: "Usuario actualizado exitosamente." });
@@ -516,14 +526,69 @@ exports.login = async (req, res) => {
         .json({ error: "Nombre de usuario o contraseña incorrectos." });
     }
 
-    // Reiniciar contador de intentos fallidos de login
-    await client.query(
-      "UPDATE users SET failed_login_attempts = 0, last_failed_login = NULL WHERE id = $1",
-      [user.id]
-    );
+    const is2faEnabled = await isTwoFactorEnabled(user.id);
+
+    if (!is2faEnabled) {
+      // ============================================
+      // 2FA DESACTIVADO: Iniciar sesión directamente
+      // ============================================
+      console.log(`🔓 LOGIN DIRECTO (2FA Deshabilitado): ${user.email}`);
+
+      // Duración de sesión
+      const timeoutMin = await getSessionTimeout(user.id);
+      const expiresInSeconds = Math.max(parseInt(timeoutMin, 10) || 20, 1) * 60;
+      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+        expiresIn: expiresInSeconds,
+      });
+
+      // Registrar sesión
+      await client.query(
+        "INSERT INTO sessions (user_id, token, expires_at) VALUES ($1, $2, CURRENT_TIMESTAMP + $3 * INTERVAL '1 minute')",
+        [user.id, token, parseInt(timeoutMin, 10) || 20]
+      );
+
+      // Permisos del usuario
+      const permissionsQuery = `
+        SELECT DISTINCT p.name, p.description, p.action, p.resource
+        FROM user_permissions up
+        JOIN permissions p ON up.permission_id = p.id
+        WHERE up.user_id = $1
+        UNION
+        SELECT DISTINCT p.name, p.description, p.action, p.resource
+        FROM user_roles ur
+        JOIN role_permissions rp ON ur.role_id = rp.role_id
+        JOIN permissions p ON rp.permission_id = p.id
+        WHERE ur.user_id = $1
+        ORDER BY resource, action
+      `;
+      const permissionsResult = await client.query(permissionsQuery, [user.id]);
+      const permissions = permissionsResult.rows;
+
+      // Rol del usuario
+      const roleQuery = `
+        SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
+      `;
+      const roleResult = await client.query(roleQuery, [user.id]);
+      const role = roleResult.rows[0]?.name || null;
+
+      // Auditoría
+      await client.query(
+        "INSERT INTO login_logs (user_id, username, ip_address, login_status, session_token) VALUES ($1, $2, $3, $4, $5)",
+        [user.id, username, ip, "success", token]
+      );
+
+      return res.status(200).json({
+        message: "Inicio de sesión exitoso.",
+        token,
+        email: user.email,
+        sessionDuration: expiresInSeconds / 60,
+        role,
+        permissions,
+      });
+    }
 
     // ============================================
-    // 2FA: Enviar código en lugar de completar login
+    // 2FA HABILITADO: Proceder con envío de código
     // ============================================
 
     // Contar solicitudes de código 2FA en los últimos 30 minutos
@@ -580,7 +645,6 @@ exports.login = async (req, res) => {
         <p style="color: #999; font-size: 12px; text-align: center;">${process.env.APP_NAME || 'Sistema'}</p>
       </div>
     `;
-    // Enviar código por email (DESACTIVADO TEMPORALMENTE PARA DIAGNÓSTICO)
 
     await sendEmail(
       user.email,
@@ -980,9 +1044,9 @@ exports.createUser = async (req, res) => {
 
   const client = await pool.connect();
   try {
-    // Verificar si el usuario ya existe
+    // Verificar si el usuario ya existe (que no haya sido borrado)
     const userExist = await client.query(
-      "SELECT id FROM users WHERE email = $1 OR cedula = $2",
+      "SELECT id FROM users WHERE (email = $1 OR cedula = $2) AND deleted_at IS NULL",
       [email, cedula]
     );
     if (userExist.rows.length > 0) {
@@ -992,13 +1056,22 @@ exports.createUser = async (req, res) => {
     // Hash password
     const hashedPassword = await hashPassword(password);
 
+    // Manejar two_factor_enabled (si viene en el body, lo usamos; si no, true por defecto)
+    let twoFactor = true;
+    const { two_factor_enabled } = req.body;
+    if (two_factor_enabled === 'false' || two_factor_enabled === false) {
+      twoFactor = false;
+    } else if (two_factor_enabled === 'true' || two_factor_enabled === true) {
+      twoFactor = true;
+    }
+
     // Convertir session_timeout_min a número o null
     const timeout = session_timeout_min ? parseInt(session_timeout_min, 10) : null;
 
     // Insertar usuario
     const newUser = await client.query(
-      "INSERT INTO users (first_name, last_name, cedula, email, password_hash, session_timeout_min, status) VALUES ($1, $2, $3, $4, $5, $6, 'active') RETURNING id, first_name, last_name, email",
-      [first_name, last_name, cedula, email, hashedPassword, timeout]
+      "INSERT INTO users (first_name, last_name, cedula, email, password_hash, session_timeout_min, two_factor_enabled, status) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active') RETURNING id, first_name, last_name, email, two_factor_enabled",
+      [first_name, last_name, cedula, email, hashedPassword, timeout, twoFactor]
     );
 
     res.status(201).json({
@@ -1267,10 +1340,10 @@ exports.listAuditLogs = async (req, res) => {
 exports.getSessionSettings = async (req, res) => {
   const client = await pool.connect();
   try {
-    const result = await client.query('SELECT global_timeout FROM session_settings ORDER BY id ASC LIMIT 1');
+    const result = await client.query('SELECT global_timeout, two_factor_enabled FROM session_settings ORDER BY id ASC LIMIT 1');
     if (result.rows.length === 0) {
       // Si por alguna razón no hay registro, devolver default
-      return res.json({ global_timeout: 60 });
+      return res.json({ global_timeout: 60, two_factor_enabled: true });
     }
     res.json(result.rows[0]);
   } catch (err) {
@@ -1282,8 +1355,8 @@ exports.getSessionSettings = async (req, res) => {
 };
 
 exports.updateSessionSettings = async (req, res) => {
-  const { global_timeout } = req.body;
-  if (!global_timeout || isNaN(global_timeout) || global_timeout < 1) {
+  const { global_timeout, two_factor_enabled } = req.body;
+  if (global_timeout && (isNaN(global_timeout) || global_timeout < 1)) {
     return res.status(400).json({ error: 'El tiempo de espera debe ser un número válido mayor a 0.' });
   }
 
@@ -1291,18 +1364,30 @@ exports.updateSessionSettings = async (req, res) => {
   try {
     await withAuditContext(client, req);
 
-    // Asumimos que siempre editamos el primer registro o insertamos si no existe (upsert check simple)
     const check = await client.query('SELECT id FROM session_settings LIMIT 1');
 
     if (check.rows.length > 0) {
-      await client.query(
-        'UPDATE session_settings SET global_timeout = $1, updated_at = NOW() WHERE id = $2',
-        [global_timeout, check.rows[0].id]
-      );
+      let query = 'UPDATE session_settings SET updated_at = NOW()';
+      const params = [];
+      let paramIdx = 1;
+
+      if (global_timeout !== undefined) {
+        query += `, global_timeout = $${paramIdx++}`;
+        params.push(global_timeout);
+      }
+      if (two_factor_enabled !== undefined) {
+        query += `, two_factor_enabled = $${paramIdx++}`;
+        params.push(two_factor_enabled);
+      }
+
+      query += ` WHERE id = $${paramIdx}`;
+      params.push(check.rows[0].id);
+
+      await client.query(query, params);
     } else {
       await client.query(
-        'INSERT INTO session_settings (global_timeout) VALUES ($1)',
-        [global_timeout]
+        'INSERT INTO session_settings (global_timeout, two_factor_enabled) VALUES ($1, $2)',
+        [global_timeout || 60, two_factor_enabled !== undefined ? two_factor_enabled : true]
       );
     }
 

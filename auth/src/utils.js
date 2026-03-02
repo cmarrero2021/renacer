@@ -215,3 +215,39 @@ exports.generateToken = async (userId) => {
     expiresIn: `${timeoutMin}m`
   });
 };
+
+/**
+ * Verifica si el 2FA está habilitado para un usuario específico.
+ */
+exports.isTwoFactorEnabled = async (userId) => {
+  const client = await pool.connect();
+  try {
+    // 1. Verificar configuración global (primer registro)
+    const globalRes = await client.query(
+      'SELECT two_factor_enabled FROM session_settings ORDER BY id ASC LIMIT 1'
+    );
+    if (globalRes.rows.length > 0 && globalRes.rows[0].two_factor_enabled === false) {
+      console.log(`[DEBUG] 2FA deshabilitado GLOBALMENTE`);
+      return false;
+    }
+
+    // 2. Verificar configuración del usuario
+    const userRes = await client.query(
+      'SELECT two_factor_enabled FROM users WHERE id = $1',
+      [userId]
+    );
+    if (userRes.rows.length > 0) {
+      console.log(`[DEBUG] 2FA para usuario ${userId}: ${userRes.rows[0].two_factor_enabled}`);
+      if (userRes.rows[0].two_factor_enabled === false) {
+        return false;
+      }
+    }
+
+    return true; // Por defecto habilitado
+  } catch (err) {
+    console.error("Error al verificar si 2FA está habilitado:", err);
+    return true; // En caso de error, preferir seguridad
+  } finally {
+    client.release();
+  }
+};

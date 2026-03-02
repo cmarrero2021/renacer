@@ -197,6 +197,9 @@
                                 <q-icon name="timer" />
                             </template>
                         </q-input>
+
+                        <q-toggle v-model="userForm.two_factor_enabled" label="Habilitar Segundo Factor (2FA)"
+                            color="primary" class="q-mt-md" />
                         <div class="row justify-end q-mt-md">
                             <q-btn label="Cancelar" color="negative" flat v-close-popup />
                             <q-btn label="Guardar" type="submit" color="primary" />
@@ -346,7 +349,7 @@ const userColumns = [
 ]
 const userModalOpen = ref(false)
 const editingUser = ref(false)
-const userForm = reactive({ id: null, first_name: '', last_name: '', cedula: '', email: '', password: '', confirmPassword: '', session_timeout_min: null })
+const userForm = reactive({ id: null, first_name: '', last_name: '', cedula: '', email: '', password: '', confirmPassword: '', session_timeout_min: null, two_factor_enabled: true })
 const isPasswordVisible = ref(false)
 const isConfirmPasswordVisible = ref(false)
 const selectedUser = ref(null)
@@ -468,7 +471,7 @@ const openUserModal = (user = null) => {
         Object.assign(userForm, user)
     } else {
         editingUser.value = false
-        Object.assign(userForm, { id: null, first_name: '', last_name: '', cedula: '', email: '', password: '', confirmPassword: '', session_timeout_min: null })
+        Object.assign(userForm, { id: null, first_name: '', last_name: '', cedula: '', email: '', password: '', confirmPassword: '', session_timeout_min: null, two_factor_enabled: true })
         isPasswordVisible.value = false
         isConfirmPasswordVisible.value = false
     }

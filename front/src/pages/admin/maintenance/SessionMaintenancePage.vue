@@ -20,6 +20,9 @@
                                         val => val > 0 || 'Debe ser mayor a 0'
                                     ]" />
 
+                                <q-toggle v-model="twoFactorEnabled" label="Habilitar Segundo Factor (2FA) Globalmente"
+                                    color="primary" />
+
                                 <div v-if="hasPermission('edit_session_settings') || isAdmin()">
                                     <q-btn label="Guardar Cambios" type="submit" color="primary" :loading="loading" />
                                 </div>
@@ -44,6 +47,7 @@ import { useQuasar, LocalStorage } from 'quasar'
 
 const $q = useQuasar()
 const globalTimeout = ref(60)
+const twoFactorEnabled = ref(true)
 const loading = ref(false)
 
 const isAdmin = () => {
@@ -59,8 +63,9 @@ const hasPermission = (permissionName) => {
 const loadSettings = async () => {
     try {
         const response = await authApi.get('/maintenance/session')
-        if (response.data && response.data.global_timeout) {
-            globalTimeout.value = response.data.global_timeout
+        if (response.data) {
+            if (response.data.global_timeout) globalTimeout.value = response.data.global_timeout
+            if (response.data.two_factor_enabled !== undefined) twoFactorEnabled.value = response.data.two_factor_enabled
         }
     } catch (error) {
         console.error('Error al cargar configuración:', error)
@@ -76,7 +81,8 @@ const saveSettings = async () => {
     loading.value = true
     try {
         await authApi.put('/maintenance/session', {
-            global_timeout: globalTimeout.value
+            global_timeout: globalTimeout.value,
+            two_factor_enabled: twoFactorEnabled.value
         })
 
         $q.notify({

@@ -87,7 +87,7 @@
                         <!-- Tipo de Establecimiento -->
                         <div class="col-12 col-sm-6">
                             <div class="text-subtitle2 q-mb-sm text-weight-bold">j) Tipo de Establecimiento</div>
-                            <div class="column q-gutter-xs">
+                            <div class="row q-gutter-sm">
                                 <q-toggle v-for="opt in opcionesTipoEstablecimiento" :key="opt.value"
                                     :model-value="form.tipoEstablecimiento === opt.value" :label="opt.label" dense
                                     @update:model-value="setToggle('tipoEstablecimiento', opt.value, $event)" />
@@ -101,7 +101,7 @@
                         <!-- Tipo de Clasificación -->
                         <div class="col-12 col-sm-6">
                             <div class="text-subtitle2 q-mb-sm text-weight-bold">k) Tipo de Clasificación</div>
-                            <div class="column q-gutter-xs">
+                            <div class="row q-gutter-sm">
                                 <q-toggle v-for="opt in opcionesTipoClasificacion" :key="opt.value"
                                     :model-value="form.tipoClasificacion === opt.value" :label="opt.label" dense
                                     @update:model-value="setToggle('tipoClasificacion', opt.value, $event)" />
@@ -321,36 +321,69 @@
 
                     <q-separator class="q-my-md" />
 
-                    <!-- 7.2 Distribución Física -->
-                    <div class="text-subtitle2 q-mb-sm text-weight-bold">7.2 Distribución Física</div>
-                    <div class="row q-col-gutter-md">
+                    <!-- 7.2 Distribución Física Refinada -->
+                    <div class="text-subtitle2 q-mb-md text-weight-bold">7.2 Distribución Física</div>
+                    <div class="row q-col-gutter-lg">
+                        <!-- Dormitorios -->
                         <div class="col-12 col-sm-6 col-md-4">
-                            <q-input v-model="form.nDormitorios" label="N° Dormitorios" outlined dense type="number" />
+                            <div class="text-weight-medium q-mb-xs">Dormitorios</div>
+                            <div class="row items-center q-col-gutter-sm">
+                                <div class="col">
+                                    <q-input v-model="form.nDormitorios" label="N° Dormitorios" outlined dense
+                                        type="number" />
+                                </div>
+                                <div class="col-auto flex flex-center">
+                                    <q-toggle v-model="form.dormitoriosAdecuados" label="Adecuados" dense
+                                        color="green" />
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Sanitarios -->
                         <div class="col-12 col-sm-6 col-md-4">
-                            <q-toggle v-model="form.dormitoriosAdecuados" label="Adecuados" dense />
+                            <div class="text-weight-medium q-mb-xs">Sanitarios</div>
+                            <div class="row items-center q-col-gutter-sm">
+                                <div class="col">
+                                    <q-input v-model="form.nSanitarios" label="N° Sanitarios" outlined dense
+                                        type="number" />
+                                </div>
+                                <div class="col-auto flex flex-center">
+                                    <q-toggle v-model="form.sanitariosAdecuados" label="Adecuados" dense
+                                        color="green" />
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Cocina -->
                         <div class="col-12 col-sm-6 col-md-4">
-                            <q-input v-model="form.nSanitarios" label="N° Sanitarios" outlined dense type="number" />
+                            <div class="text-weight-medium q-mb-xs">Área de Cocina</div>
+                            <div class="row items-center q-col-gutter-sm">
+                                <div class="col">
+                                    <q-input v-model="form.areaCocina" label="Descripción" outlined dense />
+                                </div>
+                                <div class="col-auto flex flex-center">
+                                    <q-toggle v-model="form.cocinaAdecuada" label="Adecuada" dense color="green" />
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- Comedor -->
                         <div class="col-12 col-sm-6 col-md-4">
-                            <q-toggle v-model="form.sanitariosAdecuados" label="Adecuados" dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-input v-model="form.areaCocina" label="Área de Cocina" outlined dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-toggle v-model="form.cocinaAdecuada" label="Adecuada" dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-toggle v-model="form.ventilacionAdecuada" label="Ventilación Adecuada" dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-toggle v-model="form.iluminacionAdecuada" label="Iluminación Adecuada" dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-input v-model="form.capacidadComedor" label="Capacidad Comedor (% de Atención)" outlined
+                            <div class="text-weight-medium q-mb-xs">Capacidad Comedor</div>
+                            <q-input v-model="form.capacidadComedor" label="Porcentaje de Atención (%)" outlined
                                 dense />
+                        </div>
+
+                        <!-- Otros Aspectos (Sin etiqueta, alineado con inputs) -->
+                        <div class="col-12 col-sm-6 col-md-8">
+                            <div class="q-mb-xs" style="height: 19px;"></div>
+                            <!-- Spacer para alinear con las etiquetas de otras columnas -->
+                            <div class="row items-center q-gutter-xl" style="height: 40px;">
+                                <q-toggle v-model="form.ventilacionAdecuada" label="Ventilación Adecuada" dense
+                                    color="blue" />
+                                <q-toggle v-model="form.iluminacionAdecuada" label="Iluminación Adecuada" dense
+                                    color="orange" />
+                            </div>
                         </div>
                     </div>
 

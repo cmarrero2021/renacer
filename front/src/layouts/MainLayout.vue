@@ -1,5 +1,5 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <q-layout view="lHh lpR lFf">
     <q-header elevated class="bg-primary text-white">
       <img src="/img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
       <q-toolbar>
@@ -33,69 +33,71 @@
       </q-toolbar>
     </q-header>
 
-    <q-drawer show-if-above v-model="leftDrawerOpen" side="left" elevated>
-      <!-- Menú basado en permisos -->
-      <q-list>
-        <q-item-label header>Menú Principal</q-item-label>
+    <q-drawer show-if-above v-model="leftDrawerOpen" side="left" elevated :width="280">
+      <q-scroll-area class="fit">
+        <!-- Menú basado en permisos -->
+        <q-list>
+          <q-item-label header>Menú Principal</q-item-label>
 
-        <q-item clickable v-ripple to="/admin">
-          <q-item-section avatar>
-            <q-icon name="home" />
-          </q-item-section>
-          <q-item-section>Inicio</q-item-section>
-        </q-item>
-
-        <q-item clickable v-ripple to="/admin/marco-legal">
-          <q-item-section avatar>
-            <q-icon name="gavel" />
-          </q-item-section>
-          <q-item-section>Marco Legal</q-item-section>
-        </q-item>
-
-        <q-item clickable v-ripple to="/admin/ficha-establecimiento">
-          <q-item-section avatar>
-            <q-icon name="assignment" />
-          </q-item-section>
-          <q-item-section>Ficha de Establecimiento</q-item-section>
-        </q-item>
-
-        <q-item clickable v-ripple to="/admin/administracion" v-if="isAdmin() || hasPermission('view_admin_panel')">
-          <q-item-section avatar>
-            <q-icon name="admin_panel_settings" />
-          </q-item-section>
-          <q-item-section>Administración</q-item-section>
-        </q-item>
-
-        <!-- Menú expandible de Auditoría -->
-        <q-expansion-item v-if="isAdmin() || hasPermission('view_audit_menu')" icon="policy" label="Auditoría"
-          expand-separator>
-          <q-item clickable v-ripple to="/admin/auditoria/ingresos" v-if="isAdmin() || hasPermission('view_login_logs')"
-            class="q-pl-lg">
-            <q-item-section avatar><q-icon name="login" /></q-item-section>
-            <q-item-section>Ingresos</q-item-section>
+          <q-item clickable v-ripple to="/admin">
+            <q-item-section avatar>
+              <q-icon name="home" />
+            </q-item-section>
+            <q-item-section>Inicio</q-item-section>
           </q-item>
-          <q-item clickable v-ripple to="/admin/auditoria/acciones"
-            v-if="isAdmin() || hasPermission('view_action_logs')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="history" /></q-item-section>
-            <q-item-section>Acciones</q-item-section>
-          </q-item>
-        </q-expansion-item>
 
-        <!-- Menú expandible de Mantenimiento -->
-        <q-expansion-item v-if="isAdmin() || hasPermission('view_maintenance_menu')" icon="build" label="Mantenimiento"
-          expand-separator>
-          <q-item clickable v-ripple to="/admin/mantenimiento/sesion"
-            v-if="isAdmin() || hasPermission('view_session_settings')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="timer" /></q-item-section>
-            <q-item-section>Sesión</q-item-section>
+          <q-item clickable v-ripple to="/admin/marco-legal">
+            <q-item-section avatar>
+              <q-icon name="gavel" />
+            </q-item-section>
+            <q-item-section>Marco Legal</q-item-section>
           </q-item>
-          <q-item clickable v-ripple to="/admin/mantenimiento/enfriamiento"
-            v-if="isAdmin() || hasPermission('view_attempts_settings')" class="q-pl-lg">
-            <q-item-section avatar><q-icon name="hourglass_empty" /></q-item-section>
-            <q-item-section>Enfriamiento</q-item-section>
+
+          <q-item clickable v-ripple to="/admin/ficha-establecimiento">
+            <q-item-section avatar>
+              <q-icon name="assignment" />
+            </q-item-section>
+            <q-item-section>Ficha de Establecimiento</q-item-section>
           </q-item>
-        </q-expansion-item>
-      </q-list>
+
+          <q-item clickable v-ripple to="/admin/administracion" v-if="isAdmin() || hasPermission('view_admin_panel')">
+            <q-item-section avatar>
+              <q-icon name="admin_panel_settings" />
+            </q-item-section>
+            <q-item-section>Administración</q-item-section>
+          </q-item>
+
+          <!-- Menú expandible de Auditoría -->
+          <q-expansion-item v-if="isAdmin() || hasPermission('view_audit_menu')" icon="policy" label="Auditoría"
+            expand-separator>
+            <q-item clickable v-ripple to="/admin/auditoria/ingresos"
+              v-if="isAdmin() || hasPermission('view_login_logs')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="login" /></q-item-section>
+              <q-item-section>Ingresos</q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/admin/auditoria/acciones"
+              v-if="isAdmin() || hasPermission('view_action_logs')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="history" /></q-item-section>
+              <q-item-section>Acciones</q-item-section>
+            </q-item>
+          </q-expansion-item>
+
+          <!-- Menú expandible de Mantenimiento -->
+          <q-expansion-item v-if="isAdmin() || hasPermission('view_maintenance_menu')" icon="build"
+            label="Mantenimiento" expand-separator>
+            <q-item clickable v-ripple to="/admin/mantenimiento/sesion"
+              v-if="isAdmin() || hasPermission('view_session_settings')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="timer" /></q-item-section>
+              <q-item-section>Sesión</q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/admin/mantenimiento/enfriamiento"
+              v-if="isAdmin() || hasPermission('view_attempts_settings')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="hourglass_empty" /></q-item-section>
+              <q-item-section>Enfriamiento</q-item-section>
+            </q-item>
+          </q-expansion-item>
+        </q-list>
+      </q-scroll-area>
     </q-drawer>
 
     <q-page-container>

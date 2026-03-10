@@ -5,6 +5,7 @@ const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const routes = require('./routes');
+const routesCentros = require('./routes_centros');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
 
@@ -35,6 +36,7 @@ app.use(express.json());
 
 // Rutas principales
 app.use('/auth', routes);
+app.use('/auth', routesCentros);
 
 // Endpoint para listar rutas (sin autenticación)
 app.get('/list-endpoints', (req, res) => {

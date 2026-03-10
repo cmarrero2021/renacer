@@ -27,9 +27,26 @@ const routes = [
         path: "marco-legal",
         component: () => import("pages/MarcoLegalPage.vue"),
       },
+      // ── Módulo de Centros ──────────────────────────────────────────────
       {
-        path: "ficha-establecimiento",
-        component: () => import("pages/FichaEstablecimientoPage.vue"),
+        path: "centros",
+        component: () => import("pages/centros/CentrosListPage.vue"),
+        meta: { permission: "list_centros" },
+      },
+      {
+        path: "centros/nuevo",
+        component: () => import("pages/centros/CentroFormPage.vue"),
+        meta: { permission: "create_centro" },
+      },
+      {
+        path: "centros/:id",
+        component: () => import("pages/centros/CentroDetallePage.vue"),
+        meta: { permission: "view_centro" },
+      },
+      {
+        path: "centros/:id/editar",
+        component: () => import("pages/centros/CentroFormPage.vue"),
+        meta: { permission: "edit_centro" },
       },
       {
         path: "administracion",

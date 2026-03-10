@@ -53,11 +53,11 @@
             <q-item-section>Marco Legal</q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple to="/admin/ficha-establecimiento">
+          <q-item clickable v-ripple to="/admin/centros" v-if="isAdmin() || hasPermission('list_centros')">
             <q-item-section avatar>
-              <q-icon name="assignment" />
+              <q-icon name="business" />
             </q-item-section>
-            <q-item-section>Ficha de Establecimiento</q-item-section>
+            <q-item-section>Centros de Atención</q-item-section>
           </q-item>
 
           <q-item clickable v-ripple to="/admin/administracion" v-if="isAdmin() || hasPermission('view_admin_panel')">

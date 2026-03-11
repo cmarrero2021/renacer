@@ -48,6 +48,8 @@ export const centroAccessService = {
 // ─── Mantenimiento ──────────────────────────────────────────────────────────
 export const maintenanceService = {
     purgeDeleted: () => authApi.post('/maintenance/purge'),
+    getMaintenanceLogs: () => authApi.get('/maintenance/logs'),
 };
+
 
 

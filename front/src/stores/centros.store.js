@@ -15,6 +15,8 @@ export const useCentrosStore = defineStore('centros', () => {
     const loading = ref(false);
     const centroUsers = ref([]); // Usuarios con acceso delegado al centro actual
     const userCentros = ref([]); // Centros a los que un usuario tiene acceso
+    const maintenanceLogs = ref([]);
+
 
 
 
@@ -219,11 +221,11 @@ export const useCentrosStore = defineStore('centros', () => {
     }
 
     async function purgeDeleted() {
-
         loading.value = true;
         try {
             const { data } = await maintenanceService.purgeDeleted();
             Notify.create({ type: 'positive', message: data.message });
+            await fetchMaintenanceLogs(); 
             return true;
         } catch (err) {
             Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al purgar los registros.' });
@@ -232,6 +234,20 @@ export const useCentrosStore = defineStore('centros', () => {
             loading.value = false;
         }
     }
+
+    async function fetchMaintenanceLogs() {
+        loading.value = true;
+        try {
+            const { data } = await maintenanceService.getMaintenanceLogs();
+            maintenanceLogs.value = data;
+        } catch (err) {
+            console.error('Error fetching maintenance logs:', err);
+            Notify.create({ type: 'negative', message: 'Error al cargar la bitácora de mantenimiento.' });
+        } finally {
+            loading.value = false;
+        }
+    }
+
 
 
     return {
@@ -252,8 +268,11 @@ export const useCentrosStore = defineStore('centros', () => {
         // Actions - asignación simétrica
         userCentros, fetchUserCentros,
         // Maintenance
-        purgeDeleted
+        purgeDeleted,
+        maintenanceLogs,
+        fetchMaintenanceLogs
     };
+
 
 });
 

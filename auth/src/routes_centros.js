@@ -7,8 +7,9 @@ const {
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos,
-    purgeDeletedRecords
+    purgeDeletedRecords, listMaintenanceLogs
 } = require('./controllers_centros');
+
 
 const { authenticate, authorize } = require('./middlewares');
 
@@ -54,5 +55,7 @@ router.get('/usuarios/:userId/centros', listUserCentros); // Permiso interno ver
 
 // ─── Mantenimiento ────────────────────────────────────────────────────────
 router.post('/maintenance/purge', purgeDeletedRecords);
+router.get('/maintenance/logs', listMaintenanceLogs);
 
 module.exports = router;
+

@@ -1,6 +1,10 @@
 // src/controllers_centros.js
 // Controladores para el módulo de Centros de Atención al Adulto Mayor
 const pool = require('./db');
+const { withAuditContext } = require('./audit');
+const crypto = require('crypto');
+
+
 
 // ============================================================
 // HELPER: Verifica si un usuario tiene acceso a un centro específico
@@ -417,18 +421,52 @@ exports.deleteCentro = async (req, res) => {
             return res.status(403).json({ error: 'Sin acceso para eliminar este centro.' });
         }
 
+        await withAuditContext(client, req);
+        await client.query('BEGIN');
+
+
+        const now = new Date();
+
+        // 1. Borrado lógico de tablas de contacto y relación directa
+        await client.query('UPDATE public.centro_telefonos SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL', [now, id]);
+        await client.query('UPDATE public.centro_correos SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL', [now, id]);
+        await client.query('UPDATE public.centro_propietarios SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL', [now, id]);
+        await client.query('UPDATE public.centro_representantes SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL', [now, id]);
+        await client.query('UPDATE public.user_centro_access SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL', [now, id]);
+
+        // 2. Borrado lógico de detalles de fichas (vía fichas_establecimiento)
+        const fichaIdsRes = await client.query('SELECT id FROM public.fichas_establecimiento WHERE centro_id = $1 AND deleted_at IS NULL', [id]);
+        const fichaIds = fichaIdsRes.rows.map(r => r.id);
+
+        if (fichaIds.length > 0) {
+            const fichaTables = [
+                'ficha_poblacion', 'ficha_capacidad', 'ficha_infraestructura',
+                'ficha_personal', 'ficha_servicios', 'ficha_documentos'
+            ];
+            for (const table of fichaTables) {
+                await client.query(`UPDATE public.${table} SET deleted_at = $1 WHERE ficha_id = ANY($2) AND deleted_at IS NULL`, [now, fichaIds]);
+            }
+            // 3. Borrado lógico de las fichas mismas
+            await client.query('UPDATE public.fichas_establecimiento SET deleted_at = $1 WHERE id = ANY($2) AND deleted_at IS NULL', [now, fichaIds]);
+        }
+
+        // 4. Borrado lógico del centro
         await client.query(
-            `UPDATE public.centros SET deleted_at = NOW(), updated_at = NOW()
-       WHERE id = $1 AND deleted_at IS NULL`,
-            [id]
+            `UPDATE public.centros SET deleted_at = $1, updated_at = $1
+       WHERE id = $2 AND deleted_at IS NULL`,
+            [now, id]
         );
-        res.json({ message: 'Centro eliminado (borrado lógico).' });
+
+        await client.query('COMMIT');
+        res.json({ message: 'Centro y todos sus datos relacionados eliminados (borrado lógico).' });
     } catch (err) {
-        res.status(500).json({ error: 'Error al eliminar el centro', detail: err.message });
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: 'Error al eliminar el centro en cascada', detail: err.message });
     } finally {
         client.release();
     }
 };
+
 
 
 // ============================================================
@@ -1049,38 +1087,57 @@ exports.purgeDeletedRecords = async (req, res) => {
 
         await client.query('BEGIN');
 
-        // 1. Tablas de detalle de fichas (ON DELETE CASCADE suele estar, pero aseguramos)
-        await client.query('DELETE FROM public.ficha_poblacion WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
-        await client.query('DELETE FROM public.ficha_capacidad WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
-        await client.query('DELETE FROM public.ficha_infraestructura WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
-        await client.query('DELETE FROM public.ficha_personal WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
-        await client.query('DELETE FROM public.ficha_servicios WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
-        await client.query('DELETE FROM public.ficha_documentos WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        const batch_id = crypto.randomUUID();
+        const startTimeSession = Date.now();
 
-        // 2. Tablas de detalle de centros
-        await client.query('DELETE FROM public.centro_telefonos WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.centro_correos WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.centro_propietarios WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.centro_representantes WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.user_centro_access WHERE deleted_at IS NOT NULL');
+        const ip_address = req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
 
-        // 3. Fichas
-        await client.query('DELETE FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL');
+        const tablesToPurge = [
+            { name: 'ficha_poblacion', sql: 'DELETE FROM public.ficha_poblacion WHERE deleted_at IS NOT NULL' },
+            { name: 'ficha_capacidad', sql: 'DELETE FROM public.ficha_capacidad WHERE deleted_at IS NOT NULL' },
+            { name: 'ficha_infraestructura', sql: 'DELETE FROM public.ficha_infraestructura WHERE deleted_at IS NOT NULL' },
+            { name: 'ficha_personal', sql: 'DELETE FROM public.ficha_personal WHERE deleted_at IS NOT NULL' },
+            { name: 'ficha_servicios', sql: 'DELETE FROM public.ficha_servicios WHERE deleted_at IS NOT NULL' },
+            { name: 'ficha_documentos', sql: 'DELETE FROM public.ficha_documentos WHERE deleted_at IS NOT NULL' },
+            { name: 'centro_telefonos', sql: 'DELETE FROM public.centro_telefonos WHERE deleted_at IS NOT NULL' },
+            { name: 'centro_correos', sql: 'DELETE FROM public.centro_correos WHERE deleted_at IS NOT NULL' },
+            { name: 'centro_propietarios', sql: 'DELETE FROM public.centro_propietarios WHERE deleted_at IS NOT NULL' },
+            { name: 'centro_representantes', sql: 'DELETE FROM public.centro_representantes WHERE deleted_at IS NOT NULL' },
+            { name: 'user_centro_access', sql: 'DELETE FROM public.user_centro_access WHERE deleted_at IS NOT NULL' },
+            { name: 'fichas_establecimiento', sql: 'DELETE FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL' },
+            { name: 'centros', sql: 'DELETE FROM public.centros WHERE deleted_at IS NOT NULL' },
+            { name: 'users', sql: 'DELETE FROM public.users WHERE deleted_at IS NOT NULL AND id <> $1', params: [req.userId] },
+            { name: 'email_verifications', sql: 'DELETE FROM public.email_verifications WHERE deleted_at IS NOT NULL' },
+            { name: 'password_resets', sql: 'DELETE FROM public.password_resets WHERE deleted_at IS NOT NULL' },
+            { name: 'menu_items', sql: 'DELETE FROM public.menu_items WHERE deleted_at IS NOT NULL' },
+            { name: 'menu_categories', sql: 'DELETE FROM public.menu_categories WHERE deleted_at IS NOT NULL' }
+        ];
 
-        // 4. Centros
-        await client.query('DELETE FROM public.centros WHERE deleted_at IS NOT NULL');
+        for (const table of tablesToPurge) {
+            const startTable = Date.now();
+            try {
+                const result = await client.query(table.sql, table.params || []);
+                const duration = Date.now() - startTable;
 
-        // 5. Usuarios (Excepto el actual para evitar auto-bloqueo y solo los borrados lógicamente)
-        await client.query('DELETE FROM public.users WHERE deleted_at IS NOT NULL AND id <> $1', [req.userId]);
+                await client.query(`
+                    INSERT INTO public.maintenance_purge_logs 
+                    (batch_id, performed_by_id, username, ip_address, table_name, records_purged, duration_ms, status)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [batch_id, req.userId, req.username || null, ip_address, table.name, result.rowCount, duration, 'SUCCESS']);
 
-        // 6. Otras tablas de sistema con deleted_at
-        await client.query('DELETE FROM public.email_verifications WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.password_resets WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.menu_items WHERE deleted_at IS NOT NULL');
-        await client.query('DELETE FROM public.menu_categories WHERE deleted_at IS NOT NULL');
+            } catch (tableErr) {
+                const duration = Date.now() - startTable;
+                await client.query(`
+                    INSERT INTO public.maintenance_purge_logs 
+                    (batch_id, performed_by_id, username, ip_address, table_name, records_purged, duration_ms, status, error_message)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                `, [batch_id, req.userId, req.username || null, ip_address, table.name, 0, duration, 'FAILED', tableErr.message]);
+                throw tableErr; // Re-throw to trigger global rollback
+            }
+        }
 
         await client.query('COMMIT');
-        res.json({ message: 'Purga física completada con éxito.' });
+        res.json({ message: 'Purga física completada con éxito y registrada en bitácora.', batchId: batch_id });
     } catch (err) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: 'Error durante la purga física', detail: err.message });
@@ -1088,5 +1145,31 @@ exports.purgeDeletedRecords = async (req, res) => {
         client.release();
     }
 };
+
+exports.listMaintenanceLogs = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        // Solo administradores nacionales
+        const adminResult = await client.query(
+            `SELECT 1 FROM user_roles ur
+             JOIN roles r ON ur.role_id = r.id
+             WHERE ur.user_id = $1 AND LOWER(r.name) IN ('admin', 'administrador', 'administrador nacional')`,
+            [req.userId]
+        );
+        if (adminResult.rows.length === 0) {
+            return res.status(403).json({ error: 'Solo los administradores nacionales pueden ver la bitácora de mantenimiento.' });
+        }
+
+
+        const result = await client.query('SELECT * FROM public.maintenance_purge_logs ORDER BY performed_at DESC');
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Error al obtener la bitácora de mantenimiento', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+
 
 

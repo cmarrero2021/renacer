@@ -128,6 +128,10 @@
                 <q-tab-panel name="maintenance">
                     <div class="row items-center q-mb-md">
                         <div class="text-h6">Mantenimiento del Sistema</div>
+                        <q-space />
+                        <q-btn flat round color="primary" icon="refresh" @click="centrosStore.fetchMaintenanceLogs()">
+                            <q-tooltip>Actualizar bitácora</q-tooltip>
+                        </q-btn>
                     </div>
 
                     <q-banner class="bg-amber-1 text-amber-9 rounded-borders q-mb-lg" border>
@@ -139,13 +143,13 @@
                         Úselas con extrema precaución.
                     </q-banner>
 
-                    <q-card flat bordered class="q-pa-md">
+                    <q-card flat bordered class="q-pa-md q-mb-lg">
                         <div class="row items-center">
                             <div class="col">
                                 <div class="text-subtitle1 text-weight-bold">Purga Física de Registros</div>
                                 <div class="text-caption text-grey">
                                     Elimina permanentemente todos los registros marcados como "borrados" del sistema.
-                                    Esto incluye centros, fichas, usuarios y datos asociados que fueron eliminados lógicamente.
+                                    Esto incluye centros, fichas, usuarios y datos asociados.
                                 </div>
                             </div>
                             <div class="col-auto">
@@ -154,7 +158,27 @@
                             </div>
                         </div>
                     </q-card>
+
+                    <q-separator q-mb-md />
+
+                    <div class="text-h6 q-mt-md q-mb-sm">Bitácora de Mantenimiento</div>
+                    <q-table :rows="centrosStore.maintenanceLogs" :columns="maintenanceColumns" row-key="id"
+                        :loading="centrosStore.loading" :pagination="{ rowsPerPage: 10 }">
+                        <template v-slot:body-cell-status="props">
+                            <q-td :props="props">
+                                <q-badge :color="props.value === 'SUCCESS' ? 'positive' : 'negative'"
+                                    :label="props.value === 'SUCCESS' ? 'Éxito' : 'Error'" />
+                            </q-td>
+                        </template>
+                        <template v-slot:body-cell-performed_at="props">
+                            <q-td :props="props">
+                                {{ props.value ? new Date(props.value).toLocaleString() : 'N/A' }}
+                            </q-td>
+                        </template>
+                    </q-table>
+
                 </q-tab-panel>
+
             </q-tab-panels>
 
         </q-card>
@@ -418,7 +442,8 @@
 </template>
 
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive, computed, watch } from 'vue'
+
 import { authApi as api } from 'boot/axios'
 import { useQuasar } from 'quasar'
 import { useCentrosStore } from 'src/stores/centros.store'
@@ -477,6 +502,19 @@ const permissionColumns = [
 const permissionModalOpen = ref(false)
 const editingPermission = ref(false)
 const permissionForm = reactive({ id: null, name: '', resource: '', action: '', description: '' })
+
+// --- Mantenimiento ---
+const maintenanceColumns = [
+    { name: 'performed_at', label: 'Fecha/Hora', field: 'performed_at', align: 'left', sortable: true },
+    { name: 'username', label: 'Usuario', field: 'username', align: 'left' },
+    { name: 'ip_address', label: 'IP', field: 'ip_address', align: 'left' },
+    { name: 'table_name', label: 'Tabla', field: 'table_name', align: 'left' },
+    { name: 'records_purged', label: 'R. Purgados', field: 'records_purged', align: 'center' },
+    { name: 'duration_ms', label: 'Duración', field: 'duration_ms', align: 'center' },
+    { name: 'status', label: 'Estado', field: 'status', align: 'center' },
+    { name: 'batch_id', label: 'Lote (UUID)', field: 'batch_id', align: 'left', classes: 'text-caption' }
+]
+
 
 // --- Búsquedas ---
 const userSearch = ref('')
@@ -543,6 +581,18 @@ onMounted(() => {
     fetchRoles()
     fetchPermissions()
 })
+
+watch(tab, async (newTab) => {
+    if (newTab === 'maintenance') {
+        try {
+            await centrosStore.fetchMaintenanceLogs()
+        } catch (error) {
+            console.error('Error fetching maintenance logs:', error)
+        }
+    }
+})
+
+
 
 // --- Funciones Usuarios ---
 const fetchUsers = async () => {

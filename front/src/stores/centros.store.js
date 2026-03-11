@@ -1,7 +1,8 @@
 // src/stores/centros.store.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { centrosService, fichasService, geoService, centroAccessService } from 'src/services/centros.service';
+import { centrosService, fichasService, geoService, centroAccessService, maintenanceService } from 'src/services/centros.service';
+
 import { userService } from 'src/services/user.service';
 
 import { Notify } from 'quasar';
@@ -217,9 +218,24 @@ export const useCentrosStore = defineStore('centros', () => {
         }
     }
 
+    async function purgeDeleted() {
+
+        loading.value = true;
+        try {
+            const { data } = await maintenanceService.purgeDeleted();
+            Notify.create({ type: 'positive', message: data.message });
+            return true;
+        } catch (err) {
+            Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al purgar los registros.' });
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
 
 
     return {
+
         // State
         centros, current, ficha, loading,
         estados, municipios, parroquias,
@@ -234,7 +250,10 @@ export const useCentrosStore = defineStore('centros', () => {
         // Actions - acceso
         centroUsers, fetchCentroUsers, grantAccess, revokeAccess, searchUsers,
         // Actions - asignación simétrica
-        userCentros, fetchUserCentros
+        userCentros, fetchUserCentros,
+        // Maintenance
+        purgeDeleted
     };
+
 });
 

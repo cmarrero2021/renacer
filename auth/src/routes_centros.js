@@ -6,8 +6,10 @@ const {
     listCentros, getCentro, createCentro, updateCentro, deleteCentro,
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
-    getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos
+    getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos,
+    purgeDeletedRecords
 } = require('./controllers_centros');
+
 const { authenticate, authorize } = require('./middlewares');
 
 router.use(authenticate);
@@ -50,5 +52,7 @@ router.post('/centros/:centroId/usuarios', authorize('manage_centro_access'), gr
 router.delete('/centros/:centroId/usuarios/:userId', authorize('manage_centro_access'), revokeCentroAccess);
 router.get('/usuarios/:userId/centros', listUserCentros); // Permiso interno verificado en controlador
 
+// ─── Mantenimiento ────────────────────────────────────────────────────────
+router.post('/maintenance/purge', purgeDeletedRecords);
 
 module.exports = router;

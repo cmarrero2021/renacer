@@ -1030,3 +1030,63 @@ exports.listUserCentros = async (req, res) => {
     }
 };
 
+// Purga física de registros borrados lógicamente
+exports.purgeDeletedRecords = async (req, res) => {
+    const client = await pool.connect();
+    try {
+        // Solo administradores nacionales pueden purgar
+        const adminResult = await client.query(
+            `SELECT 1 FROM (
+                SELECT r.name FROM user_roles ur
+                JOIN roles r ON ur.role_id = r.id
+                WHERE ur.user_id = $1
+            ) roles WHERE LOWER(name) IN ('admin', 'administrador')`,
+            [req.userId]
+        );
+        if (adminResult.rows.length === 0) {
+            return res.status(403).json({ error: 'Solo los administradores nacionales pueden purgar el sistema.' });
+        }
+
+        await client.query('BEGIN');
+
+        // 1. Tablas de detalle de fichas (ON DELETE CASCADE suele estar, pero aseguramos)
+        await client.query('DELETE FROM public.ficha_poblacion WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        await client.query('DELETE FROM public.ficha_capacidad WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        await client.query('DELETE FROM public.ficha_infraestructura WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        await client.query('DELETE FROM public.ficha_personal WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        await client.query('DELETE FROM public.ficha_servicios WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+        await client.query('DELETE FROM public.ficha_documentos WHERE ficha_id IN (SELECT id FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL)');
+
+        // 2. Tablas de detalle de centros
+        await client.query('DELETE FROM public.centro_telefonos WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.centro_correos WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.centro_propietarios WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.centro_representantes WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.user_centro_access WHERE deleted_at IS NOT NULL');
+
+        // 3. Fichas
+        await client.query('DELETE FROM public.fichas_establecimiento WHERE deleted_at IS NOT NULL');
+
+        // 4. Centros
+        await client.query('DELETE FROM public.centros WHERE deleted_at IS NOT NULL');
+
+        // 5. Usuarios (Excepto el actual para evitar auto-bloqueo y solo los borrados lógicamente)
+        await client.query('DELETE FROM public.users WHERE deleted_at IS NOT NULL AND id <> $1', [req.userId]);
+
+        // 6. Otras tablas de sistema con deleted_at
+        await client.query('DELETE FROM public.email_verifications WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.password_resets WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.menu_items WHERE deleted_at IS NOT NULL');
+        await client.query('DELETE FROM public.menu_categories WHERE deleted_at IS NOT NULL');
+
+        await client.query('COMMIT');
+        res.json({ message: 'Purga física completada con éxito.' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: 'Error durante la purga física', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+

@@ -8,7 +8,9 @@
                 <q-tab name="users" label="Usuarios" icon="people" />
                 <q-tab name="roles" label="Roles" icon="security" />
                 <q-tab name="permissions" label="Permisos" icon="vpn_key" />
+                <q-tab name="maintenance" label="Mantenimiento" icon="settings" />
             </q-tabs>
+
 
             <q-separator />
 
@@ -121,7 +123,40 @@
                         </template>
                     </q-table>
                 </q-tab-panel>
+
+                <!-- Panel de Mantenimiento -->
+                <q-tab-panel name="maintenance">
+                    <div class="row items-center q-mb-md">
+                        <div class="text-h6">Mantenimiento del Sistema</div>
+                    </div>
+
+                    <q-banner class="bg-amber-1 text-amber-9 rounded-borders q-mb-lg" border>
+                        <template v-slot:avatar>
+                            <q-icon name="warning" color="amber-9" />
+                        </template>
+                        <div class="text-weight-bold">Atención: Acciones Irreversibles</div>
+                        Las acciones en esta sección pueden tener un impacto permanente en la base de datos.
+                        Úselas con extrema precaución.
+                    </q-banner>
+
+                    <q-card flat bordered class="q-pa-md">
+                        <div class="row items-center">
+                            <div class="col">
+                                <div class="text-subtitle1 text-weight-bold">Purga Física de Registros</div>
+                                <div class="text-caption text-grey">
+                                    Elimina permanentemente todos los registros marcados como "borrados" del sistema.
+                                    Esto incluye centros, fichas, usuarios y datos asociados que fueron eliminados lógicamente.
+                                </div>
+                            </div>
+                            <div class="col-auto">
+                                <q-btn color="negative" icon="delete_forever" label="Ejecutar Purga"
+                                    @click="confirmPurge" :loading="centrosStore.loading" />
+                            </div>
+                        </div>
+                    </q-card>
+                </q-tab-panel>
             </q-tab-panels>
+
         </q-card>
 
         <!-- Modal Usuario -->
@@ -871,5 +906,30 @@ const handleRevokeCentroAccess = async (centro) => {
 const labelAccess = (lvl) => {
     return { read: 'Lectura', write: 'Escritura', admin: 'Administrador' }[lvl] || lvl
 }
+
+const confirmPurge = () => {
+    $q.dialog({
+        title: '¡ACCIÓN CRÍTICA!',
+        message: 'Esta acción eliminará PERMANENTEMENTE todos los registros marcados como borrados. No se pueden recuperar. Escribe "PURGAR" para confirmar:',
+        prompt: {
+            model: '',
+            isValid: val => val === 'PURGAR',
+            type: 'text'
+        },
+        cancel: true,
+        persistent: true,
+        ok: {
+            color: 'negative',
+            label: 'ELIMINAR TODO'
+        }
+    }).onOk(async () => {
+        try {
+            await centrosStore.purgeDeleted()
+        } catch (error) {
+            $q.notify({ type: 'negative', message: 'Error al ejecutar la purga' })
+        }
+    })
+}
 </script>
+
 

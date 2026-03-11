@@ -44,3 +44,10 @@ export const centroAccessService = {
     grant: (centroId, data) => authApi.post(`/centros/${centroId}/usuarios`, data),
     revoke: (centroId, userId) => authApi.delete(`/centros/${centroId}/usuarios/${userId}`),
 };
+
+// ─── Mantenimiento ──────────────────────────────────────────────────────────
+export const maintenanceService = {
+    purgeDeleted: () => authApi.post('/maintenance/purge'),
+};
+
+

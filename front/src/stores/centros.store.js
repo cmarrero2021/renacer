@@ -1,7 +1,9 @@
 // src/stores/centros.store.js
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { centrosService, fichasService, geoService } from 'src/services/centros.service';
+import { centrosService, fichasService, geoService, centroAccessService } from 'src/services/centros.service';
+import { userService } from 'src/services/user.service';
+
 import { Notify } from 'quasar';
 
 export const useCentrosStore = defineStore('centros', () => {
@@ -10,6 +12,10 @@ export const useCentrosStore = defineStore('centros', () => {
     const current = ref(null);   // Centro seleccionado
     const ficha = ref(null);   // Ficha activa del centro seleccionado
     const loading = ref(false);
+    const centroUsers = ref([]); // Usuarios con acceso delegado al centro actual
+    const userCentros = ref([]); // Centros a los que un usuario tiene acceso
+
+
 
     // Geo-catálogos
     const estados = ref([]);
@@ -159,6 +165,60 @@ export const useCentrosStore = defineStore('centros', () => {
         }
     }
 
+    // ─── Acciones: Acceso Delegado ───────────────────────────────────────────
+    async function fetchCentroUsers(centroId) {
+        try {
+            const { data } = await centroAccessService.listUsers(centroId);
+            centroUsers.value = data;
+        } catch {
+            Notify.create({ type: 'negative', message: 'Error al cargar usuarios del centro.' });
+        }
+    }
+
+    async function grantAccess(centroId, userId, accessLevel) {
+        try {
+            await centroAccessService.grant(centroId, { user_id: userId, access_level: accessLevel });
+            await fetchCentroUsers(centroId);
+            Notify.create({ type: 'positive', message: 'Acceso otorgado correctamente.' });
+            return true;
+        } catch (err) {
+            Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al otorgar acceso.' });
+            return false;
+        }
+    }
+
+    async function revokeAccess(centroId, userId) {
+        try {
+            await centroAccessService.revoke(centroId, userId);
+            centroUsers.value = centroUsers.value.filter(u => u.id !== userId);
+            Notify.create({ type: 'positive', message: 'Acceso revocado.' });
+            return true;
+        } catch {
+            Notify.create({ type: 'negative', message: 'Error al revocar acceso.' });
+            return false;
+        }
+    }
+
+    async function searchUsers(query) {
+        try {
+            const { data } = await userService.list({ search: query });
+            return data;
+        } catch {
+            return [];
+        }
+    }
+
+    async function fetchUserCentros(userId) {
+        try {
+            const { data } = await userService.listCentros(userId);
+            userCentros.value = data;
+        } catch {
+            Notify.create({ type: 'negative', message: 'Error al cargar centros del usuario.' });
+        }
+    }
+
+
+
     return {
         // State
         centros, current, ficha, loading,
@@ -171,5 +231,10 @@ export const useCentrosStore = defineStore('centros', () => {
         fetchCentros, fetchCentro, createCentro, updateCentro, deleteCentro,
         // Actions - fichas
         fetchFichaActual, saveFicha,
+        // Actions - acceso
+        centroUsers, fetchCentroUsers, grantAccess, revokeAccess, searchUsers,
+        // Actions - asignación simétrica
+        userCentros, fetchUserCentros
     };
 });
+

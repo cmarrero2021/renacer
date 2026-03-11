@@ -3,12 +3,97 @@
 const pool = require('./db');
 
 // ============================================================
+// HELPER: Verifica si un usuario tiene acceso a un centro específico
+// requiredLevel: 'read' | 'write' | 'admin'
+// ============================================================
+async function verifyCentroAccess(userId, centroId, client, requiredLevel = 'read') {
+    // 1. Verificar si es administrador nacional (bypass)
+    const adminResult = await client.query(
+        `SELECT 1 FROM (
+            SELECT r.name FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = $1
+        ) roles WHERE LOWER(name) IN ('admin', 'administrador')`,
+        [userId]
+    );
+    if (adminResult.rows.length > 0) return true;
+
+    // 2. Verificar si es el centro propio del usuario
+    const ownResult = await client.query(
+        'SELECT centro_id FROM users WHERE id = $1 AND centro_id = $2 AND deleted_at IS NULL',
+        [userId, centroId]
+    );
+    if (ownResult.rows.length > 0) return true;
+
+    // 3. Verificar acceso delegado
+    const accessLevels = requiredLevel === 'read' ? ['read', 'write', 'admin'] : (requiredLevel === 'write' ? ['write', 'admin'] : ['admin']);
+    const delegatedResult = await client.query(
+        `SELECT 1 FROM user_centro_access 
+         WHERE user_id = $1 AND centro_id = $2 AND access_level = ANY($3) AND deleted_at IS NULL`,
+        [userId, centroId, accessLevels]
+    );
+    
+    return delegatedResult.rows.length > 0;
+}
+
+// ============================================================
+// HELPER: Retorna el nivel de acceso efectivo del usuario sobre un centro
+// ============================================================
+async function getEffectiveAccessLevel(userId, centroId, client) {
+    // 1. Administrador nacional -> 'admin'
+    const adminResult = await client.query(
+        `SELECT 1 FROM (
+            SELECT r.name FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = $1
+        ) roles WHERE LOWER(name) IN ('admin', 'administrador')`,
+        [userId]
+    );
+    if (adminResult.rows.length > 0) return 'admin';
+
+    // 2. Propietario -> 'admin'
+    const ownResult = await client.query(
+        'SELECT 1 FROM users WHERE id = $1 AND centro_id = $2 AND deleted_at IS NULL',
+        [userId, centroId]
+    );
+    if (ownResult.rows.length > 0) return 'admin';
+
+    // 3. Acceso delegado
+    const delegatedResult = await client.query(
+        `SELECT access_level FROM user_centro_access 
+         WHERE user_id = $1 AND centro_id = $2 AND deleted_at IS NULL`,
+        [userId, centroId]
+    );
+
+    if (delegatedResult.rows.length > 0) {
+        return delegatedResult.rows[0].access_level;
+    }
+
+    return null; // Sin acceso
+}
+
+
+// ============================================================
 // HELPER: Determina el filtro SQL según el tipo de usuario
 // - Admin nacional (sin centro_id y con permiso view_all_centros): ve todo
 // - Usuario con centro propio: ve el suyo + los delegados
 // ============================================================
 async function getCentroFilter(userId, client) {
-    // Verificar si tiene permiso para ver todos los centros
+    // 1. Verificar si es administrador nacional (bypass)
+    const adminResult = await client.query(
+        `SELECT 1 FROM (
+            SELECT r.name FROM user_roles ur
+            JOIN roles r ON ur.role_id = r.id
+            WHERE ur.user_id = $1
+        ) roles WHERE LOWER(name) IN ('admin', 'administrador')`,
+        [userId]
+    );
+
+    if (adminResult.rows.length > 0) {
+        return { filter: '', params: [] }; // Sin filtro: ve todo
+    }
+
+    // 2. Verificar si tiene permiso para ver todos los centros (opcional, como respaldo)
     const permResult = await client.query(
         `SELECT 1 FROM (
        SELECT p.name FROM user_roles ur
@@ -27,7 +112,7 @@ async function getCentroFilter(userId, client) {
         return { filter: '', params: [] }; // Sin filtro: ve todo
     }
 
-    // Construir lista de centros accesibles (propio + delegados)
+    // 3. Construir lista de centros accesibles (propio + delegados)
     const accessResult = await client.query(
         `SELECT c.id FROM centros c
      WHERE c.id = (SELECT centro_id FROM users WHERE id = $1 AND deleted_at IS NULL)
@@ -50,6 +135,7 @@ async function getCentroFilter(userId, client) {
         isArray: true
     };
 }
+
 
 // ============================================================
 // GEO: Catálogos geográficos (públicos dentro de la sesión)
@@ -123,7 +209,16 @@ exports.listCentros = async (req, res) => {
              c.tipo_clasificacion, c.estado_centro, c.rif, c.nro_registro_mercantil,
              p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado,
              f.id AS ficha_id, f.nro_registro_nacional, f.tipo_solicitud,
-             f.fecha_solicitud, f.version
+             f.fecha_solicitud, f.version,
+             CASE 
+                WHEN (
+                    SELECT 1 FROM user_roles ur 
+                    JOIN roles r ON ur.role_id = r.id 
+                    WHERE ur.user_id = $${params.length + 1} AND LOWER(r.name) IN ('admin', 'administrador')
+                ) IS NOT NULL THEN 'admin'
+                WHEN c.id = (SELECT centro_id FROM users WHERE id = $${params.length + 1}) THEN 'admin'
+                ELSE (SELECT access_level FROM user_centro_access WHERE user_id = $${params.length + 1} AND centro_id = c.id AND deleted_at IS NULL LIMIT 1)
+             END as access_level
       FROM public.centros c
       LEFT JOIN public.parroquias p ON p.id = c.parroquia_id
       LEFT JOIN public.municipios m ON m.id = p.municipio_id
@@ -134,7 +229,8 @@ exports.listCentros = async (req, res) => {
       ORDER BY c.nombre_establecimiento
     `;
 
-        const result = await client.query(sql, params);
+        const result = await client.query(sql, [...params, req.userId]);
+
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener centros', detail: err.message });
@@ -176,13 +272,17 @@ exports.getCentro = async (req, res) => {
             client.query('SELECT * FROM public.centro_correos WHERE centro_id = $1 AND deleted_at IS NULL', [id]),
         ]);
 
+        const accessLevel = await getEffectiveAccessLevel(req.userId, id, client);
+
         res.json({
             ...result.rows[0],
+            access_level: accessLevel,
             propietarios: propietarios.rows,
             representantes: representantes.rows,
             telefonos: telefonos.rows,
             correos: correos.rows,
         });
+
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener el centro', detail: err.message });
     } finally {
@@ -276,20 +376,12 @@ exports.updateCentro = async (req, res) => {
     const client = await pool.connect();
     try {
         // Verificar acceso
-        const access = await client.query(
-            `SELECT 1 FROM public.centros c
-       WHERE c.id = $1 AND c.deleted_at IS NULL
-       AND (
-         c.id = (SELECT centro_id FROM users WHERE id = $2)
-         OR EXISTS (SELECT 1 FROM user_centro_access WHERE user_id = $2 AND centro_id = $1 AND access_level IN ('write','admin') AND deleted_at IS NULL)
-         OR EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON ur.role_id = r.id WHERE ur.user_id = $2 AND r.name IN ('admin','administrador'))
-       )`,
-            [id, req.userId]
-        );
+        const hasAccess = await verifyCentroAccess(req.userId, id, client, 'write');
 
-        if (!access.rows.length) {
+        if (!hasAccess) {
             return res.status(403).json({ error: 'Sin acceso para editar este centro.' });
         }
+
 
         const result = await client.query(
             `UPDATE public.centros SET
@@ -319,6 +411,12 @@ exports.deleteCentro = async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
+        // Verificar acceso (solo nivel 'admin' delegado o admin nacional)
+        const hasAccess = await verifyCentroAccess(req.userId, id, client, 'admin');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso para eliminar este centro.' });
+        }
+
         await client.query(
             `UPDATE public.centros SET deleted_at = NOW(), updated_at = NOW()
        WHERE id = $1 AND deleted_at IS NULL`,
@@ -332,6 +430,7 @@ exports.deleteCentro = async (req, res) => {
     }
 };
 
+
 // ============================================================
 // FICHAS DE ESTABLECIMIENTO
 // ============================================================
@@ -340,6 +439,12 @@ exports.listFichas = async (req, res) => {
     const { centroId } = req.params;
     const client = await pool.connect();
     try {
+        // Verificar acceso
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'read');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso a las fichas de este centro.' });
+        }
+
         const result = await client.query(
             `SELECT id, version, fecha_solicitud, nro_registro_nacional,
               tipo_solicitud, fecha_fundacion, costo_mensual, is_current, created_at
@@ -356,11 +461,19 @@ exports.listFichas = async (req, res) => {
     }
 };
 
+
 exports.getFichaActual = async (req, res) => {
     const { centroId } = req.params;
     const client = await pool.connect();
     try {
+        // Verificar acceso
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'read');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso a este centro.' });
+        }
+
         const fichaResult = await client.query(
+
             `SELECT f.* FROM public.fichas_establecimiento f
        WHERE f.centro_id = $1 AND f.is_current = TRUE AND f.deleted_at IS NULL`,
             [centroId]
@@ -409,7 +522,14 @@ exports.createFicha = async (req, res) => {
 
     const client = await pool.connect();
     try {
+        // Verificar acceso
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'write');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso para crear fichas en este centro.' });
+        }
+
         await client.query('BEGIN');
+
 
         // Obtener la versión más alta actual
         const versionResult = await client.query(
@@ -525,7 +645,15 @@ exports.updateFicha = async (req, res) => {
     const fields = req.body;
     const client = await pool.connect();
     try {
+        // Obtener centroId de la ficha
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+
+        const hasAccess = await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write');
+        if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para editar esta ficha.' });
+
         const result = await client.query(
+
             `UPDATE public.fichas_establecimiento SET
          fecha_solicitud = COALESCE($1, fecha_solicitud),
          nro_registro_nacional = COALESCE($2, nro_registro_nacional),
@@ -556,7 +684,15 @@ exports.addPoblacion = async (req, res) => {
     // registros: [{ modalidad, categoria, femenino, masculino }]
     const client = await pool.connect();
     try {
+        // Verificar acceso vía ficha
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+
+        const hasAccess = await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write');
+        if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para registrar población.' });
+
         await client.query('BEGIN');
+
         for (const r of registros) {
             await client.query(
                 `INSERT INTO public.ficha_poblacion (ficha_id, fecha_corte, modalidad, categoria, femenino, masculino)
@@ -584,7 +720,12 @@ exports.listCentroUsers = async (req, res) => {
     const { centroId } = req.params;
     const client = await pool.connect();
     try {
+        // Solo admins del centro
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'admin');
+        if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para gestionar usuarios de este centro.' });
+
         const result = await client.query(
+
             `SELECT u.id, u.first_name, u.last_name, u.email, u.cedula,
               uca.access_level, uca.granted_at,
               g.first_name || ' ' || g.last_name AS granted_by_name
@@ -608,7 +749,11 @@ exports.grantCentroAccess = async (req, res) => {
     const { user_id, access_level = 'read' } = req.body;
     const client = await pool.connect();
     try {
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'admin');
+        if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para otorgar permisos en este centro.' });
+
         await client.query(
+
             `INSERT INTO public.user_centro_access (user_id, centro_id, access_level, granted_by)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, centro_id) DO UPDATE
@@ -628,7 +773,11 @@ exports.revokeCentroAccess = async (req, res) => {
     const { centroId, userId } = req.params;
     const client = await pool.connect();
     try {
+        const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'admin');
+        if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para revocar permisos en este centro.' });
+
         await client.query(
+
             `UPDATE public.user_centro_access SET deleted_at = NOW()
        WHERE user_id = $1 AND centro_id = $2 AND deleted_at IS NULL`,
             [userId, centroId]
@@ -673,7 +822,14 @@ exports.saveCapacidad = async (req, res) => {
     const { capacidad_total_residente, atencion_ambulatoria, capacidad_actual_residente, num_atencion_ambulatoria } = req.body;
     const client = await pool.connect();
     try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
         const r = await client.query(
+
             `INSERT INTO public.ficha_capacidad
              (ficha_id, capacidad_total_residente, atencion_ambulatoria, capacidad_actual_residente, num_atencion_ambulatoria)
              VALUES ($1,$2,$3,$4,$5)
@@ -697,7 +853,14 @@ exports.saveServicios = async (req, res) => {
     const s = req.body;
     const client = await pool.connect();
     try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
         const r = await client.query(
+
             `INSERT INTO public.ficha_servicios
              (ficha_id, farmacia, evaluacion_nutricional, actividades_recreativas, servicio_emergencia,
               servicio_funerario, medicos, medicos_descripcion, lavanderia, lavanderia_descripcion,
@@ -724,7 +887,14 @@ exports.savePersonal = async (req, res) => {
     const p = req.body;
     const client = await pool.connect();
     try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
         const r = await client.query(
+
             `INSERT INTO public.ficha_personal
              (ficha_id, num_medicos_geriatra, num_medicos_psiquiatra, num_enfermeros, num_cuidadores,
               num_camareros, num_auxiliares_enfermeria, num_servicios_generales, num_personal_cocina,
@@ -756,7 +926,14 @@ exports.saveInfraestructura = async (req, res) => {
     const i = req.body;
     const client = await pool.connect();
     try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
         const r = await client.query(
+
             `INSERT INTO public.ficha_infraestructura
              (ficha_id, estado_inmueble, num_dormitorios, dormitorios_adecuados,
               num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
@@ -788,7 +965,14 @@ exports.saveDocumentos = async (req, res) => {
     const { documentos = [] } = req.body;
     const client = await pool.connect();
     try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
         await client.query('BEGIN');
+
         for (const doc of documentos) {
             await client.query(
                 `INSERT INTO public.ficha_documentos (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion)
@@ -805,3 +989,44 @@ exports.saveDocumentos = async (req, res) => {
         res.status(500).json({ error: 'Error al guardar documentos', detail: err.message });
     } finally { client.release(); }
 };
+
+// Listar centros a los que un usuario tiene acceso (propio + delegados)
+exports.listUserCentros = async (req, res) => {
+    const { userId } = req.params;
+    const client = await pool.connect();
+    try {
+        // Solo el propio usuario o un administrador nacional pueden ver esto
+        if (req.userId !== parseInt(userId)) {
+            const adminResult = await client.query(
+                `SELECT 1 FROM (
+                    SELECT r.name FROM user_roles ur
+                    JOIN roles r ON ur.role_id = r.id
+                    WHERE ur.user_id = $1
+                ) roles WHERE LOWER(name) IN ('admin', 'administrador')`,
+                [req.userId]
+            );
+            if (adminResult.rows.length === 0) {
+                return res.status(403).json({ error: 'No tiene permiso para ver los centros de otro usuario.' });
+            }
+        }
+
+        const sql = `
+            SELECT c.id, c.nombre_establecimiento, uca.access_level, uca.granted_at,
+                   CASE WHEN u.centro_id = c.id THEN true ELSE false END as is_owner
+            FROM public.centros c
+            JOIN public.users u ON u.id = $1
+            LEFT JOIN public.user_centro_access uca ON uca.centro_id = c.id AND uca.user_id = $1 AND uca.deleted_at IS NULL
+            WHERE c.deleted_at IS NULL
+              AND (c.id = u.centro_id OR uca.user_id IS NOT NULL)
+            ORDER BY c.nombre_establecimiento
+        `;
+
+        const result = await client.query(sql, [userId]);
+        res.json(result.rows);
+    } catch (err) {
+        res.status(500).json({ error: 'Error al listar centros del usuario', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+

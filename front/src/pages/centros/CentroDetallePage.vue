@@ -14,7 +14,10 @@
             <q-space />
             <q-btn v-if="canEdit" icon="edit" label="Editar" flat color="primary"
                 @click="$router.push(`/admin/centros/${centroId}/editar`)" />
+            <q-btn v-if="canDelete" icon="delete" label="Eliminar" flat color="negative"
+                @click="confirmarEliminar" />
         </div>
+
 
         <q-inner-loading :showing="centrosStore.loading" label="Cargando..." />
 
@@ -428,11 +431,65 @@
 
                 <!-- ── ACCESO ──── -->
                 <q-tab-panel name="acceso" v-if="canManageAccess">
-                    <div class="text-grey text-center q-pa-xl">
-                        <q-icon name="people" size="3rem" />
-                        <div>Gestión de acceso — próximamente</div>
+                    <div class="row items-center q-mb-md">
+                        <div class="text-h6">Usuarios con Acceso</div>
+                        <q-space />
+                        <q-btn color="primary" icon="person_add" label="Otorgar Acceso" @click="showAddDialog = true" />
                     </div>
+
+                    <q-table :rows="centrosStore.centroUsers" :columns="colsAcceso" flat bordered row-key="id"
+                        :loading="centrosStore.loading">
+                        <template v-slot:body-cell-access_level="props">
+                            <q-td :props="props">
+                                <q-badge :color="props.value === 'admin' ? 'negative' : 'primary'">
+                                    {{ labelAccess(props.value) }}
+                                </q-badge>
+                            </q-td>
+                        </template>
+                        <template v-slot:body-cell-actions="props">
+                            <q-td :props="props">
+                                <q-btn flat round color="negative" icon="delete" size="sm" @click="confirmRevoke(props.row)">
+                                    <q-tooltip>Revocar acceso</q-tooltip>
+                                </q-btn>
+                            </q-td>
+                        </template>
+                    </q-table>
+
+                    <!-- Diálogo para agregar usuario -->
+                    <q-dialog v-model="showAddDialog" persistent>
+                        <q-card style="min-width: 400px">
+                            <q-card-section class="row items-center q-pb-none">
+                                <div class="text-h6">Otorgar Acceso a Centro</div>
+                                <q-space />
+                                <q-btn icon="close" flat round dense v-close-popup />
+                            </q-card-section>
+
+                            <q-card-section class="q-pt-md">
+                                <q-select v-model="selectedUser" use-input hide-selected fill-input input-debounce="300"
+                                    label="Buscar Usuario (mín. 2 letras)" :options="userOptions" @filter="filterUsers"
+                                    outlined class="q-mb-md">
+                                    <template v-slot:no-option>
+                                        <q-item>
+                                            <q-item-section class="text-grey">
+                                                No se encontraron resultados
+                                            </q-item-section>
+                                        </q-item>
+                                    </template>
+                                </q-select>
+
+                                <q-select v-model="selectedAccessLevel" :options="accessLevelOptions" label="Nivel de Acceso"
+                                    emit-value map-options outlined />
+                            </q-card-section>
+
+                            <q-card-actions align="right" class="text-primary q-pb-md q-px-md">
+                                <q-btn flat label="Cancelar" v-close-popup />
+                                <q-btn unelevated color="primary" label="Otorgar Acceso" @click="handleGrantAccess"
+                                    :disable="!selectedUser" />
+                            </q-card-actions>
+                        </q-card>
+                    </q-dialog>
                 </q-tab-panel>
+
 
             </q-tab-panels>
         </div>
@@ -440,13 +497,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { LocalStorage } from 'quasar';
+import { ref, computed, onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { LocalStorage, useQuasar } from 'quasar';
+
 import { useCentrosStore } from 'src/stores/centros.store';
 
+
 const route = useRoute();
+const router = useRouter();
 const centrosStore = useCentrosStore();
+
 const centroId = computed(() => route.params.id);
 
 const tab = ref('resumen');
@@ -482,8 +543,27 @@ const permisos = LocalStorage.getItem('permissions') || [];
 const role = (LocalStorage.getItem('role') || '').toLowerCase();
 const adminUser = ['admin', 'administrador', 'administrator'].includes(role);
 function hasPerm(p) { return adminUser || permisos.some(x => x.name === p); }
-const canEdit = computed(() => hasPerm('edit_centro'));
-const canManageAccess = computed(() => hasPerm('manage_centro_access'));
+
+const canEdit = computed(() => {
+    if (adminUser) return true;
+    if (!centro.value) return false;
+    return ['write', 'admin'].includes(centro.value.access_level);
+});
+
+const canDelete = computed(() => {
+    if (adminUser) return true;
+    if (!centro.value) return false;
+    return centro.value.access_level === 'admin';
+});
+
+const canManageAccess = computed(() => {
+    if (adminUser) return true;
+    if (!centro.value) return false;
+    // Solo si el nivel es admin (delegado o propietario)
+    return centro.value.access_level === 'admin';
+});
+
+
 
 function colorEstado(e) {
     return { activo: 'positive', inactivo: 'grey', suspendido: 'negative' }[e] || 'grey';
@@ -503,8 +583,88 @@ function formatDate(d) {
     return isNaN(dt) ? d : dt.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+const showAddDialog = ref(false);
+const selectedUser = ref(null);
+const selectedAccessLevel = ref('read');
+const accessLevelOptions = [
+    { label: 'Lectura', value: 'read' },
+    { label: 'Escritura', value: 'write' },
+    { label: 'Administrador (Delegado)', value: 'admin' },
+];
+
+const userOptions = ref([]);
+const $q = useQuasar();
+
+const colsAcceso = [
+    { name: 'name', label: 'Usuario', align: 'left', field: row => `${row.first_name} ${row.last_name}` },
+    { name: 'email', label: 'Correo', align: 'left', field: 'email' },
+    { name: 'access_level', label: 'Nivel', align: 'center', field: 'access_level' },
+    { name: 'actions', label: 'Acciones', align: 'right' }
+];
+
+async function filterUsers(val, update) {
+    if (val.length < 2) {
+        update(() => { userOptions.value = [] });
+        return;
+    }
+    const users = await centrosStore.searchUsers(val);
+    update(() => {
+        userOptions.value = users.map(u => ({
+            label: `${u.first_name} ${u.last_name} (${u.email})`,
+            value: u.id
+        }));
+    });
+}
+
+async function handleGrantAccess() {
+    if (!selectedUser.value) return;
+    const ok = await centrosStore.grantAccess(centroId.value, selectedUser.value.value, selectedAccessLevel.value);
+    if (ok) {
+        showAddDialog.value = false;
+        selectedUser.value = null;
+    }
+}
+
+function confirmRevoke(user) {
+    $q.dialog({
+        title: 'Revocar Acceso',
+        message: `¿Estás seguro de revocar el acceso a ${user.first_name} ${user.last_name}?`,
+        cancel: true,
+        persistent: true
+    }).onOk(async () => {
+        await centrosStore.revokeAccess(centroId.value, user.id);
+    });
+}
+
+function confirmarEliminar() {
+    $q.dialog({
+        title: 'Eliminar Centro',
+        message: `¿Estás seguro de eliminar el centro "${centro.value?.nombre_establecimiento}"? Esto es un borrado lógico.`,
+        cancel: true,
+        persistent: true
+    }).onOk(async () => {
+        await centrosStore.deleteCentro(centroId.value);
+        $router.push('/admin/centros');
+    });
+}
+
+
+function labelAccess(lvl) {
+    return { read: 'Lectura', write: 'Escritura', admin: 'Administrador' }[lvl] || lvl;
+}
+
+watch(tab, (newTab) => {
+    if (newTab === 'acceso') {
+        centrosStore.fetchCentroUsers(centroId.value);
+    }
+});
+
 onMounted(async () => {
     await centrosStore.fetchCentro(centroId.value);
     await centrosStore.fetchFichaActual(centroId.value);
+    if (tab.value === 'acceso') {
+        centrosStore.fetchCentroUsers(centroId.value);
+    }
 });
+
 </script>

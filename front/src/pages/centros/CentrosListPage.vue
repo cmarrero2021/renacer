@@ -55,12 +55,13 @@
                 <q-td class="q-gutter-xs">
                     <q-btn icon="visibility" color="primary" flat round dense title="Ver ficha"
                         @click="$router.push(`/admin/centros/${row.id}`)" />
-                    <q-btn v-if="canEdit" icon="edit" color="secondary" flat round dense title="Editar"
+                    <q-btn v-if="canEditRow(row)" icon="edit" color="secondary" flat round dense title="Editar"
                         @click="$router.push(`/admin/centros/${row.id}/editar`)" />
-                    <q-btn v-if="canDelete" icon="delete" color="negative" flat round dense title="Eliminar"
+                    <q-btn v-if="canDeleteRow(row)" icon="delete" color="negative" flat round dense title="Eliminar"
                         @click="confirmarEliminar(row)" />
                 </q-td>
             </template>
+
         </q-table>
 
         <!-- Confirmar eliminación -->
@@ -104,8 +105,18 @@ const isAdmin = computed(() => ['admin', 'administrador', 'administrator'].inclu
 function hasPerm(p) { return isAdmin.value || permisos.some(x => x.name === p); }
 
 const canCreate = computed(() => hasPerm('create_centro'));
-const canEdit = computed(() => hasPerm('edit_centro'));
-const canDelete = computed(() => hasPerm('delete_centro'));
+
+// Estos ahora se verifican por nivel de acceso al registro específico
+function canEditRow(row) {
+    if (isAdmin.value) return true;
+    return ['write', 'admin'].includes(row.access_level);
+}
+function canDeleteRow(row) {
+    if (isAdmin.value) return true;
+    return row.access_level === 'admin';
+}
+
+
 
 // Opciones de filtro
 const opcionesEstado = [

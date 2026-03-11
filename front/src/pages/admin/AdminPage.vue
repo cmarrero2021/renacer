@@ -54,8 +54,13 @@
                                     @click="openAssignRoleModal(props.row)">
                                     <q-tooltip>Asignar Roles</q-tooltip>
                                 </q-btn>
+                                <q-btn flat round dense color="accent" icon="business"
+                                    @click="openAssignCentroModal(props.row)">
+                                    <q-tooltip>Asignar Centros</q-tooltip>
+                                </q-btn>
                             </q-td>
                         </template>
+
                     </q-table>
                 </q-tab-panel>
 
@@ -325,6 +330,55 @@
             </q-card>
         </q-dialog>
 
+        <!-- Modal Asignar Centros a Usuario -->
+        <q-dialog v-model="assignCentroModalOpen">
+            <q-card style="min-width: 500px">
+                <q-card-section>
+                    <div class="text-h6">Centros Asignados a {{ selectedUser?.first_name }}</div>
+                </q-card-section>
+                <q-card-section>
+                    <div class="row q-col-gutter-sm q-mb-md">
+                        <div class="col-7">
+                            <q-select v-model="selectedCentroToAdd" :options="filteredCentroOptions"
+                                label="Asignar Nuevo Centro" outlined dense />
+                        </div>
+                        <div class="col-3">
+                            <q-select v-model="selectedCentroAccessLevel" :options="accessLevelOptions" label="Nivel"
+                                outlined dense emit-value map-options />
+                        </div>
+                        <div class="col-2">
+                            <q-btn color="primary" icon="add" class="full-width" @click="handleGrantCentroAccess"
+                                :disable="!selectedCentroToAdd" />
+                        </div>
+                    </div>
+
+                    <q-list bordered separator v-if="centrosStore.userCentros.length > 0">
+                        <q-item v-for="centro in centrosStore.userCentros" :key="centro.id">
+                            <q-item-section>
+                                <q-item-label>{{ centro.nombre_establecimiento }}</q-item-label>
+                                <q-item-label caption v-if="centro.is_owner">Centro Principal (Propietario)</q-item-label>
+                            </q-item-section>
+                            <q-item-section side>
+                                <div class="row items-center q-gutter-x-sm">
+                                    <q-badge :color="centro.is_owner ? 'positive' : 'primary'">
+                                        {{ labelAccess(centro.access_level || 'admin') }}
+                                    </q-badge>
+                                    <q-btn v-if="!centro.is_owner" flat round color="negative" icon="delete" size="sm"
+                                        @click="handleRevokeCentroAccess(centro)">
+                                        <q-tooltip>Quitar acceso</q-tooltip>
+                                    </q-btn>
+                                </div>
+                            </q-item-section>
+                        </q-item>
+                    </q-list>
+                    <div v-else class="text-grey text-center q-pa-md">No tiene centros asignados.</div>
+                </q-card-section>
+                <q-card-actions align="right">
+                    <q-btn flat label="Cerrar" color="primary" v-close-popup />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
+
     </q-page>
 </template>
 
@@ -332,9 +386,13 @@
 import { ref, onMounted, reactive, computed } from 'vue'
 import { authApi as api } from 'boot/axios'
 import { useQuasar } from 'quasar'
+import { useCentrosStore } from 'src/stores/centros.store'
+
 
 const $q = useQuasar()
+const centrosStore = useCentrosStore()
 const tab = ref('users')
+
 
 // --- Usuarios ---
 const users = ref([])
@@ -763,4 +821,55 @@ const generatePassword = () => {
     userForm.password = retVal
     userForm.confirmPassword = retVal
 }
+
+// --- Asignación de Centros ---
+const assignCentroModalOpen = ref(false)
+const selectedCentroToAdd = ref(null)
+const selectedCentroAccessLevel = ref('read')
+const accessLevelOptions = [
+    { label: 'Lectura', value: 'read' },
+    { label: 'Escritura', value: 'write' },
+    { label: 'Administrador (Delegado)', value: 'admin' },
+]
+
+const openAssignCentroModal = async (user) => {
+    selectedUser.value = user
+    await centrosStore.fetchUserCentros(user.id)
+    assignCentroModalOpen.value = true
+    if (centrosStore.centros.length === 0) {
+        await centrosStore.fetchCentros()
+    }
+}
+
+const filteredCentroOptions = computed(() => {
+    const assignedIds = centrosStore.userCentros.map(c => c.id)
+    return centrosStore.centros
+        .filter(c => !assignedIds.includes(c.id))
+        .map(c => ({ label: c.nombre_establecimiento, value: c.id }))
+})
+
+const handleGrantCentroAccess = async () => {
+    if (!selectedCentroToAdd.value) return
+    const ok = await centrosStore.grantAccess(selectedCentroToAdd.value.value, selectedUser.value.id, selectedCentroAccessLevel.value)
+    if (ok) {
+        await centrosStore.fetchUserCentros(selectedUser.value.id)
+        selectedCentroToAdd.value = null
+    }
+}
+
+const handleRevokeCentroAccess = async (centro) => {
+    if (centro.is_owner) {
+        $q.notify({ type: 'warning', message: 'No se puede revocar el acceso al centro principal desde aquí.' })
+        return
+    }
+    const ok = await centrosStore.revokeAccess(centro.id, selectedUser.value.id)
+    if (ok) {
+        await centrosStore.fetchUserCentros(selectedUser.value.id)
+    }
+}
+
+const labelAccess = (lvl) => {
+    return { read: 'Lectura', write: 'Escritura', admin: 'Administrador' }[lvl] || lvl
+}
 </script>
+

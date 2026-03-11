@@ -93,7 +93,8 @@
                                 <div class="row q-gutter-sm">
                                     <q-radio v-model="datos.tipo_solicitud" val="registro_autorizacion"
                                         label="Registro / Autorización" dense />
-                                    <q-radio v-model="datos.tipo_solicitud" val="renovacion" label="Renovación" dense />
+                                    <q-radio v-model="datos.tipo_solicitud" val="renovacion_autorizacion"
+                                        label="Renovación" dense />
                                 </div>
                             </div>
                         </div>
@@ -372,12 +373,19 @@
                         <template #body="{ row, rowIndex }">
                             <tr>
                                 <td>
-                                    <q-select v-model="row.modalidad" :options="['residente', 'ambulatorio']" outlined
-                                        dense style="min-width:130px" />
+                                    <q-select v-model="row.modalidad" :options="[
+                                        { value: 'residente', label: 'Residente' },
+                                        { value: 'ambulatoria', label: 'Ambulatoria' }
+                                    ]" option-value="value" option-label="label" emit-value map-options outlined dense
+                                        style="min-width:140px" />
                                 </td>
                                 <td>
-                                    <q-input v-model="row.categoria" outlined dense placeholder="Categoría"
-                                        style="min-width:160px" />
+                                    <q-select v-model="row.categoria" :options="[
+                                        { value: 'adultos', label: 'Adultos' },
+                                        { value: 'con_discapacidad', label: 'Con Discapacidad' },
+                                        { value: 'otras_categorias', label: 'Otras categorías' }
+                                    ]" option-value="value" option-label="label" emit-value map-options outlined dense
+                                        style="min-width:180px" />
                                 </td>
                                 <td>
                                     <q-input v-model.number="row.femenino" outlined dense type="number" min="0"
@@ -409,8 +417,11 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
-                            <q-select v-model="infra.estado_inmueble"
-                                :options="['excelente', 'bueno', 'regular', 'deficiente']" outlined dense
+                            <q-select v-model="infra.estado_inmueble" :options="[
+                                { value: 'excelente', label: 'Excelente' },
+                                { value: 'bueno', label: 'Bueno' },
+                                { value: 'deficiente', label: 'Deficiente' }
+                            ]" option-value="value" option-label="label" emit-value map-options outlined dense
                                 label="Estado del inmueble" />
                         </div>
                         <div class="col-12 col-md-4">
@@ -833,7 +844,7 @@ function addProp() { datos.value.propietarios.push({ nombre: '', cedula_tipo: 'V
 function addRep() { datos.value.representantes.push({ nombre: '', cedula_tipo: 'V', cedula_nro: '', cargo: '' }); }
 function addTel() { datos.value.telefonos.push({ telefono: '', tipo: 'general' }); }
 function addCorreo() { datos.value.correos.push({ correo: '', tipo: 'general' }); }
-function addPobRow() { pob.value.registros.push({ modalidad: 'residente', categoria: '', femenino: 0, masculino: 0 }); }
+function addPobRow() { pob.value.registros.push({ modalidad: 'residente', categoria: 'adultos', femenino: 0, masculino: 0 }); }
 
 // ── Cascada geo ───────────────────────────────────────────────────────────────
 const formDatosRef = ref(null);
@@ -986,12 +997,70 @@ async function saveDocumentos() {
     if (!fichaId.value) return warn();
     saving.value = true;
     try {
+        // ── Guardar SOLO secciones con datos reales y no guardadas aún ──
+        const pendientes = [];
+
+        const hasCapacidad = cap.value.capacidad_total_residente != null
+            || cap.value.capacidad_actual_residente != null
+            || cap.value.atencion_ambulatoria;
+
+        const hasInfraestructura = infra.value.estado_inmueble != null
+            || infra.value.num_dormitorios != null
+            || infra.value.num_sanitarios != null
+            || infra.value.luz_electrica || infra.value.agua_potable;
+
+        const hasPersonal = Object.values(pers.value)
+            .some(v => typeof v === 'number' && v > 0);
+
+        const hasServicios = Object.entries(serv.value)
+            .some(([k, v]) => v === true && !k.endsWith('_descripcion'));
+
+        if (!savedTabs.value.capacidad && hasCapacidad) {
+            pendientes.push(
+                fichasService.saveCapacidad(fichaId.value, cap.value)
+                    .then(() => { savedTabs.value.capacidad = true; })
+            );
+        }
+        if (!savedTabs.value.infraestructura && hasInfraestructura) {
+            pendientes.push(
+                fichasService.saveInfraestructura(fichaId.value, infra.value)
+                    .then(() => { savedTabs.value.infraestructura = true; })
+            );
+        }
+        if (!savedTabs.value.personal && hasPersonal) {
+            pendientes.push(
+                fichasService.savePersonal(fichaId.value, pers.value)
+                    .then(() => { savedTabs.value.personal = true; })
+            );
+        }
+        if (!savedTabs.value.servicios && hasServicios) {
+            pendientes.push(
+                fichasService.saveServicios(fichaId.value, serv.value)
+                    .then(() => { savedTabs.value.servicios = true; })
+            );
+        }
+        if (!savedTabs.value.poblacion && pob.value.fecha_corte && pob.value.registros.length > 0) {
+            pendientes.push(
+                fichasService.addPoblacion(fichaId.value, pob.value)
+                    .then(() => { savedTabs.value.poblacion = true; })
+            );
+        }
+
+        if (pendientes.length) {
+            await Promise.all(pendientes);
+        }
+
+        // ── Guardar documentos ──
         await fichasService.saveDocumentos(fichaId.value, { documentos: docs.value });
         savedTabs.value.documentos = true;
-        Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente!' });
+        Notify.create({ type: 'positive', message: '\u00a1Ficha completada exitosamente!' });
         router.push(`/admin/centros/${centroId.value}`);
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar documentos.' }); }
-    finally { saving.value = false; }
+    } catch (err) {
+        console.error(err);
+        Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al guardar la ficha.' });
+    } finally {
+        saving.value = false;
+    }
 }
 
 function warn() { Notify.create({ type: 'warning', message: 'Primero guarda los datos del centro.' }); }

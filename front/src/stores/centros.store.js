@@ -72,7 +72,8 @@ export const useCentrosStore = defineStore('centros', () => {
             const { data } = await centrosService.get(id);
             current.value = data;
             return data;
-        } catch {
+        } catch (err) {
+            console.error('[ERROR] getCentro:', err?.response?.status, err?.response?.data);
             Notify.create({ type: 'negative', message: 'Error al cargar el centro.' });
             return null;
         } finally {
@@ -130,6 +131,7 @@ export const useCentrosStore = defineStore('centros', () => {
             ficha.value = data;
             return data;
         } catch (err) {
+            console.error('[ERROR] getFichaActual:', err?.response?.status, err?.response?.data);
             if (err?.response?.status !== 404) {
                 Notify.create({ type: 'negative', message: 'Error al cargar la ficha.' });
             }

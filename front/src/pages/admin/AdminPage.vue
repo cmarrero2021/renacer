@@ -184,10 +184,12 @@
         </q-card>
 
         <!-- Modal Usuario -->
-        <q-dialog v-model="userModalOpen">
+        <q-dialog v-model="userModalOpen" persistent>
             <q-card style="min-width: 400px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ editingUser ? 'Editar Usuario' : 'Nuevo Usuario' }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
 
                 <q-card-section>
@@ -274,10 +276,12 @@
         </q-dialog>
 
         <!-- Modal Rol -->
-        <q-dialog v-model="roleModalOpen">
+        <q-dialog v-model="roleModalOpen" persistent>
             <q-card style="min-width: 400px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ editingRole ? 'Editar Rol' : 'Nuevo Rol' }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section>
                     <q-form @submit="saveRole">
@@ -303,10 +307,12 @@
         </q-dialog>
 
         <!-- Modal Asignar Roles a Usuario -->
-        <q-dialog v-model="assignRoleModalOpen">
+        <q-dialog v-model="assignRoleModalOpen" persistent>
             <q-card style="min-width: 400px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Asignar Roles a {{ selectedUser?.first_name }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section>
                     <q-input v-model="assignRoleSearch" dense outlined placeholder="Buscar rol..." class="q-mb-md">
@@ -329,10 +335,12 @@
         </q-dialog>
 
         <!-- Modal Asignar Permisos a Rol -->
-        <q-dialog v-model="assignPermissionModalOpen">
+        <q-dialog v-model="assignPermissionModalOpen" persistent>
             <q-card style="min-width: 600px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Asignar Permisos a {{ selectedRole?.name }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section style="max-height: 50vh" class="scroll">
                     <q-input v-model="assignPermissionSearch" dense outlined placeholder="Buscar permiso..."
@@ -357,10 +365,12 @@
         </q-dialog>
 
         <!-- Modal Permiso -->
-        <q-dialog v-model="permissionModalOpen">
+        <q-dialog v-model="permissionModalOpen" persistent>
             <q-card style="min-width: 400px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ editingPermission ? 'Editar Permiso' : 'Nuevo Permiso' }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section>
                     <q-form @submit="savePermission">
@@ -390,10 +400,12 @@
         </q-dialog>
 
         <!-- Modal Asignar Centros a Usuario -->
-        <q-dialog v-model="assignCentroModalOpen">
+        <q-dialog v-model="assignCentroModalOpen" persistent>
             <q-card style="min-width: 500px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Centros Asignados a {{ selectedUser?.first_name }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section>
                     <div class="row q-col-gutter-sm q-mb-md">
@@ -439,10 +451,12 @@
         </q-dialog>
 
         <!-- Modal Reset Password (Admin) -->
-        <q-dialog v-model="resetPasswordModalOpen">
+        <q-dialog v-model="resetPasswordModalOpen" persistent>
             <q-card style="min-width: 400px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Asignar Nueva Clave a {{ selectedUser?.email }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
 
                 <q-card-section>

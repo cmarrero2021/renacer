@@ -50,11 +50,13 @@
     <!-- Diálogo de recuperación de contraseña -->
     <q-dialog v-model="showRecoveryDialog" persistent>
       <q-card style="min-width: 400px; max-width: 500px;">
-        <q-card-section class="bg-primary text-white">
+        <q-card-section class="bg-primary text-white row items-center">
           <div class="text-h6">
             <q-icon name="lock_reset" class="q-mr-sm" />
             Recuperar Contraseña
           </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
 
         <!-- Paso 1: Ingresar email -->

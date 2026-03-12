@@ -148,10 +148,12 @@
         </q-table>
 
         <!-- Dialog para mostrar JSON -->
-        <q-dialog v-model="jsonDialogOpen">
+        <q-dialog v-model="jsonDialogOpen" persistent>
             <q-card style="min-width: 500px; max-width: 80vw">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">{{ jsonDialogTitle }}</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section class="scroll" style="max-height: 60vh">
                     <pre style="white-space: pre-wrap; word-wrap: break-word;">{{ formatJson(jsonDialogContent) }}</pre>

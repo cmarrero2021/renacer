@@ -65,10 +65,12 @@
         </q-table>
 
         <!-- Confirmar eliminación -->
-        <q-dialog v-model="showDeleteDialog">
+        <q-dialog v-model="showDeleteDialog" persistent>
             <q-card style="min-width: 350px">
-                <q-card-section>
+                <q-card-section class="row items-center q-pb-none">
                     <div class="text-h6">Eliminar Centro</div>
+                    <q-space />
+                    <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
                 <q-card-section>
                     ¿Confirmas que deseas eliminar <strong>{{ centroAEliminar?.nombre_establecimiento }}</strong>?

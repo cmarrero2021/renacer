@@ -506,8 +506,8 @@
                         </div>
 
                         <div class="row justify-end q-mt-md">
-                            <q-btn label="Cancelar" color="negative" flat v-close-popup />
-                            <q-btn label="Actualizar Clave" type="submit" color="primary" />
+                            <q-btn label="Cancelar" color="negative" flat v-close-popup :disable="isResettingPassword" />
+                            <q-btn label="Actualizar Clave" type="submit" color="primary" :loading="isResettingPassword" />
                         </div>
                     </q-form>
                 </q-card-section>
@@ -554,6 +554,7 @@ const userRolesSelection = ref([])
 const resetPasswordModalOpen = ref(false)
 const isResetPasswordVisible = ref(false)
 const isResetConfirmVisible = ref(false)
+const isResettingPassword = ref(false)
 const resetForm = reactive({ password: '', confirmPassword: '' })
 const hasMinLengthReset = computed(() => (resetForm.password || '').length >= 8)
 const hasUpperCaseReset = computed(() => /[A-Z]/.test(resetForm.password || ''))
@@ -897,6 +898,7 @@ const openResetPasswordModal = (user) => {
 }
 
 const handleResetPassword = async () => {
+    isResettingPassword.value = true
     try {
         await api.post(`/users/${selectedUser.value.id}/password`, {
             password: resetForm.password
@@ -905,7 +907,9 @@ const handleResetPassword = async () => {
         resetPasswordModalOpen.value = false
     } catch (error) {
         const msg = error.response?.data?.error || 'Error al actualizar contraseña'
-        $q.notify({ type: 'negative', message: msg })
+        $q.notify({ type: 'negative', message: msg, timeout: 5000 })
+    } finally {
+        isResettingPassword.value = false
     }
 }
 
@@ -1010,11 +1014,11 @@ const hasSpecial = computed(() => /[!"#$%&/=.\-*;]/.test(userForm.password || ''
 
 const validatePasswordStrength = (val) => {
     if (!val) return 'Requerido'
-    if (!hasMinLength.value) return 'Mínimo 8 caracteres'
-    if (!hasUpperCase.value) return 'Al menos una mayúscula'
-    if (!hasLowerCase.value) return 'Al menos una minúscula'
-    if (!hasNumber.value) return 'Al menos un número'
-    if (!hasSpecial.value) return 'Al menos un carácter especial (!"#$%&/=.-*;)'
+    if (val.length < 8) return 'Mínimo 8 caracteres'
+    if (!/[A-Z]/.test(val)) return 'Al menos una mayúscula'
+    if (!/[a-z]/.test(val)) return 'Al menos una minúscula'
+    if (!/[0-9]/.test(val)) return 'Al menos un número'
+    if (!/[!"#$%&/=.\-*;]/.test(val)) return 'Al menos un carácter especial (!"#$%&/=.-*;)'
     return true
 }
 

@@ -16,6 +16,57 @@ const {
 const moment = require("moment-timezone");
 const { withAuditContext } = require("./audit");
 
+// ================================
+// Helpers de Historial de Password
+// ================================
+
+const validatePasswordHistory = async (client, userId, newPassword, currentHash) => {
+  if (!currentHash) return; // Si no hay hash actual (ej. creación), permitir
+  
+  // 1. Verificar contra la contraseña actual
+  const isCurrentPassword = await comparePassword(newPassword, currentHash);
+  if (isCurrentPassword) {
+    const err = new Error('La nueva contraseña no puede ser igual a la contraseña actual.');
+    err.statusCode = 400;
+    throw err;
+  }
+
+  // 2. Verificar contra las últimas 5 en historial
+  const historyResult = await client.query(
+    'SELECT password_hash FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
+    [userId]
+  );
+  
+  for (const record of historyResult.rows) {
+    const isOldPassword = await comparePassword(newPassword, record.password_hash);
+    if (isOldPassword) {
+      const err = new Error('La nueva contraseña no puede ser igual a ninguna de las últimas 5 contraseñas utilizadas.');
+      err.statusCode = 400;
+      throw err;
+    }
+  }
+};
+
+const savePasswordToHistory = async (client, userId, oldHash) => {
+  if (!oldHash) return;
+  
+  await client.query(
+    'INSERT INTO password_history (user_id, password_hash) VALUES ($1, $2)',
+    [userId, oldHash]
+  );
+  
+  // Mantener solo las últimas 5 entradas
+  await client.query(`
+    DELETE FROM password_history
+    WHERE user_id = $1 AND id NOT IN (
+      SELECT id FROM (
+        SELECT id FROM password_history WHERE user_id = $2 ORDER BY created_at DESC LIMIT 5
+      ) as sub
+    )`,
+    [userId, userId]
+  );
+};
+
 // Simple health/prueba endpoint
 exports.prueba = async (req, res) => {
   res.status(200).json({ message: "Prueba exitosa." });
@@ -66,23 +117,44 @@ exports.changePassword = async (req, res) => {
       "SELECT password_hash FROM users WHERE id = $1",
       [userId]
     );
-    const isMatch = await comparePassword(
-      oldPassword,
-      result.rows[0].password_hash
-    );
+    
+    if (!result.rows.length) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+    
+    const user = result.rows[0];
+
+    // Validar contraseña actual
+    const isMatch = await comparePassword(oldPassword, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ error: "La contraseña actual es incorrecta." });
     }
 
+    // Validar historial (incluye la actual)
+    try {
+      await validatePasswordHistory(client, userId, newPassword, user.password_hash);
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({ error: err.message });
+    }
+
     const hashedPassword = await hashPassword(newPassword);
-    await client.query("UPDATE users SET password_hash = $1 WHERE id = $2", [
+    
+    await client.query('BEGIN');
+    
+    // Guardar actual en historial
+    await savePasswordToHistory(client, userId, user.password_hash);
+
+    await client.query("UPDATE users SET password_hash = $1, updated_at = NOW() WHERE id = $2", [
       hashedPassword,
       userId,
     ]);
 
+    await client.query('COMMIT');
     res.status(200).json({ message: "Contraseña cambiada exitosamente." });
   } catch (err) {
-    res.status(500).json({ error: "Error al cambiar la contraseña." });
+    await client.query('ROLLBACK').catch(() => {});
+    console.error("Error al cambiar contraseña:", err);
+    res.status(500).json({ error: "Error al cambiar la contraseña.", details: err.message });
   } finally {
     client.release();
   }
@@ -165,21 +237,42 @@ exports.assignUserPassword = async (req, res) => {
 
   const client = await pool.connect();
   try {
-    const hashedPassword = await hashPassword(password);
-    
-    const result = await client.query(
-      "UPDATE users SET password_hash = $1, last_password_change = NOW(), failed_login_attempts = 0, updated_at = NOW() WHERE id = $2 RETURNING email",
-      [hashedPassword, userId]
+    const userResult = await client.query(
+      "SELECT id, password_hash, email FROM users WHERE id = $1",
+      [userId]
     );
 
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return res.status(404).json({ error: "Usuario no encontrado." });
     }
 
-    res.status(200).json({ message: `Contraseña de ${result.rows[0].email} actualizada exitosamente.` });
+    const user = userResult.rows[0];
+
+    // Validar historial (incluye la actual)
+    try {
+      await validatePasswordHistory(client, userId, password, user.password_hash);
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({ error: err.message });
+    }
+
+    const hashedPassword = await hashPassword(password);
+    
+    await client.query('BEGIN');
+
+    // Guardar actual en historial
+    await savePasswordToHistory(client, userId, user.password_hash);
+    
+    await client.query(
+      "UPDATE users SET password_hash = $1, failed_login_attempts = 0, updated_at = NOW() WHERE id = $2",
+      [hashedPassword, userId]
+    );
+
+    await client.query('COMMIT');
+    res.status(200).json({ message: `Contraseña de ${user.email} actualizada exitosamente.` });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error("Error al asignar contraseña:", err);
-    res.status(500).json({ error: "Error al asignar la contraseña." });
+    res.status(500).json({ error: "Error al asignar la contraseña.", details: err.message });
   } finally {
     client.release();
   }
@@ -1689,95 +1782,69 @@ exports.resetPassword = async (req, res) => {
     }
 
     const userId = decoded.userId;
-
-    // Validar fortaleza de la contraseña
-    const passwordErrors = validatePassword(newPassword);
-    if (passwordErrors.length > 0) {
-      return res.status(400).json({
-        error: 'La contraseña no cumple los requisitos.',
-        details: passwordErrors
-      });
-    }
-
-    // Obtener usuario
-    const userResult = await client.query(
-      'SELECT id, password_hash, status FROM users WHERE id = $1 AND deleted_at IS NULL',
-      [userId]
-    );
-
-    if (!userResult.rows.length) {
-      return res.status(400).json({ error: 'Usuario no encontrado.' });
-    }
-
-    const user = userResult.rows[0];
-
-    // Verificar contra las últimas 5 contraseñas
-    const historyResult = await client.query(
-      'SELECT password_hash FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
-      [userId]
-    );
-
-    // También verificar contra la contraseña actual
-    const isCurrentPassword = await comparePassword(newPassword, user.password_hash);
-    if (isCurrentPassword) {
-      return res.status(400).json({
-        error: 'La nueva contraseña no puede ser igual a la contraseña actual.'
-      });
-    }
-
-    // Verificar contra historial
-    for (const record of historyResult.rows) {
-      const isOldPassword = await comparePassword(newPassword, record.password_hash);
-      if (isOldPassword) {
+    const client = await pool.connect();
+    try {
+      // Validar fortaleza de la contraseña
+      const passwordErrors = validatePassword(newPassword);
+      if (passwordErrors.length > 0) {
         return res.status(400).json({
-          error: 'La nueva contraseña no puede ser igual a ninguna de las últimas 5 contraseñas utilizadas.'
+          error: 'La contraseña no cumple los requisitos.',
+          details: passwordErrors
         });
       }
+
+      // Obtener usuario
+      const userResult = await client.query(
+        'SELECT id, password_hash, status, failed_login_attempts FROM users WHERE id = $1 AND deleted_at IS NULL',
+        [userId]
+      );
+
+      if (!userResult.rows.length) {
+        return res.status(400).json({ error: 'Usuario no encontrado.' });
+      }
+
+      const user = userResult.rows[0];
+
+      // Validar historial (incluye la actual)
+      try {
+        await validatePasswordHistory(client, userId, newPassword, user.password_hash);
+      } catch (err) {
+        return res.status(err.statusCode || 400).json({ error: err.message });
+      }
+
+      // Todo válido: actualizar contraseña
+      const newHash = await hashPassword(newPassword);
+
+      await client.query('BEGIN');
+
+      // Guardar actual en historial
+      await savePasswordToHistory(client, userId, user.password_hash);
+
+      // Actualizar contraseña del usuario y reiniciar contadores
+      await client.query(
+        `UPDATE users SET password_hash = $1, recovery_attempts = 0,
+          status = CASE WHEN failed_login_attempts >= 3 THEN 'active' ELSE status END,
+          failed_login_attempts = 0, last_failed_login = NULL,
+          is_temporary_password = false, updated_at = NOW() WHERE id = $2`,
+        [newHash, userId]
+      );
+
+      // Limpiar cualquier código de reset pendiente
+      await client.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+
+      await client.query('COMMIT');
+
+      res.status(200).json({ message: 'Contraseña actualizada exitosamente. Ya puede iniciar sesión.' });
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => { });
+      console.error('Error en resetPassword:', err);
+      res.status(500).json({ error: 'Error al restablecer la contraseña.', details: err.message });
+    } finally {
+      client.release();
     }
-
-    // Todo válido: actualizar contraseña
-    const newHash = await hashPassword(newPassword);
-
-    await client.query('BEGIN');
-
-    // Guardar contraseña actual en historial
-    await client.query(
-      'INSERT INTO password_history (user_id, password_hash) VALUES ($1, $2)',
-      [userId, user.password_hash]
-    );
-
-    // Mantener solo las últimas 5 en historial
-    await client.query(`
-      DELETE FROM password_history
-      WHERE user_id = $1 AND id NOT IN (
-        SELECT id FROM password_history WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5
-      )`,
-      [userId]
-    );
-
-    // Actualizar contraseña del usuario y reiniciar contadores de intentos
-    // Solo reactivar la cuenta si fue suspendida automáticamente por intentos fallidos (failed_login_attempts >= 3)
-    // Si fue suspendida por un administrador, el status se mantiene como está
-    await client.query(
-      `UPDATE users SET password_hash = $1, recovery_attempts = 0,
-        status = CASE WHEN failed_login_attempts >= 3 THEN 'active' ELSE status END,
-        failed_login_attempts = 0, last_failed_login = NULL,
-        is_temporary_password = false, updated_at = NOW() WHERE id = $2`,
-      [newHash, userId]
-    );
-
-    // Limpiar cualquier código de reset pendiente
-    await client.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
-
-    await client.query('COMMIT');
-
-    res.status(200).json({ message: 'Contraseña actualizada exitosamente. Ya puede iniciar sesión.' });
   } catch (err) {
-    await client.query('ROLLBACK').catch(() => { });
-    console.error('Error en resetPassword:', err);
-    res.status(500).json({ error: 'Error al restablecer la contraseña.' });
-  } finally {
-    client.release();
+    console.error('Error general en resetPassword:', err);
+    res.status(500).json({ error: 'Error al procesar la solicitud.' });
   }
 };
 

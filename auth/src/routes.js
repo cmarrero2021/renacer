@@ -43,7 +43,8 @@ const {
   toggleUserStatus,
   verify2FA,
   getCooldownSettings,
-  updateCooldownSettings
+  updateCooldownSettings,
+  assignUserPassword
 } = require("./controllers");
 const { authenticate, authorize, checkBlacklist } = require("./middlewares");
 
@@ -143,6 +144,12 @@ router.patch(
   authorize("update_user"),
   toggleUserStatus
 ); // Suspender/Reactivar
+router.post(
+  "/users/:userId/password",
+  authenticate,
+  authorize("assign_user_password"),
+  assignUserPassword
+); // Asignar clave (Admin)
 
 // Cambio de Contraseña
 router.post("/change-password", authenticate, changePassword);

@@ -52,13 +52,13 @@
                                     @click="confirmDeleteUser(props.row)">
                                     <q-tooltip>Eliminar</q-tooltip>
                                 </q-btn>
-                                <q-btn flat round dense color="secondary" icon="admin_panel_settings"
-                                    @click="openAssignRoleModal(props.row)">
-                                    <q-tooltip>Asignar Roles</q-tooltip>
-                                </q-btn>
                                 <q-btn flat round dense color="accent" icon="business"
                                     @click="openAssignCentroModal(props.row)">
                                     <q-tooltip>Asignar Centros</q-tooltip>
+                                </q-btn>
+                                <q-btn v-if="hasPermission('assign_user_password')" flat round dense color="negative"
+                                    icon="key" @click="openResetPasswordModal(props.row)">
+                                    <q-tooltip>Asignar Nueva Clave</q-tooltip>
                                 </q-btn>
                             </q-td>
                         </template>
@@ -199,7 +199,7 @@
                         <q-input v-model="userForm.email" label="Email" type="email"
                             :rules="[val => !!val || 'Requerido', val => /.+@.+\..+/.test(val) || 'Email inválido']" />
 
-                        <div class="q-mt-md">
+                        <div class="q-mt-md" v-if="!editingUser">
                             <div class="row items-center q-mb-sm">
                                 <q-btn label="Generar Clave" color="secondary" size="sm" @click="generatePassword"
                                     icon="vpn_key" class="q-mr-sm" />
@@ -438,6 +438,68 @@
             </q-card>
         </q-dialog>
 
+        <!-- Modal Reset Password (Admin) -->
+        <q-dialog v-model="resetPasswordModalOpen">
+            <q-card style="min-width: 400px">
+                <q-card-section>
+                    <div class="text-h6">Asignar Nueva Clave a {{ selectedUser?.email }}</div>
+                </q-card-section>
+
+                <q-card-section>
+                    <q-form @submit="handleResetPassword">
+                        <div class="row items-center q-mb-sm">
+                            <q-btn label="Generar Clave" color="secondary" size="sm" @click="generateResetPassword"
+                                icon="vpn_key" class="q-mr-sm" />
+                        </div>
+
+                        <q-input v-model="resetForm.password" label="Nueva Contraseña"
+                            :type="isResetPasswordVisible ? 'text' : 'password'" class="no-uppercase"
+                            :rules="[val => !!val || 'Requerido', val => validatePasswordStrength(val) === true || validatePasswordStrength(val)]">
+                            <template v-slot:append>
+                                <q-icon :name="isResetPasswordVisible ? 'visibility' : 'visibility_off'"
+                                    class="cursor-pointer" @click="isResetPasswordVisible = !isResetPasswordVisible" />
+                            </template>
+                        </q-input>
+
+                        <q-input v-model="resetForm.confirmPassword" label="Confirmar Contraseña"
+                            :type="isResetConfirmVisible ? 'text' : 'password'" class="no-uppercase"
+                            :rules="[val => val === resetForm.password || 'Las contraseñas no coinciden']">
+                            <template v-slot:append>
+                                <q-icon :name="isResetConfirmVisible ? 'visibility' : 'visibility_off'"
+                                    class="cursor-pointer" @click="isResetConfirmVisible = !isResetConfirmVisible" />
+                            </template>
+                        </q-input>
+
+                        <div class="q-mt-sm q-pa-sm bg-grey-2 rounded-borders">
+                            <div class="text-caption text-weight-bold q-mb-xs">Requisitos de contraseña:</div>
+                            <div class="row q-gutter-x-md">
+                                <div :class="hasMinLengthReset ? 'text-positive' : 'text-grey'">
+                                    <q-icon :name="hasMinLengthReset ? 'check_circle' : 'radio_button_unchecked'" /> 8+
+                                </div>
+                                <div :class="hasUpperCaseReset ? 'text-positive' : 'text-grey'">
+                                    <q-icon :name="hasUpperCaseReset ? 'check_circle' : 'radio_button_unchecked'" /> A-Z
+                                </div>
+                                <div :class="hasLowerCaseReset ? 'text-positive' : 'text-grey'">
+                                    <q-icon :name="hasLowerCaseReset ? 'check_circle' : 'radio_button_unchecked'" /> a-z
+                                </div>
+                                <div :class="hasNumberReset ? 'text-positive' : 'text-grey'">
+                                    <q-icon :name="hasNumberReset ? 'check_circle' : 'radio_button_unchecked'" /> 0-9
+                                </div>
+                                <div :class="hasSpecialReset ? 'text-positive' : 'text-grey'">
+                                    <q-icon :name="hasSpecialReset ? 'check_circle' : 'radio_button_unchecked'" /> !@#
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row justify-end q-mt-md">
+                            <q-btn label="Cancelar" color="negative" flat v-close-popup />
+                            <q-btn label="Actualizar Clave" type="submit" color="primary" />
+                        </div>
+                    </q-form>
+                </q-card-section>
+            </q-card>
+        </q-dialog>
+
     </q-page>
 </template>
 
@@ -445,7 +507,7 @@
 import { ref, onMounted, reactive, computed, watch } from 'vue'
 
 import { authApi as api } from 'boot/axios'
-import { useQuasar } from 'quasar'
+import { useQuasar, LocalStorage } from 'quasar'
 import { useCentrosStore } from 'src/stores/centros.store'
 
 
@@ -473,6 +535,17 @@ const isConfirmPasswordVisible = ref(false)
 const selectedUser = ref(null)
 const assignRoleModalOpen = ref(false)
 const userRolesSelection = ref([])
+
+// --- Reset Password (Admin) ---
+const resetPasswordModalOpen = ref(false)
+const isResetPasswordVisible = ref(false)
+const isResetConfirmVisible = ref(false)
+const resetForm = reactive({ password: '', confirmPassword: '' })
+const hasMinLengthReset = computed(() => (resetForm.password || '').length >= 8)
+const hasUpperCaseReset = computed(() => /[A-Z]/.test(resetForm.password || ''))
+const hasLowerCaseReset = computed(() => /[a-z]/.test(resetForm.password || ''))
+const hasNumberReset = computed(() => /[0-9]/.test(resetForm.password || ''))
+const hasSpecialReset = computed(() => /[!"#$%&/=.\-*;]/.test(resetForm.password || ''))
 
 // --- Roles ---
 const roles = ref([])
@@ -798,6 +871,51 @@ const openAssignRoleModal = async (user) => {
     userRolesSelection.value = [] // Reset
     await fetchUserRoles(user.id)
     assignRoleModalOpen.value = true
+}
+
+const openResetPasswordModal = (user) => {
+    selectedUser.value = user
+    resetForm.password = ''
+    resetForm.confirmPassword = ''
+    isResetPasswordVisible.value = false
+    isResetConfirmVisible.value = false
+    resetPasswordModalOpen.value = true
+}
+
+const handleResetPassword = async () => {
+    try {
+        await api.post(`/users/${selectedUser.value.id}/password`, {
+            password: resetForm.password
+        })
+        $q.notify({ type: 'positive', message: 'Contraseña actualizada exitosamente' })
+        resetPasswordModalOpen.value = false
+    } catch (error) {
+        const msg = error.response?.data?.error || 'Error al actualizar contraseña'
+        $q.notify({ type: 'negative', message: msg })
+    }
+}
+
+const generateResetPassword = () => {
+    const length = 12
+    const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!\"#$%&/=.-*;"
+    let retVal = ""
+    retVal += "A"
+    retVal += "a"
+    retVal += "1"
+    retVal += "."
+
+    for (let i = 0, n = charset.length; i < length - 4; ++i) {
+        retVal += charset.charAt(Math.floor(Math.random() * n))
+    }
+    retVal = retVal.split('').sort(function () { return 0.5 - Math.random() }).join('');
+
+    resetForm.password = retVal
+    resetForm.confirmPassword = retVal
+}
+
+const hasPermission = (permName) => {
+    const permissions = LocalStorage.getItem('permissions') || []
+    return permissions.some(p => p.name === permName)
 }
 
 const fetchUserRoles = async (userId) => {

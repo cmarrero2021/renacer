@@ -149,6 +149,42 @@ exports.updateUser = async (req, res) => {
   }
 };
 
+// Asignar nueva contraseña a un usuario (Admin)
+exports.assignUserPassword = async (req, res) => {
+  const { userId } = req.params;
+  const { password } = req.body;
+
+  if (!password) {
+    return res.status(400).json({ error: "La contraseña es obligatoria." });
+  }
+
+  const passwordErrors = validatePassword(password);
+  if (passwordErrors.length > 0) {
+    return res.status(400).json({ error: passwordErrors.join(" ") });
+  }
+
+  const client = await pool.connect();
+  try {
+    const hashedPassword = await hashPassword(password);
+    
+    const result = await client.query(
+      "UPDATE users SET password_hash = $1, last_password_change = NOW(), failed_login_attempts = 0, updated_at = NOW() WHERE id = $2 RETURNING email",
+      [hashedPassword, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "Usuario no encontrado." });
+    }
+
+    res.status(200).json({ message: `Contraseña de ${result.rows[0].email} actualizada exitosamente.` });
+  } catch (err) {
+    console.error("Error al asignar contraseña:", err);
+    res.status(500).json({ error: "Error al asignar la contraseña." });
+  } finally {
+    client.release();
+  }
+};
+
 // Eliminar Usuario (Borrado Lógico)
 exports.deleteUser = async (req, res) => {
   const { userId } = req.params;

@@ -15,7 +15,7 @@
           <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" @keyup.enter="handleLogin" />
 
           <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'"
-            @keyup.enter="handleLogin">
+            class="no-uppercase" @keyup.enter="handleLogin">
             <template v-slot:append>
               <q-btn :icon="isPasswordVisible ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
                 @click="isPasswordVisible = !isPasswordVisible" />
@@ -86,7 +86,7 @@
           <p class="text-body2 q-mb-md">Ingrese su nueva contraseña.</p>
 
           <q-input filled v-model="newPassword" label="Nueva Contraseña" :type="showNewPassword ? 'text' : 'password'"
-            class="q-mb-sm" :rules="passwordRules">
+            class="q-mb-sm no-uppercase" :rules="passwordRules">
             <template v-slot:append>
               <q-btn :icon="showNewPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"
                 @click="showNewPassword = !showNewPassword" />
@@ -94,7 +94,7 @@
           </q-input>
 
           <q-input filled v-model="confirmPassword" label="Confirmar Contraseña"
-            :type="showConfirmPassword ? 'text' : 'password'"
+            :type="showConfirmPassword ? 'text' : 'password'" class="no-uppercase"
             :rules="[val => !!val || 'Requerido', val => val === newPassword || 'Las contraseñas no coinciden']">
             <template v-slot:append>
               <q-btn :icon="showConfirmPassword ? 'visibility' : 'visibility_off'" flat round dense color="grey-7"

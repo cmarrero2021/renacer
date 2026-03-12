@@ -19,4 +19,44 @@ html, body, #q-app {
   margin: 0;
   padding: 0;
 }
-
+
+// Case standardization
+.q-field {
+  // Inner input inside Quasar components
+  input, textarea {
+    text-transform: uppercase;
+  }
+
+  // Exceptions inside Quasar (by type or class)
+  input[type="password"],
+  &.no-uppercase input,
+  &.no-transform input {
+    text-transform: none !important;
+  }
+  
+  input[type="email"], 
+  input[type="url"],
+  &.lowercase-input input {
+    text-transform: lowercase !important;
+  }
+}
+
+// Global defaults for non-quasar/plain inputs
+input {
+  text-transform: uppercase;
+  
+  &[type="password"], &.no-uppercase, &.no-transform {
+    text-transform: none !important;
+  }
+  
+  &[type="email"], &[type="url"], &.lowercase-input {
+    text-transform: lowercase !important;
+  }
+}
+
+textarea {
+  text-transform: uppercase;
+  &.no-uppercase, &.no-transform {
+    text-transform: none !important;
+  }
+}

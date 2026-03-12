@@ -56,23 +56,70 @@ const handleSessionExpired = (router) => {
   }
 };
 
+// Función recursiva para transformar campos de texto
+const transformPayload = (obj) => {
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(transformPayload);
+
+  const newObj = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      // Campos que NO deben ser alterados (Passwords y Tokens)
+      const lowKey = key.toLowerCase();
+      if (lowKey.includes('password') ||
+        lowKey.includes('pass') ||
+        lowKey.includes('contrasena') ||
+        lowKey.includes('contraseña') ||
+        lowKey.includes('token') ||
+        lowKey.includes('secret') ||
+        lowKey.includes('clave') ||
+        lowKey.includes('pin') ||
+        lowKey.includes('code')) {
+        newObj[key] = value;
+      }
+      // Campos que deben ser MINÚSCULAS
+      else if (key.toLowerCase().includes('email') ||
+        key.toLowerCase().includes('correo') ||
+        key.toLowerCase().includes('username') ||
+        key.toLowerCase().includes('user') ||
+        key.toLowerCase().includes('login') ||
+        key.toLowerCase().includes('url') ||
+        key.toLowerCase().includes('website') ||
+        key.toLowerCase().includes('sitio_web')) {
+        newObj[key] = value.toLowerCase().trim();
+      }
+      // Campos que deben ser MAYÚSCULAS
+      else {
+        newObj[key] = value.toUpperCase().trim();
+      }
+    } else if (typeof value === 'object') {
+      newObj[key] = transformPayload(value);
+    } else {
+      newObj[key] = value;
+    }
+  }
+  return newObj;
+};
+
 export default boot(({ app, router }) => {
   // Interceptor para añadir token automáticamente (request)
-  api.interceptors.request.use((config) => {
+  const requestInterceptor = (config) => {
     const token = LocalStorage.getItem("token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    return config;
-  });
 
-  authApi.interceptors.request.use((config) => {
-    const token = LocalStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // Transformar payload
+    if (config.data && !(config.data instanceof FormData)) {
+      config.data = transformPayload(config.data);
     }
+
     return config;
-  });
+  };
+
+  api.interceptors.request.use(requestInterceptor);
+  authApi.interceptors.request.use(requestInterceptor);
+  axios.interceptors.request.use(requestInterceptor);
 
   // Interceptor para manejar errores de respuesta (response)
   const responseErrorHandler = (error) => {
@@ -92,15 +139,6 @@ export default boot(({ app, router }) => {
     (response) => response,
     responseErrorHandler
   );
-
-  // También agregar interceptores al axios global (para componentes que lo importan directamente)
-  axios.interceptors.request.use((config) => {
-    const token = LocalStorage.getItem("token");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  });
 
   axios.interceptors.response.use(
     (response) => response,

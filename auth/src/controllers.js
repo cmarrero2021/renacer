@@ -422,9 +422,10 @@ exports.login = async (req, res) => {
 
     // Buscar usuario
     const result = await client.query(
-      "SELECT id, email, password_hash, status, failed_login_attempts, last_failed_login, last_login_attempt FROM users WHERE email = $1",
+      "SELECT id, first_name, last_name, email, password_hash, status, failed_login_attempts, last_failed_login, last_login_attempt FROM users WHERE email = $1",
       [username]
     );
+
 
     if (!result.rows.length) {
       await client.query(
@@ -581,10 +582,13 @@ exports.login = async (req, res) => {
         message: "Inicio de sesión exitoso.",
         token,
         email: user.email,
+        firstName: user.first_name,
+        lastName: user.last_name,
         sessionDuration: expiresInSeconds / 60,
         role,
         permissions,
       });
+
     }
 
     // ============================================
@@ -712,9 +716,10 @@ exports.verify2FA = async (req, res) => {
 
     // Verificar estado del usuario
     const userCheck = await client.query(
-      'SELECT email, status FROM users WHERE id = $1 AND deleted_at IS NULL',
+      'SELECT first_name, last_name, email, status FROM users WHERE id = $1 AND deleted_at IS NULL',
       [userId]
     );
+
     if (!userCheck.rows.length || userCheck.rows[0].status === 'suspended') {
       return res.status(403).json({
         error: `Su cuenta ha sido suspendida. Comuníquese con el administrador: ${adminContact}`,
@@ -832,10 +837,13 @@ exports.verify2FA = async (req, res) => {
       message: "Inicio de sesión exitoso.",
       token,
       email: userCheck.rows[0].email,
+      firstName: userCheck.rows[0].first_name,
+      lastName: userCheck.rows[0].last_name,
       sessionDuration: expiresInSeconds / 60,
       role,
       permissions,
     });
+
   } catch (err) {
     console.error("❌ Error en verify2FA:", err.message);
     res.status(500).json({ error: "Error al verificar el código." });

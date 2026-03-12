@@ -13,6 +13,7 @@
         <template v-if="!show2FA">
           <h4>Iniciar Sesión</h4>
           <q-input filled outlined v-model="email" label="Correo Electrónico" type="email" @keyup.enter="handleLogin" />
+
           <q-input filled outlined v-model="password" label="Contraseña" :type="isPasswordVisible ? 'text' : 'password'"
             @keyup.enter="handleLogin">
             <template v-slot:append>
@@ -28,6 +29,7 @@
         <template v-if="show2FA">
           <h4>Verificación de Código</h4>
           <p class="text-body2 q-mb-sm">Se envió un código de 6 dígitos a su correo electrónico.</p>
+
           <p class="text-caption text-grey q-mb-md">El código expira en 10 minutos.</p>
           <q-input filled outlined v-model="twoFACode" label="Código de Verificación" mask="######" maxlength="6"
             class="code-input" @keyup.enter="handleVerify2FA">
@@ -271,7 +273,10 @@ const completeLogin = (data) => {
   LocalStorage.set('token', data.token);
   LocalStorage.set('permissions', data.permissions);
   LocalStorage.set('role', data.role);
+  LocalStorage.set('firstName', data.firstName || '');
+  LocalStorage.set('lastName', data.lastName || '');
   LocalStorage.set('userEmail', data.email || email.value);
+
   Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000, icon: "check_circle" });
   router.push("/admin");
 };

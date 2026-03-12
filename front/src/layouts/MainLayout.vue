@@ -7,31 +7,21 @@
       <q-toolbar>
         <q-btn dense flat round icon="menu" @click="toggleLeftDrawer" />
 
-        <q-toolbar-title>
-          RENACER - Registro Nacional de Centros de Atención al Adulto Mayor
+        <q-toolbar-title class="text-subtitle1 text-md-h6">
+          RENACER
         </q-toolbar-title>
 
         <q-space />
 
-        <q-btn-dropdown flat round dense icon="account_circle" dropdown-icon="arrow_drop_down" class="user-menu-btn">
-          <q-list style="min-width: 220px">
-            <q-item>
-              <q-item-section>
-                <q-item-label>{{ userEmail }}</q-item-label>
-                <q-item-label caption>
-                  <q-badge color="primary" :label="userRole" />
-                </q-item-label>
-              </q-item-section>
-            </q-item>
-            <q-separator />
-            <q-item clickable v-close-popup @click="logout">
-              <q-item-section avatar>
-                <q-icon name="logout" />
-              </q-item-section>
-              <q-item-section>Cerrar Sesión</q-item-section>
-            </q-item>
-          </q-list>
-        </q-btn-dropdown>
+        <div class="gt-xs q-mr-md text-right">
+          <div class="text-weight-bold" style="line-height: 1.2; font-size: 0.85rem;">{{ userFullName }}</div>
+          <div class="text-caption text-grey-4" style="font-size: 0.75rem;">{{ userRole }}</div>
+        </div>
+
+        <q-btn flat round dense icon="logout" @click="logout" class="q-ml-sm">
+          <q-tooltip>Cerrar Sesión</q-tooltip>
+        </q-btn>
+
       </q-toolbar>
     </q-header>
 
@@ -119,10 +109,18 @@ const router = useRouter()
 const logoutUrl = import.meta.env.VITE_LOGOUT_URL
 
 const userEmail = computed(() => LocalStorage.getItem('userEmail') || '')
+const userFirstName = computed(() => LocalStorage.getItem('firstName') || '')
+const userLastName = computed(() => LocalStorage.getItem('lastName') || '')
+const userFullName = computed(() => {
+  if (!userFirstName.value && !userLastName.value) return userEmail.value.toUpperCase()
+  return `${userFirstName.value} ${userLastName.value}`.trim().toUpperCase()
+})
+
 const userRole = computed(() => {
   const role = LocalStorage.getItem('role') || ''
   return role.charAt(0).toUpperCase() + role.slice(1)
 })
+
 
 const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
@@ -154,7 +152,10 @@ const logout = async () => {
     LocalStorage.remove('token')
     LocalStorage.remove('permissions')
     LocalStorage.remove('role')
+    LocalStorage.remove('firstName')
+    LocalStorage.remove('lastName')
     LocalStorage.remove('userEmail')
+
 
     Notify.create({
       message: 'Sesión cerrada correctamente',

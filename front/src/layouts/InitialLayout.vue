@@ -7,8 +7,8 @@
           RENACER - Registro Nacional de Centros de Atención al Adulto Mayor
         </q-toolbar-title>
         <q-space />
-        <q-btn flat label="Iniciar Sesión" to="/login" icon="login" />
       </q-toolbar>
+
     </q-header>
     <q-page-container>
       <router-view />

@@ -1,5 +1,7 @@
 <template>
-  <q-layout view="lHh lpR lFf">
+  <q-layout view="hHh Lpr lff" container style="height: 100vh">
+
+
     <q-header elevated class="bg-primary text-white">
       <img src="/img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
       <q-toolbar>

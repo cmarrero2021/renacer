@@ -207,7 +207,7 @@
                             </div>
 
                             <q-input v-model="userForm.password" label="Contraseña"
-                                :type="isPasswordVisible ? 'text' : 'password'"
+                                :type="isPasswordVisible ? 'text' : 'password'" class="no-uppercase"
                                 :hint="editingUser ? 'Dejar en blanco para mantener la actual' : ''"
                                 :rules="[val => (!editingUser && !val) ? 'Requerido' : true, val => !val || validatePasswordStrength(val) === true || validatePasswordStrength(val)]">
                                 <template v-slot:append>
@@ -217,7 +217,7 @@
                             </q-input>
 
                             <q-input v-model="userForm.confirmPassword" label="Confirmar Contraseña"
-                                :type="isConfirmPasswordVisible ? 'text' : 'password'"
+                                :type="isConfirmPasswordVisible ? 'text' : 'password'" class="no-uppercase"
                                 :rules="[val => val === userForm.password || 'Las contraseñas no coinciden']">
                                 <template v-slot:append>
                                     <q-icon :name="isConfirmPasswordVisible ? 'visibility' : 'visibility_off'"

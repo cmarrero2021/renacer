@@ -77,7 +77,7 @@ const transformPayload = (obj) => {
         lowKey.includes('code')) {
         newObj[key] = value;
       }
-      // Campos que deben ser MINÚSCULAS
+      // Campos que deben ser MINÚSCULAS o permanecer como están (incluye metadatos técnicos)
       else if (key.toLowerCase().includes('email') ||
         key.toLowerCase().includes('correo') ||
         key.toLowerCase().includes('username') ||
@@ -85,7 +85,8 @@ const transformPayload = (obj) => {
         key.toLowerCase().includes('login') ||
         key.toLowerCase().includes('url') ||
         key.toLowerCase().includes('website') ||
-        key.toLowerCase().includes('sitio_web')) {
+        key.toLowerCase().includes('sitio_web') ||
+        ['status', 'type', 'action', 'resource', 'state', 'method', 'mode'].includes(key.toLowerCase())) {
         newObj[key] = value.toLowerCase().trim();
       }
       // Campos que deben ser MAYÚSCULAS

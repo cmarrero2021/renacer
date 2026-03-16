@@ -7,6 +7,10 @@ export const geoService = {
     getEstados: () => authApi.get('/geo/estados'),
     getMunicipios: (estadoId) => authApi.get('/geo/municipios', { params: { estado_id: estadoId } }),
     getParroquias: (municipioId) => authApi.get('/geo/parroquias', { params: { municipio_id: municipioId } }),
+    // Proxy Nominatim (CORS bypass)
+    proxySearch: (query) => authApi.get('/geo/proxy/search', { params: { q: query } }),
+    proxyReverse: (lat, lon) => authApi.get('/geo/proxy/reverse', { params: { lat, lon } }),
+    resolveGeo: (data) => authApi.post('/geo/resolve', data),
 };
 
 // ─── Mi centro (ficha única) ─────────────────────────────────────────────────

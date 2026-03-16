@@ -36,7 +36,7 @@ async function verifyCentroAccess(userId, centroId, client, requiredLevel = 'rea
          WHERE user_id = $1 AND centro_id = $2 AND access_level = ANY($3) AND deleted_at IS NULL`,
         [userId, centroId, accessLevels]
     );
-    
+
     return delegatedResult.rows.length > 0;
 }
 
@@ -1177,6 +1177,161 @@ exports.listMaintenanceLogs = async (req, res) => {
     }
 };
 
+// ─── Proxy Geográfico (CORS bypass) ──────────────────────────────────────────
+
+/**
+ * Proxy para búsqueda de direcciones (Forward Geocoding)
+ * GET /geo/proxy/search?q=...
+ */
+exports.proxyGeocode = async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.status(400).json({ error: 'Falta el parámetro q' });
+
+        const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&lang=en&limit=1`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`External API Error: ${response.status}`);
+        const data = await response.json();
+        
+        const results = (data.features || []).map(f => {
+            const p = f.properties;
+            return {
+                lat: f.geometry.coordinates[1],
+                lon: f.geometry.coordinates[0],
+                display_name: [p.name, p.street, p.district, p.city, p.county, p.state, p.country]
+                    .filter(Boolean).join(', ')
+            };
+        });
+        res.json(results);
+    } catch (err) {
+        console.error('Error in proxyGeocode (Photon):', err);
+        res.status(502).json({ error: 'Error al consultar el servicio de geocodificación', details: err.message });
+    }
+};
+
+/**
+ * Resuelve nombres geográficos a IDs de la base de datos local
+ * POST /geo/resolve
+ * Body: { estadoNombre, municipioNombre, parroquiaNombre }
+ */
+exports.resolveGeoEntities = async (req, res) => {
+    let { estadoNombre, municipioNombre, parroquiaNombre } = req.body;
+
+    const cleanPrefix = (str) => {
+        if (!str) return '';
+        // Limpieza agresiva de prefijos y sufijos comunes en inglés y español
+        return str.toLowerCase()
+            .replace(/^(estado|municipio|parroquia|distrito|ciudad|city|state|county|municipality|parish|bolivariano)\s+/i, '')
+            .replace(/\s+(state|county|municipality|parish)$/i, '')
+            .trim();
+    };
+
+    const normalizedStates = {
+        'capital district': 'Distrito Capital',
+        'amazonas state': 'Amazonas',
+        'bolivar state': 'Bolívar',
+        'tachira': 'Táchira',
+        'falcon': 'Falcón',
+        'zulia state': 'Zulia',
+        'bolivar': 'Bolívar',
+        'vargas': 'La Guaira'
+    };
+
+    if (estadoNombre && normalizedStates[estadoNombre.toLowerCase()]) {
+        estadoNombre = normalizedStates[estadoNombre.toLowerCase()];
+    }
+
+    let searchEst = cleanPrefix(estadoNombre);
+    let searchMun = cleanPrefix(municipioNombre);
+    let searchPar = cleanPrefix(parroquiaNombre);
+
+    // Sinónimos específicos de municipios
+    if (searchEst === 'distrito capital' || searchEst === 'capital') {
+        if (searchMun === 'caracas' || !searchMun) searchMun = 'libertador';
+    }
 
 
+    const client = await pool.connect();
+    try {
+        const response = { estado: null, municipio: null, parroquia: null };
+        if (searchEst) {
+            const estResult = await client.query(
+                `SELECT id, nombre FROM public.estados 
+                 WHERE nombre ILIKE $1 OR nombre ILIKE $2 OR $3 ILIKE '%' || nombre || '%' LIMIT 1`,
+                [searchEst, `%${searchEst}%`, estadoNombre]
+            );
 
+            if (estResult.rows.length > 0) {
+                response.estado = estResult.rows[0];
+
+                if (searchMun) {
+                    const munResult = await client.query(
+                        `SELECT id, nombre FROM public.municipios 
+                         WHERE estado_id = $1 AND (nombre ILIKE $2 OR nombre ILIKE $3 OR $4 ILIKE '%' || nombre || '%') LIMIT 1`,
+                        [response.estado.id, searchMun, `%${searchMun}%`, municipioNombre]
+                    );
+
+                    if (munResult.rows.length > 0) {
+                        response.municipio = munResult.rows[0];
+
+                        if (searchPar) {
+                            const parResult = await client.query(
+                                `SELECT id, nombre FROM public.parroquias 
+                                 WHERE municipio_id = $1 AND (nombre ILIKE $2 OR nombre ILIKE $3 OR $4 ILIKE '%' || nombre || '%') LIMIT 1`,
+                                [response.municipio.id, searchPar, `%${searchPar}%`, parroquiaNombre]
+                            );
+                            if (parResult.rows.length > 0) {
+                                response.parroquia = parResult.rows[0];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        res.json(response);
+    } catch (err) {
+        console.error('Error in resolveGeoEntities:', err);
+        res.status(500).json({ error: 'Error al resolver entidades geográficas', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+/**
+ * Proxy para búsqueda invertida (Reverse Geocoding)
+ * GET /geo/proxy/reverse?lat=...&lon=...
+ */
+exports.proxyReverseGeocode = async (req, res) => {
+    try {
+        const { lat, lon } = req.query;
+        if (!lat || !lon) return res.status(400).json({ error: 'Faltan parámetros lat/lon' });
+
+        const url = `https://photon.komoot.io/reverse?lat=${lat}&lon=${lon}&lang=en`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`External API Error: ${response.status}`);
+        const data = await response.json();
+        
+        if (data.features && data.features.length > 0) {
+            const f = data.features[0];
+            const p = f.properties;
+            const mappedData = {
+                display_name: [p.name, p.street, p.district, p.city, p.county, p.state, p.country].filter(Boolean).join(', '),
+                address: {
+                    road: p.street || p.name,
+                    house_number: p.housenumber,
+                    neighbourhood: p.district || p.name,
+                    suburb: p.district || p.name,
+                    city: p.city,
+                    county: p.county,
+                    state: p.state
+                }
+            };
+            res.json(mappedData);
+        } else {
+            res.json({});
+        }
+    } catch (err) {
+        console.error('Error in proxyReverseGeocode (Photon):', err);
+        res.status(502).json({ error: 'Error al consultar el servicio de geocodificación inversa', details: err.message });
+    }
+};

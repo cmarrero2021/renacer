@@ -1,9 +1,9 @@
-; el mismo <template>
+<template>
     <q-page padding>
         <!-- ───── Encabezado ───────────────────────────────────────────────── -->
         <div class="row items-center q-mb-md">
             <q-btn flat round icon="arrow_back" @click="$router.back()" />
-            <div class="q-ml-sm">
+            <div class="col q-ml-sm">
                 <div class="text-h5">
                     {{ isEdit ? 'Editar Ficha del Centro' : 'Registrar Centro de Atención' }}
                 </div>
@@ -623,7 +623,7 @@ import { ref, computed, onMounted, defineComponent, h } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Notify } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
-import { miCentroService, fichasService } from 'src/services/centros.service';
+import { miCentroService, fichasService, geoService } from 'src/services/centros.service';
 
 // ── Sub-componentes inline ────────────────────────────────────────────────────
 const InnerProgress = defineComponent({
@@ -897,8 +897,47 @@ function addPobRow() { pob.value.registros.push({ modalidad: 'residente', catego
 const geoLoading = ref(false);
 const geocodeLoading = ref(false);
 
+/**
+ * Intenta resolver nombres de estado/municipio/parroquia recibidos de la API 
+ * y seleccionarlos en los combos locales.
+ */
+async function autoSelectGeo(addressObj, fullName) {
+    try {
+        // Enviar nombres al backend para resolver IDs
+        const { data } = await geoService.resolveGeo({
+            estadoNombre: addressObj.state,
+            // En Vzla, county suele ser el municipio. city a veces trae la parroquia.
+            municipioNombre: addressObj.county || (addressObj.city?.toLowerCase().includes('municipio') ? addressObj.city : null) || addressObj.city,
+            // Preferimos city si contiene la palabra "Parroquia", sino suburb/neighbourhood
+            parroquiaNombre: (addressObj.city?.toLowerCase().includes('parroquia') ? addressObj.city : null) || 
+                             addressObj.suburb || addressObj.neighbourhood || addressObj.district
+        });
+
+        if (data.estado) {
+            estadoSel.value = data.estado.id;
+            await onEstadoCambio(data.estado.id);
+            
+            if (data.municipio) {
+                municipioSel.value = data.municipio.id;
+                await onMunicipioCambio(data.municipio.id);
+                
+                if (data.parroquia) {
+                    datos.value.parroquia_id = data.parroquia.id;
+                    Notify.create({
+                        type: 'info',
+                        message: `Geolocalización: Detectada Parroquia ${data.parroquia.nombre}`,
+                        timeout: 3000
+                    });
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Error auto-selecting geo-entities:', err);
+    }
+}
+
 // Opción 1: GPS/WiFi del dispositivo (API nativa del navegador, sin costo ni API key)
-function obtenerUbicacionActual() {
+async function obtenerUbicacionActual() {
     if (!navigator.geolocation) {
         return Notify.create({ type: 'negative', message: 'Tu navegador no soporta geolocalización.' });
     }
@@ -910,11 +949,9 @@ function obtenerUbicacionActual() {
             datos.value.latitud = lat;
             datos.value.longitud = lng;
 
-            // Geocodificación inversa: obtener dirección desde coordenadas (Nominatim)
+            // Geocodificación inversa vía PROXY del backend (evita CORS)
             try {
-                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`;
-                const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-                const data = await resp.json();
+                const { data } = await geoService.proxyReverse(lat, lng);
 
                 if (data && data.address) {
                     // Construir una dirección legible con los componentes disponibles
@@ -933,10 +970,13 @@ function obtenerUbicacionActual() {
                     Notify.create({
                         type: 'positive',
                         icon: 'my_location',
-                        message: 'Ubicación y dirección obtenidas correctamente',
+                        message: 'Ubicación y dirección obtenidas (vía proxy)',
                         caption: data.display_name,
                         timeout: 5000
                     });
+
+                    // Auto-selección de combos (Estado, Municipio, Parroquia)
+                    await autoSelectGeo(data.address, data.display_name);
                 } else {
                     Notify.create({
                         type: 'positive',
@@ -947,7 +987,7 @@ function obtenerUbicacionActual() {
                     });
                 }
             } catch {
-                // Si falla el reverse geocoding, al menos tenemos las coordenadas
+                // Si falla el reverse geocoding, ya tenemos las coordenadas
                 Notify.create({
                     type: 'positive',
                     icon: 'my_location',
@@ -985,23 +1025,34 @@ async function geocodificarDireccion() {
         const query = [datos.value.direccion, parroquiaLabel, municipioLabel, estadoLabel, 'Venezuela']
             .filter(Boolean).join(', ');
 
-        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
-        const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
-        const results = await resp.json();
+        const { data } = await geoService.proxySearch(query);
 
-        if (results.length === 0) {
+        if (data.length === 0) {
             Notify.create({ type: 'warning', message: 'No se encontraron coordenadas para esa dirección. Intenta con más detalle.' });
             return;
         }
-        datos.value.latitud = parseFloat(parseFloat(results[0].lat).toFixed(7));
-        datos.value.longitud = parseFloat(parseFloat(results[0].lon).toFixed(7));
+        datos.value.latitud = parseFloat(parseFloat(data[0].lat).toFixed(7));
+        datos.value.longitud = parseFloat(parseFloat(data[0].lon).toFixed(7));
         Notify.create({
             type: 'positive',
             icon: 'search',
-            message: `Coordenadas obtenidas: ${datos.value.latitud}, ${datos.value.longitud}`,
-            caption: results[0].display_name,
+            message: `Coordenadas obtenidas (vía proxy): ${datos.value.latitud}, ${datos.value.longitud}`,
+            caption: data[0].display_name,
             timeout: 5000
         });
+
+        // Intentar auto-seleccionar combos si tenemos acceso a los detalles de la dirección
+        // En proxySearch, data[0] es un objeto que ya contiene un mapeo básico de dirección
+        if (data[0]) {
+            // Nota: En búsqueda directa (search), la respuesta puede variar. 
+            // Podríamos intentar una búsqueda inversa sobre las coordenadas obtenidas para mayor precisión en los combos
+            try {
+                const revResp = await geoService.proxyReverse(datos.value.latitud, datos.value.longitud);
+                if (revResp.data && revResp.data.address) {
+                    await autoSelectGeo(revResp.data.address, revResp.data.display_name);
+                }
+            } catch (e) { console.error('Error resolving geo after search:', e); }
+        }
     } catch {
         Notify.create({ type: 'negative', message: 'Error al conectar con el servicio de geocodificación.' });
     } finally {

@@ -7,7 +7,8 @@ const {
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos,
-    purgeDeletedRecords, listMaintenanceLogs
+    purgeDeletedRecords, listMaintenanceLogs,
+    proxyGeocode, proxyReverseGeocode, resolveGeoEntities
 } = require('./controllers_centros');
 
 
@@ -20,7 +21,13 @@ router.get('/geo/estados', listEstados);
 router.get('/geo/municipios', listMunicipios);   // ?estado_id=X
 router.get('/geo/parroquias', listParroquias);   // ?municipio_id=X
 
+// ─── Proxy Geográfico (CORS bypass) ──────────────────────────────────────────
+router.get('/geo/proxy/search', proxyGeocode);
+router.get('/geo/proxy/reverse', proxyReverseGeocode);
+router.post('/geo/resolve', resolveGeoEntities);
+
 // ─── Mi centro (verificar ficha única) ────────────────────────────────────
+
 router.get('/mi-centro', getMiCentro);
 
 // ─── Centros CRUD ─────────────────────────────────────────────────────────

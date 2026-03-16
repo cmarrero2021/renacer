@@ -1,0 +1,3 @@
+{
+  "constraint": "CHECK (((tipo_establecimiento)::text = ANY ((ARRAY['publico'::character varying, 'afiliada_ivss'::character varying, 'privado'::character varying, 'religiosa'::character varying, 'otra'::character varying])::text[])))"
+}

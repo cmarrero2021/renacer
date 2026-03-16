@@ -149,8 +149,8 @@ exports.listEstados = async (req, res) => {
     const client = await pool.connect();
     try {
         const result = await client.query(
-            `SELECT id, nombre, codigo, codigo_ine, codigo_cne, codigo_igsb
-       FROM public.estados ORDER BY nombre`
+            `SELECT DISTINCT cod_entida AS id, estado AS nombre
+       FROM public.geografia ORDER BY estado`
         );
         res.json(result.rows);
     } catch (err) {
@@ -165,10 +165,10 @@ exports.listMunicipios = async (req, res) => {
     const client = await pool.connect();
     try {
         const query = estado_id
-            ? `SELECT id, estado_id, nombre, codigo_ine, codigo_cne, codigo_igsb
-         FROM public.municipios WHERE estado_id = $1 ORDER BY nombre`
-            : `SELECT id, estado_id, nombre, codigo_ine, codigo_cne, codigo_igsb
-         FROM public.municipios ORDER BY nombre`;
+            ? `SELECT DISTINCT cod_munici AS id, municipio AS nombre
+         FROM public.geografia WHERE cod_entida = $1 ORDER BY municipio`
+            : `SELECT DISTINCT cod_munici AS id, municipio AS nombre
+         FROM public.geografia ORDER BY municipio`;
         const params = estado_id ? [estado_id] : [];
         const result = await client.query(query, params);
         res.json(result.rows);
@@ -180,15 +180,15 @@ exports.listMunicipios = async (req, res) => {
 };
 
 exports.listParroquias = async (req, res) => {
-    const { municipio_id } = req.query;
+    const { municipio_id, estado_id } = req.query;
     const client = await pool.connect();
     try {
         const query = municipio_id
-            ? `SELECT id, municipio_id, nombre, codigo_ine, codigo_cne, codigo_igsb
-         FROM public.parroquias WHERE municipio_id = $1 ORDER BY nombre`
-            : `SELECT id, municipio_id, nombre, codigo_ine, codigo_cne, codigo_igsb
-         FROM public.parroquias ORDER BY nombre`;
-        const params = municipio_id ? [municipio_id] : [];
+            ? `SELECT cod_parroq AS id, parroquia AS nombre
+         FROM public.geografia WHERE cod_entida = $1 AND cod_munici = $2 ORDER BY parroquia`
+            : `SELECT cod_parroq AS id, parroquia AS nombre
+         FROM public.geografia ORDER BY parroquia`;
+        const params = (estado_id && municipio_id) ? [estado_id, municipio_id] : (municipio_id ? [municipio_id] : []);
         const result = await client.query(query, params);
         res.json(result.rows);
     } catch (err) {
@@ -1215,74 +1215,83 @@ exports.proxyGeocode = async (req, res) => {
  * Body: { estadoNombre, municipioNombre, parroquiaNombre }
  */
 exports.resolveGeoEntities = async (req, res) => {
-    let { estadoNombre, municipioNombre, parroquiaNombre } = req.body;
-
-    const cleanPrefix = (str) => {
-        if (!str) return '';
-        // Limpieza agresiva de prefijos y sufijos comunes en inglés y español
-        return str.toLowerCase()
-            .replace(/^(estado|municipio|parroquia|distrito|ciudad|city|state|county|municipality|parish|bolivariano)\s+/i, '')
-            .replace(/\s+(state|county|municipality|parish)$/i, '')
-            .trim();
-    };
-
-    const normalizedStates = {
-        'capital district': 'Distrito Capital',
-        'amazonas state': 'Amazonas',
-        'bolivar state': 'Bolívar',
-        'tachira': 'Táchira',
-        'falcon': 'Falcón',
-        'zulia state': 'Zulia',
-        'bolivar': 'Bolívar',
-        'vargas': 'La Guaira'
-    };
-
-    if (estadoNombre && normalizedStates[estadoNombre.toLowerCase()]) {
-        estadoNombre = normalizedStates[estadoNombre.toLowerCase()];
-    }
-
-    let searchEst = cleanPrefix(estadoNombre);
-    let searchMun = cleanPrefix(municipioNombre);
-    let searchPar = cleanPrefix(parroquiaNombre);
-
-    // Sinónimos específicos de municipios
-    if (searchEst === 'distrito capital' || searchEst === 'capital') {
-        if (searchMun === 'caracas' || !searchMun) searchMun = 'libertador';
-    }
-
-
+    let { estadoNombre, municipioNombre, parroquiaNombre, lat, lng } = req.body;
     const client = await pool.connect();
+
     try {
         const response = { estado: null, municipio: null, parroquia: null };
+
+        // 1. PRIORIDAD: Resolución por Coordenadas (Point-in-Polygon)
+        if (lat && lng) {
+            const geoResult = await client.query(
+                `SELECT cod_entida, estado, cod_munici, municipio, cod_parroq, parroquia
+                 FROM public.geografia 
+                 WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326)) 
+                 LIMIT 1`,
+                [lng, lat] // Ojo: PostGIS usa (Longitud, Latitud)
+            );
+
+            if (geoResult.rows.length > 0) {
+                const row = geoResult.rows[0];
+                response.estado = { id: row.cod_entida, nombre: row.estado };
+                response.municipio = { id: row.cod_munici, nombre: row.municipio };
+                response.parroquia = { id: row.cod_parroq, nombre: row.parroquia };
+                return res.json(response);
+            }
+        }
+
+        // 2. FALLBACK: Resolución por Nombres (si falla GPS o no se enviaron coordenadas)
+        const cleanPrefix = (str) => {
+            if (!str) return '';
+            return str.toLowerCase()
+                .replace(/^(estado|municipio|parroquia|distrito|ciudad|city|state|county|municipality|parish|bolivariano)\s+/i, '')
+                .replace(/\s+(state|county|municipality|parish)$/i, '')
+                .trim();
+        };
+
+        const normalizedStates = {
+            'capital district': 'Distrito Capital', 'amazonas state': 'Amazonas',
+            'bolivar state': 'Bolívar', 'tachira': 'Táchira', 'falcon': 'Falcón',
+            'zulia state': 'Zulia', 'bolivar': 'Bolívar', 'vargas': 'La Guaira'
+        };
+
+        if (estadoNombre && normalizedStates[estadoNombre.toLowerCase()]) {
+            estadoNombre = normalizedStates[estadoNombre.toLowerCase()];
+        }
+
+        let searchEst = cleanPrefix(estadoNombre);
+        let searchMun = cleanPrefix(municipioNombre);
+        let searchPar = cleanPrefix(parroquiaNombre);
+
+        if ((searchEst === 'distrito capital' || searchEst === 'capital') && (searchMun === 'caracas' || !searchMun)) {
+            searchMun = 'libertador';
+        }
+
         if (searchEst) {
-            const estResult = await client.query(
-                `SELECT id, nombre FROM public.estados 
-                 WHERE nombre ILIKE $1 OR nombre ILIKE $2 OR $3 ILIKE '%' || nombre || '%' LIMIT 1`,
+            const estRes = await client.query(
+                `SELECT DISTINCT cod_entida AS id, estado AS nombre FROM public.geografia 
+                 WHERE estado ILIKE $1 OR estado ILIKE $2 OR $3 ILIKE '%' || estado || '%' LIMIT 1`,
                 [searchEst, `%${searchEst}%`, estadoNombre]
             );
 
-            if (estResult.rows.length > 0) {
-                response.estado = estResult.rows[0];
-
+            if (estRes.rows.length > 0) {
+                response.estado = estRes.rows[0];
                 if (searchMun) {
-                    const munResult = await client.query(
-                        `SELECT id, nombre FROM public.municipios 
-                         WHERE estado_id = $1 AND (nombre ILIKE $2 OR nombre ILIKE $3 OR $4 ILIKE '%' || nombre || '%') LIMIT 1`,
+                    const munRes = await client.query(
+                        `SELECT DISTINCT cod_munici AS id, municipio AS nombre FROM public.geografia 
+                         WHERE cod_entida = $1 AND (municipio ILIKE $2 OR municipio ILIKE $3 OR $4 ILIKE '%' || municipio || '%') LIMIT 1`,
                         [response.estado.id, searchMun, `%${searchMun}%`, municipioNombre]
                     );
 
-                    if (munResult.rows.length > 0) {
-                        response.municipio = munResult.rows[0];
-
+                    if (munRes.rows.length > 0) {
+                        response.municipio = munRes.rows[0];
                         if (searchPar) {
-                            const parResult = await client.query(
-                                `SELECT id, nombre FROM public.parroquias 
-                                 WHERE municipio_id = $1 AND (nombre ILIKE $2 OR nombre ILIKE $3 OR $4 ILIKE '%' || nombre || '%') LIMIT 1`,
-                                [response.municipio.id, searchPar, `%${searchPar}%`, parroquiaNombre]
+                            const parRes = await client.query(
+                                `SELECT cod_parroq AS id, parroquia AS nombre FROM public.geografia 
+                                 WHERE cod_entida = $1 AND cod_munici = $2 AND (parroquia ILIKE $3 OR parroquia ILIKE $4 OR $5 ILIKE '%' || parroquia || '%') LIMIT 1`,
+                                [response.estado.id, response.municipio.id, searchPar, `%${searchPar}%`, parroquiaNombre]
                             );
-                            if (parResult.rows.length > 0) {
-                                response.parroquia = parResult.rows[0];
-                            }
+                            if (parRes.rows.length > 0) response.parroquia = parRes.rows[0];
                         }
                     }
                 }

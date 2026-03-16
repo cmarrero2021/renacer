@@ -903,14 +903,13 @@ const geocodeLoading = ref(false);
  */
 async function autoSelectGeo(addressObj, fullName) {
     try {
-        // Enviar nombres al backend para resolver IDs
+        // Enviar nombres y coordenadas al backend para resolver IDs
         const { data } = await geoService.resolveGeo({
             estadoNombre: addressObj.state,
-            // En Vzla, county suele ser el municipio. city a veces trae la parroquia.
-            municipioNombre: addressObj.county || (addressObj.city?.toLowerCase().includes('municipio') ? addressObj.city : null) || addressObj.city,
-            // Preferimos city si contiene la palabra "Parroquia", sino suburb/neighbourhood
-            parroquiaNombre: (addressObj.city?.toLowerCase().includes('parroquia') ? addressObj.city : null) || 
-                             addressObj.suburb || addressObj.neighbourhood || addressObj.district
+            municipioNombre: addressObj.county || addressObj.city,
+            parroquiaNombre: addressObj.suburb || addressObj.neighbourhood || addressObj.district,
+            lat: datos.value.latitud,
+            lng: datos.value.longitud
         });
 
         if (data.estado) {
@@ -1070,7 +1069,7 @@ async function onEstadoCambio(id) {
 }
 async function onMunicipioCambio(id) {
     datos.value.parroquia_id = null;
-    await centrosStore.fetchParroquias(id);
+    await centrosStore.fetchParroquias(id, estadoSel.value);
 }
 
 // ── Guardado de cada sección ──────────────────────────────────────────────────

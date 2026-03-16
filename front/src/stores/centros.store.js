@@ -51,11 +51,11 @@ export const useCentrosStore = defineStore('centros', () => {
         }
     }
 
-    async function fetchParroquias(municipioId) {
+    async function fetchParroquias(municipioId, estadoId) {
         parroquias.value = [];
         if (!municipioId) return;
         try {
-            const { data } = await geoService.getParroquias(municipioId);
+            const { data } = await geoService.getParroquias(municipioId, estadoId);
             parroquias.value = data;
         } catch {
             Notify.create({ type: 'negative', message: 'Error al cargar parroquias.' });

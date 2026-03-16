@@ -1,4 +1,4 @@
-<template>
+; el mismo <template>
     <q-page padding>
         <!-- ───── Encabezado ───────────────────────────────────────────────── -->
         <div class="row items-center q-mb-md">
@@ -184,7 +184,53 @@
                                 <q-input v-model="datos.direccion" label="b) Dirección completa (Av, Calle, Urb, N°) *"
                                     outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
+
+                            <!-- Botones de geolocalización -->
+                            <div class="col-12">
+                                <div class="row q-gutter-sm items-center q-mb-xs">
+                                    <q-btn unelevated color="primary" icon="my_location" size="sm"
+                                        label="Usar mi ubicación actual" :loading="geoLoading"
+                                        @click="obtenerUbicacionActual" />
+                                    <q-btn outline color="secondary" icon="search" size="sm"
+                                        label="Geocodificar dirección" :loading="geocodeLoading"
+                                        :disable="!datos.direccion" @click="geocodificarDireccion" />
+                                    <q-chip v-if="datos.latitud && datos.longitud" dense color="positive"
+                                        text-color="white" icon="check_circle">
+                                        Coordenadas cargadas
+                                    </q-chip>
+                                </div>
+                                <div class="text-caption text-grey-6">
+                                    <q-icon name="info" size="xs" />
+                                    "Ubicación actual" usa el GPS/WiFi del dispositivo · "Geocodificar" convierte la
+                                    dirección en coordenadas
+                                    (OpenStreetMap, sin costo)
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <q-input v-model.number="datos.latitud" label="Latitud (decimal) *" outlined dense
+                                    type="number" step="0.0000001" hint="Ej: 10.4880000" :rules="[
+                                        v => v !== null && v !== '' && v !== undefined || 'Requerido',
+                                        v => (v >= -90 && v <= 90) || 'Debe estar entre -90 y 90'
+                                    ]">
+                                    <template #prepend>
+                                        <q-icon name="my_location" color="primary" />
+                                    </template>
+                                </q-input>
+                            </div>
+                            <div class="col-12 col-md-4">
+                                <q-input v-model.number="datos.longitud" label="Longitud (decimal) *" outlined dense
+                                    type="number" step="0.0000001" hint="Ej: -66.9030000" :rules="[
+                                        v => v !== null && v !== '' && v !== undefined || 'Requerido',
+                                        v => (v >= -180 && v <= 180) || 'Debe estar entre -180 y 180'
+                                    ]">
+                                    <template #prepend>
+                                        <q-icon name="explore" color="primary" />
+                                    </template>
+                                </q-input>
+                            </div>
                         </div>
+
 
                         <!-- Propietarios -->
                         <section-header icon="person" label="Propietario(s)">
@@ -750,6 +796,7 @@ const datos = ref({
     fecha_fundacion: '', costo_mensual: null, direccion: '',
     parroquia_id: null, tipo_establecimiento: null,
     tipo_establecimiento_descripcion: '', tipo_clasificacion: null,
+    latitud: null, longitud: null,
     propietarios: [], representantes: [], telefonos: [], correos: [],
 });
 const cap = ref({
@@ -811,7 +858,7 @@ function countFields(obj, fields) {
 const tabFieldDefs = {
     datos: ['nombre_establecimiento', 'parroquia_id', 'tipo_establecimiento',
         'tipo_clasificacion', 'fecha_solicitud', 'tipo_solicitud', 'direccion',
-        'rif', 'propietarios', 'telefonos'],
+        'rif', 'propietarios', 'telefonos', 'latitud', 'longitud'],
     capacidad: ['capacidad_total_residente', 'capacidad_actual_residente', 'atencion_ambulatoria'],
     poblacion: ['fecha_corte', 'registros'],
     infraestructura: ['estado_inmueble', 'num_dormitorios', 'num_sanitarios',
@@ -846,6 +893,124 @@ function addTel() { datos.value.telefonos.push({ telefono: '', tipo: 'general' }
 function addCorreo() { datos.value.correos.push({ correo: '', tipo: 'general' }); }
 function addPobRow() { pob.value.registros.push({ modalidad: 'residente', categoria: 'adultos', femenino: 0, masculino: 0 }); }
 
+// ── Geolocalización ──────────────────────────────────────────────────────────
+const geoLoading = ref(false);
+const geocodeLoading = ref(false);
+
+// Opción 1: GPS/WiFi del dispositivo (API nativa del navegador, sin costo ni API key)
+function obtenerUbicacionActual() {
+    if (!navigator.geolocation) {
+        return Notify.create({ type: 'negative', message: 'Tu navegador no soporta geolocalización.' });
+    }
+    geoLoading.value = true;
+    navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+            const lat = parseFloat(pos.coords.latitude.toFixed(7));
+            const lng = parseFloat(pos.coords.longitude.toFixed(7));
+            datos.value.latitud = lat;
+            datos.value.longitud = lng;
+
+            // Geocodificación inversa: obtener dirección desde coordenadas (Nominatim)
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=es`;
+                const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+                const data = await resp.json();
+
+                if (data && data.address) {
+                    // Construir una dirección legible con los componentes disponibles
+                    const a = data.address;
+                    const partes = [
+                        a.road || a.pedestrian || a.footway || '',
+                        a.house_number ? `N° ${a.house_number}` : '',
+                        a.neighbourhood || a.suburb || a.quarter || '',
+                        a.city_district || a.county || '',
+                    ].filter(Boolean);
+                    const direccionObtenida = partes.join(', ');
+                    if (direccionObtenida) {
+                        datos.value.direccion = direccionObtenida;
+                    }
+
+                    Notify.create({
+                        type: 'positive',
+                        icon: 'my_location',
+                        message: 'Ubicación y dirección obtenidas correctamente',
+                        caption: data.display_name,
+                        timeout: 5000
+                    });
+                } else {
+                    Notify.create({
+                        type: 'positive',
+                        icon: 'my_location',
+                        message: `Coordenadas obtenidas: ${lat}, ${lng}`,
+                        caption: 'No se pudo obtener la dirección textual.',
+                        timeout: 4000
+                    });
+                }
+            } catch {
+                // Si falla el reverse geocoding, al menos tenemos las coordenadas
+                Notify.create({
+                    type: 'positive',
+                    icon: 'my_location',
+                    message: `Coordenadas obtenidas: ${lat}, ${lng}`,
+                    caption: 'No se pudo obtener la dirección textual.',
+                    timeout: 4000
+                });
+            } finally {
+                geoLoading.value = false;
+            }
+        },
+        (err) => {
+            geoLoading.value = false;
+            const msgs = {
+                1: 'Permiso de ubicación denegado. Revisa la configuración del navegador.',
+                2: 'No se pudo obtener la posición. Inténtalo nuevamente.',
+                3: 'Tiempo de espera agotado para obtener la ubicación.',
+            };
+            Notify.create({ type: 'warning', message: msgs[err.code] || 'Error de geolocalización.' });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+}
+
+
+// Opción 2: Geocoding por dirección vía Nominatim/OpenStreetMap (gratuito, sin API key)
+async function geocodificarDireccion() {
+    if (!datos.value.direccion) return;
+    geocodeLoading.value = true;
+    try {
+        // Construir query combinando dirección + estado/municipio/parroquia si están cargados
+        const parroquiaLabel = centrosStore.parroquias?.find(p => p.id === datos.value.parroquia_id)?.nombre || '';
+        const municipioLabel = centrosStore.municipios?.find(m => m.id === municipioSel.value)?.nombre || '';
+        const estadoLabel = centrosStore.estados?.find(e => e.id === estadoSel.value)?.nombre || '';
+        const query = [datos.value.direccion, parroquiaLabel, municipioLabel, estadoLabel, 'Venezuela']
+            .filter(Boolean).join(', ');
+
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`;
+        const resp = await fetch(url, { headers: { 'Accept-Language': 'es' } });
+        const results = await resp.json();
+
+        if (results.length === 0) {
+            Notify.create({ type: 'warning', message: 'No se encontraron coordenadas para esa dirección. Intenta con más detalle.' });
+            return;
+        }
+        datos.value.latitud = parseFloat(parseFloat(results[0].lat).toFixed(7));
+        datos.value.longitud = parseFloat(parseFloat(results[0].lon).toFixed(7));
+        Notify.create({
+            type: 'positive',
+            icon: 'search',
+            message: `Coordenadas obtenidas: ${datos.value.latitud}, ${datos.value.longitud}`,
+            caption: results[0].display_name,
+            timeout: 5000
+        });
+    } catch {
+        Notify.create({ type: 'negative', message: 'Error al conectar con el servicio de geocodificación.' });
+    } finally {
+        geocodeLoading.value = false;
+    }
+}
+
+
+
 // ── Cascada geo ───────────────────────────────────────────────────────────────
 const formDatosRef = ref(null);
 async function onEstadoCambio(id) {
@@ -879,6 +1044,8 @@ async function saveDatos() {
                 tipo_establecimiento: datos.value.tipo_establecimiento,
                 tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
                 tipo_clasificacion: datos.value.tipo_clasificacion,
+                latitud: datos.value.latitud,
+                longitud: datos.value.longitud,
                 propietarios: datos.value.propietarios,
                 representantes: datos.value.representantes,
                 telefonos: datos.value.telefonos,
@@ -895,6 +1062,8 @@ async function saveDatos() {
                 tipo_establecimiento: datos.value.tipo_establecimiento,
                 tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
                 tipo_clasificacion: datos.value.tipo_clasificacion,
+                latitud: datos.value.latitud,
+                longitud: datos.value.longitud,
             });
         }
 
@@ -1098,6 +1267,8 @@ onMounted(async () => {
                 tipo_establecimiento: centro.tipo_establecimiento,
                 tipo_establecimiento_descripcion: centro.tipo_establecimiento_descripcion,
                 tipo_clasificacion: centro.tipo_clasificacion,
+                latitud: centro.latitud !== undefined ? Number(centro.latitud) : null,
+                longitud: centro.longitud !== undefined ? Number(centro.longitud) : null,
                 propietarios: centro.propietarios || [],
                 representantes: centro.representantes || [],
                 telefonos: centro.telefonos || [],

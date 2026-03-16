@@ -211,6 +211,7 @@ exports.listCentros = async (req, res) => {
         const sql = `
       SELECT c.id, c.nombre_establecimiento, c.tipo_establecimiento,
              c.tipo_clasificacion, c.estado_centro, c.rif, c.nro_registro_mercantil,
+             c.latitud, c.longitud,
              p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado,
              f.id AS ficha_id, f.nro_registro_nacional, f.tipo_solicitud,
              f.fecha_solicitud, f.version,
@@ -299,6 +300,7 @@ exports.createCentro = async (req, res) => {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
         tipo_establecimiento, tipo_establecimiento_descripcion,
         tipo_clasificacion, estado_centro = 'activo',
+        latitud = null, longitud = null,
         propietarios = [], representantes = [], telefonos = [], correos = []
     } = req.body;
 
@@ -309,10 +311,12 @@ exports.createCentro = async (req, res) => {
         const centroResult = await client.query(
             `INSERT INTO public.centros
        (nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-        tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+        tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+        latitud, longitud)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro]
+                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+                latitud, longitud]
         );
         const centro = centroResult.rows[0];
 
@@ -374,7 +378,8 @@ exports.updateCentro = async (req, res) => {
     const {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
         tipo_establecimiento, tipo_establecimiento_descripcion,
-        tipo_clasificacion, estado_centro
+        tipo_clasificacion, estado_centro,
+        latitud, longitud
     } = req.body;
 
     const client = await pool.connect();
@@ -386,7 +391,6 @@ exports.updateCentro = async (req, res) => {
             return res.status(403).json({ error: 'Sin acceso para editar este centro.' });
         }
 
-
         const result = await client.query(
             `UPDATE public.centros SET
          nombre_establecimiento = COALESCE($1, nombre_establecimiento),
@@ -397,10 +401,13 @@ exports.updateCentro = async (req, res) => {
          tipo_establecimiento_descripcion = COALESCE($6, tipo_establecimiento_descripcion),
          tipo_clasificacion = COALESCE($7, tipo_clasificacion),
          estado_centro = COALESCE($8, estado_centro),
+         latitud = COALESCE($9, latitud),
+         longitud = COALESCE($10, longitud),
          updated_at = NOW()
-       WHERE id = $9 AND deleted_at IS NULL RETURNING *`,
+       WHERE id = $11 AND deleted_at IS NULL RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro, id]
+                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+                latitud, longitud, id]
         );
 
         res.json({ message: 'Centro actualizado.', centro: result.rows[0] });

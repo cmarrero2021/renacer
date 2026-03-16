@@ -133,7 +133,7 @@ const hasPermission = (permissionName) => {
 
 const isAdmin = () => {
   const role = LocalStorage.getItem('role')
-  return role && ['admin', 'administrador', 'administrator'].includes(role.toLowerCase())
+  return role && ['admin', 'administrador', 'administrator', 'admininstrador'].includes(role.toLowerCase())
 }
 
 const logout = async () => {

@@ -1,0 +1,14 @@
+{
+  "centros_tipo_establecimiento_check": "CHECK (((tipo_establecimiento)::text = ANY ((ARRAY['publico'::character varying, 'afiliada_ivss'::character varying, 'privado'::character varying, 'religiosa'::character varying, 'otra'::character varying])::text[])))",
+  "centros_tipo_clasificacion_check": "CHECK (((tipo_clasificacion)::text = ANY ((ARRAY['geriatrico'::character varying, 'gronto_psiquiatrico'::character varying, 'casa_hogar'::character varying, 'unidades_gerontologicas'::character varying, 'fundacion'::character varying, 'otras'::character varying])::text[])))",
+  "centros_estado_centro_check": "CHECK (((estado_centro)::text = ANY ((ARRAY['activo'::character varying, 'inactivo'::character varying, 'suspendido'::character varying])::text[])))",
+  "centro_telefonos_tipo_check": "CHECK (((tipo)::text = ANY ((ARRAY['general'::character varying, 'fijo'::character varying, 'celular'::character varying, 'fax'::character varying])::text[])))",
+  "centro_correos_tipo_check": "CHECK (((tipo)::text = ANY ((ARRAY['general'::character varying, 'institucional'::character varying, 'personal'::character varying])::text[])))",
+  "centro_propietarios_cedula_tipo_check": "CHECK ((cedula_tipo = ANY (ARRAY['V'::bpchar, 'E'::bpchar, 'J'::bpchar, 'G'::bpchar])))",
+  "centro_representantes_cedula_tipo_check": "CHECK ((cedula_tipo = ANY (ARRAY['V'::bpchar, 'E'::bpchar])))",
+  "fichas_establecimiento_tipo_solicitud_check": "CHECK (((tipo_solicitud)::text = ANY ((ARRAY['registro_autorizacion'::character varying, 'renovacion_autorizacion'::character varying])::text[])))",
+  "ficha_documentos_tipo_documento_check": "CHECK (((tipo_documento)::text = ANY ((ARRAY['carta_solicitud'::character varying, 'copia_cedula_propietario'::character varying, 'registro_mercantil'::character varying, 'rif'::character varying, 'documento_inmueble'::character varying, 'conformidad_uso'::character varying, 'permiso_sanitario_local'::character varying, 'permiso_sanitario_alimentos'::character varying, 'plano_inmueble'::character varying, 'otro'::character varying])::text[])))",
+  "ficha_infraestructura_estado_inmueble_check": "CHECK (((estado_inmueble)::text = ANY ((ARRAY['excelente'::character varying, 'bueno'::character varying, 'deficiente'::character varying])::text[])))",
+  "ficha_poblacion_modalidad_check": "CHECK (((modalidad)::text = ANY ((ARRAY['residente'::character varying, 'ambulatoria'::character varying])::text[])))",
+  "ficha_poblacion_categoria_check": "CHECK (((categoria)::text = ANY ((ARRAY['adultos'::character varying, 'con_discapacidad'::character varying, 'otras_categorias'::character varying])::text[])))"
+}

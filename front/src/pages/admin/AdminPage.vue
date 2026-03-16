@@ -56,6 +56,10 @@
                                     @click="openAssignCentroModal(props.row)">
                                     <q-tooltip>Asignar Centros</q-tooltip>
                                 </q-btn>
+                                <q-btn v-if="hasPermission('assign-role')" flat round dense color="secondary"
+                                    icon="manage_accounts" @click="openAssignRoleModal(props.row)">
+                                    <q-tooltip>Asignar Rol</q-tooltip>
+                                </q-btn>
                                 <q-btn v-if="hasPermission('assign_user_password')" flat round dense color="negative"
                                     icon="key" @click="openResetPasswordModal(props.row)">
                                     <q-tooltip>Asignar Nueva Clave</q-tooltip>

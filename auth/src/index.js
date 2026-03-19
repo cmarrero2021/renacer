@@ -1,4 +1,5 @@
 const path = require('path');
+const http = require('http');
 const ambiente = process.platform === 'win32' ? 'development' : 'production';
 require('dotenv').config({ path: path.resolve(process.cwd(), `../auth/.env.${ambiente}`) });
 const express = require('express');
@@ -8,6 +9,7 @@ const routes = require('./routes');
 const routesCentros = require('./routes_centros');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
+const { setupWebSocket } = require('./websocket');
 
 dotenv.config();
 
@@ -44,7 +46,14 @@ app.get('/list-endpoints', (req, res) => {
     res.json(endpoints);
 });
 
+// Crear servidor HTTP y montar WebSocket en el mismo puerto
 const PORT = process.env.PORT_AUTH || 4110;
-app.listen(PORT, () => {
+const server = http.createServer(app);
+
+// Montar WebSocket server en path /ws
+setupWebSocket(server);
+
+server.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
+    console.log(`WebSocket disponible en ws://localhost:${PORT}/ws`);
 });

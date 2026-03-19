@@ -99,14 +99,18 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { LocalStorage, Notify } from 'quasar'
 import axios from 'axios'
+import { usePermissionsSocket } from 'src/composables/usePermissionsSocket'
 
 const leftDrawerOpen = ref(false)
 const router = useRouter()
 const logoutUrl = import.meta.env.VITE_LOGOUT_URL
+
+// Composable de permisos en tiempo real
+const { hasPermission, isAdmin, connect, disconnect, syncFromStorage } = usePermissionsSocket()
 
 const userEmail = computed(() => LocalStorage.getItem('userEmail') || '')
 const userFirstName = computed(() => LocalStorage.getItem('firstName') || '')
@@ -126,15 +130,11 @@ const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-const hasPermission = (permissionName) => {
-  const permissions = LocalStorage.getItem('permissions') || []
-  return permissions.some(p => p.name === permissionName)
-}
-
-const isAdmin = () => {
-  const role = LocalStorage.getItem('role')
-  return role && ['admin', 'administrador', 'administrator', 'admininstrador'].includes(role.toLowerCase())
-}
+// Conectar WebSocket al montar el layout
+onMounted(() => {
+  syncFromStorage()
+  connect()
+})
 
 const logout = async () => {
   try {
@@ -147,6 +147,9 @@ const logout = async () => {
         'Content-Type': 'application/json'
       }
     })
+
+    // Desconectar WebSocket antes de limpiar
+    disconnect()
 
     // Limpiar el almacenamiento local
     LocalStorage.remove('token')

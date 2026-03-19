@@ -106,7 +106,7 @@ exports.authorize = (requiredPermission) => {
         return next();
       }
 
-      // Obtener los permisos del usuario a través de sus roles
+      // Obtener los permisos del usuario a través de sus roles y permisos directos
       const result = await client.query(
         `
                 SELECT p.name AS permission_name
@@ -114,6 +114,12 @@ exports.authorize = (requiredPermission) => {
                 JOIN user_roles ur ON u.id = ur.user_id
                 JOIN role_permissions rp ON ur.role_id = rp.role_id
                 JOIN permissions p ON rp.permission_id = p.id
+                WHERE u.id = $1 AND u.deleted_at IS NULL
+                UNION
+                SELECT p.name AS permission_name
+                FROM users u
+                JOIN user_permissions up ON u.id = up.user_id
+                JOIN permissions p ON up.permission_id = p.id
                 WHERE u.id = $1 AND u.deleted_at IS NULL
             `,
         [userId]

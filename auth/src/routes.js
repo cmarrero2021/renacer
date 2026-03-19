@@ -179,8 +179,8 @@ router.post('/remove-role', authenticate, authorize('remove_role'), removeRoleFr
 router.post('/assign-rolepermission', authenticate, authorize('assign_permission'), assignPermissionToRole);
 router.post('/remove-rolepermission', authenticate, authorize('remove_permission'), removePermissionFromRole);
 
-router.post('/assign-userpermission', authenticate, authorize('assign_permission'), assignPermissionToUser);
-router.post('/remove-userpermission', authenticate, authorize('remove_permission'), removePermissionFromUser);
+router.post('/assign-userpermission', authenticate, authorize('assign_user_permission'), assignPermissionToUser);
+router.post('/remove-userpermission', authenticate, authorize('remove_user_permission'), removePermissionFromUser);
 
 // Logs y auditoría
 router.get("/login-logs", authenticate, authorize('view_login_logs'), listLoginLogs);

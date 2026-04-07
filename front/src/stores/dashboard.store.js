@@ -202,20 +202,36 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // ─── Field drag & drop ────────────────────────────────────────────────────
     function addFieldToZone(field, zone) {
         const fieldCopy = { ...field, aggregation: field.numeric ? 'SUM' : 'COUNT' };
-        removeFieldFromAllZones(field.key);
+
         switch (zone) {
-            case 'rows': pivotRows.value.push(fieldCopy); break;
-            case 'columns': pivotColumns.value.push(fieldCopy); break;
-            case 'values': pivotValues.value.push(fieldCopy); break;
+            case 'rows':
+                if (!pivotRows.value.some(f => f.key === field.key)) {
+                    pivotRows.value.push(fieldCopy);
+                }
+                break;
+            case 'columns':
+                if (!pivotColumns.value.some(f => f.key === field.key)) {
+                    pivotColumns.value.push(fieldCopy);
+                }
+                break;
+            case 'values':
+                // Note: In values we actually could have the same field twice with different aggregations,
+                // but for now let's keep it unique by field name for simplification.
+                if (!pivotValues.value.some(f => f.key === field.key)) {
+                    pivotValues.value.push(fieldCopy);
+                }
+                break;
             case 'filters':
-                pivotFilters.value.push({
-                    field: field.key,
-                    label: field.label,
-                    operator: (field.numeric || field.date) ? 'eq' : 'like',
-                    value: '',
-                    numeric: !!field.numeric,
-                    date: !!field.date
-                });
+                if (!pivotFilters.value.some(f => f.field === field.key)) {
+                    pivotFilters.value.push({
+                        field: field.key,
+                        label: field.label,
+                        operator: (field.numeric || field.date) ? 'eq' : 'like',
+                        value: '',
+                        numeric: !!field.numeric,
+                        date: !!field.date
+                    });
+                }
                 break;
         }
     }

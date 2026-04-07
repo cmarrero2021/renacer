@@ -70,6 +70,12 @@ const routes = [
         path: "mantenimiento/enfriamiento",
         component: () => import("pages/admin/maintenance/CooldownMaintenancePage.vue"),
       },
+      // ── Dashboard Dinámico ─────────────────────────────────────────────
+      {
+        path: "dashboard-dinamico",
+        component: () => import("pages/dashboard/DynamicDashboardPage.vue"),
+        meta: { permission: "view_dashboard" },
+      },
     ],
   },
   {

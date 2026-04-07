@@ -45,7 +45,8 @@
                                                 :disable="selectedUsers.length === 0">
                                                 <q-item-section avatar><q-icon name="check_circle"
                                                         color="secondary" /></q-item-section>
-                                                <q-item-section>Seleccionados ({{ selectedUsers.length }})</q-item-section>
+                                                <q-item-section>Seleccionados ({{ selectedUsers.length
+                                                    }})</q-item-section>
                                             </q-item>
 
                                             <q-separator />
@@ -59,7 +60,8 @@
                                                 :disable="selectedUsers.length === 0">
                                                 <q-item-section avatar><q-icon name="check_circle"
                                                         color="blue" /></q-item-section>
-                                                <q-item-section>Seleccionados ({{ selectedUsers.length }})</q-item-section>
+                                                <q-item-section>Seleccionados ({{ selectedUsers.length
+                                                    }})</q-item-section>
                                             </q-item>
 
                                             <q-separator />
@@ -73,7 +75,8 @@
                                                 :disable="selectedUsers.length === 0">
                                                 <q-item-section avatar><q-icon name="check_circle"
                                                         color="positive" /></q-item-section>
-                                                <q-item-section>Seleccionados ({{ selectedUsers.length }})</q-item-section>
+                                                <q-item-section>Seleccionados ({{ selectedUsers.length
+                                                    }})</q-item-section>
                                             </q-item>
                                         </q-list>
                                     </q-menu>
@@ -97,7 +100,7 @@
                                     :icon="props.row.status === 'active' ? 'block' : 'check_circle'"
                                     @click="confirmToggleStatus(props.row)">
                                     <q-tooltip>{{ props.row.status === 'active' ? 'Suspender' : 'Reactivar'
-                                        }}</q-tooltip>
+                                    }}</q-tooltip>
                                 </q-btn>
                                 <q-btn flat round dense color="negative" icon="delete"
                                     @click="confirmDeleteUser(props.row)">
@@ -465,7 +468,9 @@
                 </q-card-section>
                 <q-card-section style="max-height: 50vh" class="scroll">
                     <q-banner class="bg-indigo-1 text-indigo-9 q-mb-md rounded-borders" dense>
-                        Estos permisos aplican directamente al usuario, complementando los de sus roles. (Efectivos en tiempo real).
+                        Estos permisos aplican directamente al usuario, complementando los de sus roles. (Efectivos en
+                        tiempo
+                        real).
                     </q-banner>
                     <q-input v-model="assignUserPermissionSearch" dense outlined placeholder="Buscar permiso..."
                         class="q-mb-md">
@@ -492,7 +497,9 @@
         <q-dialog v-model="viewUserAccessModalOpen">
             <q-card style="min-width: 650px; max-width: 90vw;">
                 <q-card-section class="row items-center q-pb-none">
-                    <div class="text-h6">Accesos de {{ selectedUserAccess?.first_name }} {{ selectedUserAccess?.last_name }}</div>
+                    <div class="text-h6">Accesos de {{ selectedUserAccess?.first_name }} {{
+                        selectedUserAccess?.last_name }}
+                    </div>
                     <q-space />
                     <q-btn icon="close" flat round dense v-close-popup />
                 </q-card-section>
@@ -510,7 +517,8 @@
                             No tiene permisos directos asignados. (Confía íntegramente en sus roles).
                         </div>
                         <div v-else class="q-mb-md row q-gutter-xs">
-                            <q-chip v-for="perm in userAccessData.directPermissions" :key="perm.id" color="primary" text-color="white" icon="check_circle" size="sm">
+                            <q-chip v-for="perm in userAccessData.directPermissions" :key="perm.id" color="primary"
+                                text-color="white" icon="check_circle" size="sm">
                                 {{ perm.name }}
                                 <q-tooltip>{{ perm.description }}</q-tooltip>
                             </q-chip>
@@ -526,23 +534,21 @@
                             El usuario no pertenece a ningún rol de sistema.
                         </div>
                         <q-list v-else bordered class="rounded-borders">
-                            <q-expansion-item
-                                v-for="role in userAccessData.roles"
-                                :key="role.id"
-                                group="roles"
-                                icon="manage_accounts"
-                                :label="role.name"
+                            <q-expansion-item v-for="role in userAccessData.roles" :key="role.id" group="roles"
+                                icon="manage_accounts" :label="role.name"
                                 :caption="role.permissions.length + ' permisos heredados'"
-                                header-class="text-secondary"
-                            >
+                                header-class="text-secondary">
                                 <q-card>
                                     <q-card-section class="bg-grey-1">
-                                        <div class="text-caption text-grey-8 q-mb-sm text-italic" v-if="role.description">{{ role.description }}</div>
+                                        <div class="text-caption text-grey-8 q-mb-sm text-italic"
+                                            v-if="role.description">{{
+                                                role.description }}</div>
                                         <div v-if="role.permissions.length === 0" class="text-grey text-caption">
                                             Este rol es visual pero no confiere permisos de sistema.
                                         </div>
                                         <div v-else class="row q-gutter-xs">
-                                            <q-chip v-for="perm in role.permissions" :key="perm.id" color="secondary" text-color="white" size="xs" outline>
+                                            <q-chip v-for="perm in role.permissions" :key="perm.id" color="secondary"
+                                                text-color="white" size="xs" outline>
                                                 {{ perm.name }}
                                                 <q-tooltip>{{ perm.description }}</q-tooltip>
                                             </q-chip>
@@ -622,7 +628,8 @@
                         <q-item v-for="centro in centrosStore.userCentros" :key="centro.id">
                             <q-item-section>
                                 <q-item-label>{{ centro.nombre_establecimiento }}</q-item-label>
-                                <q-item-label caption v-if="centro.is_owner">Centro Principal (Propietario)</q-item-label>
+                                <q-item-label caption v-if="centro.is_owner">Centro Principal
+                                    (Propietario)</q-item-label>
                             </q-item-section>
                             <q-item-section side>
                                 <div class="row items-center q-gutter-x-sm">
@@ -701,8 +708,10 @@
                         </div>
 
                         <div class="row justify-end q-mt-md">
-                            <q-btn label="Cancelar" color="negative" flat v-close-popup :disable="isResettingPassword" />
-                            <q-btn label="Actualizar Clave" type="submit" color="primary" :loading="isResettingPassword" />
+                            <q-btn label="Cancelar" color="negative" flat v-close-popup
+                                :disable="isResettingPassword" />
+                            <q-btn label="Actualizar Clave" type="submit" color="primary"
+                                :loading="isResettingPassword" />
                         </div>
                     </q-form>
                 </q-card-section>
@@ -1391,7 +1400,7 @@ const openViewUserAccessModal = async (user) => {
             const permissionIdsForRole = allRolesPerms
                 .filter(rp => rp.role_id === role.id)
                 .map(rp => rp.permission_id)
-            
+
             return {
                 ...role,
                 permissions: permissions.value.filter(p => permissionIdsForRole.includes(p.id))
@@ -1555,5 +1564,3 @@ const confirmPurge = () => {
     })
 }
 </script>
-
-

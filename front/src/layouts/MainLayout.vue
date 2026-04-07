@@ -59,6 +59,13 @@
             <q-item-section>Administración</q-item-section>
           </q-item>
 
+          <q-item clickable v-ripple to="/admin/dashboard-dinamico" v-if="isAdmin() || hasPermission('view_dashboard')">
+            <q-item-section avatar>
+              <q-icon name="analytics" />
+            </q-item-section>
+            <q-item-section>Dashboard Dinámico</q-item-section>
+          </q-item>
+
           <!-- Menú expandible de Auditoría -->
           <q-expansion-item v-if="isAdmin() || hasPermission('view_audit_menu')" icon="policy" label="Auditoría"
             expand-separator>

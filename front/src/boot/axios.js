@@ -30,6 +30,7 @@ import { LocalStorage, Notify } from "quasar";
 
 const api = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api' });
 const authApi = axios.create({ baseURL: import.meta.env.VITE_AUTH_API_URL || '/auth' });
+const analyticsApi = axios.create({ baseURL: import.meta.env.VITE_ANALYTICS_API_URL || '/analytics' });
 
 // Función para manejar sesión expirada
 const handleSessionExpired = (router) => {
@@ -120,6 +121,14 @@ export default boot(({ app, router }) => {
 
   api.interceptors.request.use(requestInterceptor);
   authApi.interceptors.request.use(requestInterceptor);
+  // analyticsApi: solo token, SIN transformPayload (GraphQL es case-sensitive)
+  analyticsApi.interceptors.request.use((config) => {
+    const token = LocalStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  });
   axios.interceptors.request.use(requestInterceptor);
 
   // Interceptor para manejar errores de respuesta (response)
@@ -141,6 +150,11 @@ export default boot(({ app, router }) => {
     responseErrorHandler
   );
 
+  analyticsApi.interceptors.response.use(
+    (response) => response,
+    responseErrorHandler
+  );
+
   axios.interceptors.response.use(
     (response) => response,
     responseErrorHandler
@@ -151,4 +165,4 @@ export default boot(({ app, router }) => {
   app.config.globalProperties.$authApi = authApi;
 });
 
-export { axios, api, authApi };
+export { axios, api, authApi, analyticsApi };

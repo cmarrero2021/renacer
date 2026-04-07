@@ -191,6 +191,7 @@
                     { label: 'Dona', value: 'doughnut', icon: 'donut_large' },
                   ]" />
                 <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar','hbar','line'].includes(store.chartType)" />
+                <q-toggle v-model="store.chartShowLabels" label="Mostrar Etiquetas" dense />
               </div>
               <PivotChart ref="pivotChartRef" />
             </q-tab-panel>

@@ -12,11 +12,13 @@ import {
   CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement,
   Title, Tooltip, Legend, Filler
 } from 'chart.js';
+import ChartDataLabels from 'chartjs-plugin-datalabels';
 
 Chart.register(
   BarController, LineController, PieController, DoughnutController,
   CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement,
-  Title, Tooltip, Legend, Filler
+  Title, Tooltip, Legend, Filler,
+  ChartDataLabels
 );
 
 const store = useDashboardStore();
@@ -145,6 +147,19 @@ function renderChart() {
             },
           },
         },
+        datalabels: {
+          display: store.chartShowLabels,
+          anchor: isHorizontal ? 'end' : (isPie ? 'center' : 'end'),
+          align: isHorizontal ? 'right' : (isPie ? 'center' : 'top'),
+          formatter: (val) => {
+            const num = Number(val);
+            if (isNaN(num) || num === 0) return '';
+            return num.toLocaleString('es-VE', { maximumFractionDigits: 1 });
+          },
+          font: { weight: 'bold', size: 10 },
+          color: isPie ? '#fff' : '#666',
+          offset: 4
+        }
       },
       scales
     },
@@ -172,7 +187,7 @@ async function exportPDF() {
 
 defineExpose({ exportPNG, exportPDF });
 
-watch([chartData, () => store.chartType, () => store.chartStacked], () => {
+watch([chartData, () => store.chartType, () => store.chartStacked, () => store.chartShowLabels], () => {
   nextTick(renderChart);
 }, { deep: true });
 

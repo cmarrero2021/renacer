@@ -18,6 +18,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     // Chart config
     const chartType = ref('bar');
     const chartStacked = ref(false);
+    const chartShowLabels = ref(false);
 
     // Data
     const rawData = ref([]);
@@ -264,7 +265,11 @@ export const useDashboardStore = defineStore('dashboard', () => {
                 values: pivotValues.value,
                 filters: pivotFilters.value,
             },
-            chart_config: { type: chartType.value, stacked: chartStacked.value },
+            chart_config: {
+                type: chartType.value,
+                stacked: chartStacked.value,
+                showLabels: chartShowLabels.value
+            },
             visibility,
         };
 
@@ -298,6 +303,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         pivotFilters.value = config.filters || [];
         chartType.value = chart.type || 'bar';
         chartStacked.value = chart.stacked || false;
+        chartShowLabels.value = chart.showLabels || false;
 
         await fetchData();
     }
@@ -320,7 +326,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         // State
         availableFields, loading, dataLoading,
         pivotRows, pivotColumns, pivotValues, pivotFilters,
-        chartType, chartStacked,
+        chartType, chartStacked, chartShowLabels,
         rawData, dataColumns, totalRows,
         savedQueries, currentQueryId, currentQueryName,
         // Computed

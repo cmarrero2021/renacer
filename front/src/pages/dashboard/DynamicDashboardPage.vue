@@ -102,8 +102,30 @@
             <span class="zone-label"><q-icon name="filter_alt" size="16px" /> Filtros</span>
             <div class="zone-chips">
               <q-chip v-for="f in store.pivotFilters" :key="f.field" removable dense
-                @remove="store.removeFieldFromZone(f.field, 'filters')" color="amber-2" text-color="black">
-                {{ f.label }}
+                @remove="store.removeFieldFromZone(f.field, 'filters')" color="amber-2" text-color="black" clickable>
+                <q-icon name="edit" size="14px" class="q-mr-xs" />
+                {{ f.label }}: {{ getFilterLabel(f) }}
+                <q-menu padding style="min-width: 250px">
+                  <div class="q-pa-md">
+                    <div class="text-subtitle2 q-mb-sm">Configurar Filtro: {{ f.label }}</div>
+                    <q-select v-model="f.operator" dense outlined label="Operador" class="q-mb-sm"
+                      :options="[
+                        { label: 'Igual a', value: 'eq' },
+                        { label: 'Diferente de', value: 'neq' },
+                        { label: 'Contiene', value: 'like' },
+                        { label: 'Mayor que', value: 'gt' },
+                        { label: 'Menor que', value: 'lt' },
+                        { label: 'Mayor o igual', value: 'gte' },
+                        { label: 'Menor o igual', value: 'lte' },
+                        { label: 'Uno de (CSV)', value: 'in' },
+                      ]" emit-value map-options />
+                    <q-input v-model="f.value" dense outlined label="Valor" :type="f.date ? 'date' : 'text'" autofocus @keyup.enter="store.fetchData" />
+                    <div class="row q-mt-md justify-end">
+                      <q-btn flat label="Cerrar" v-close-popup size="sm" />
+                      <q-btn color="primary" label="Ejecutar" v-close-popup size="sm" @click="store.fetchData" />
+                    </div>
+                  </div>
+                </q-menu>
               </q-chip>
               <span v-if="!store.pivotFilters.length" class="zone-placeholder">Arrastre campos aquí</span>
             </div>
@@ -190,8 +212,11 @@
                     { label: 'Torta', value: 'pie', icon: 'pie_chart' },
                     { label: 'Dona', value: 'doughnut', icon: 'donut_large' },
                   ]" />
-                <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar','hbar','line'].includes(store.chartType)" />
+                <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar', 'hbar', 'line'].includes(store.chartType)" />
                 <q-toggle v-model="store.chartShowLabels" label="Mostrar Etiquetas" dense />
+                <q-btn flat round dense icon="palette" color="primary" @click="showColorDialog = true" v-if="store.rawData.length">
+                  <q-tooltip>Personalizar Colores</q-tooltip>
+                </q-btn>
               </div>
               <PivotChart ref="pivotChartRef" />
             </q-tab-panel>
@@ -229,6 +254,48 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- ═══ Color Customization Dialog ══════════════════════════════════ -->
+    <q-dialog v-model="showColorDialog">
+      <q-card style="min-width: 350px">
+        <q-card-section class="bg-primary text-white row items-center">
+          <div class="text-h6"><q-icon name="palette" class="q-mr-sm" />Colores del Gráfico</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section class="q-pa-md" style="max-height: 60vh; overflow-y: auto">
+          <div v-if="!currentChartSeries.length" class="text-center text-grey q-pa-lg">
+            No hay series activas para colorear
+          </div>
+          <q-list v-else separator>
+            <q-item v-for="series in currentChartSeries" :key="series" class="q-px-none">
+              <q-item-section>
+                <q-item-label>{{ series }}</q-item-label>
+              </q-item-section>
+              <q-item-section side>
+                <q-btn round flat>
+                  <div :style="{ background: store.chartCustomColors[series] || '#ddd', width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc' }"></div>
+                  <q-menu>
+                    <q-color v-model="store.chartCustomColors[series]" no-header no-footer default-view="palette" class="my-picker" />
+                  </q-menu>
+                </q-btn>
+              </q-item-section>
+              <q-item-section side v-if="store.chartCustomColors[series]">
+                <q-btn icon="close" size="sm" flat round @click="delete store.chartCustomColors[series]" />
+              </q-item-section>
+            </q-item>
+          </q-list>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="between" class="q-px-md">
+          <q-btn flat label="Restablecer Todo" color="negative" @click="store.chartCustomColors = {}" />
+          <q-btn flat label="Cerrar" color="primary" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -250,6 +317,7 @@ const pivotChartRef = ref(null);
 
 // Save dialog
 const showSaveDialog = ref(false);
+const showColorDialog = ref(false);
 const saveAsNew = ref(false);
 const saveName = ref('');
 const saveDescription = ref('');
@@ -264,6 +332,29 @@ const filteredFields = computed(() => {
     if (filtered.length) result[cat] = filtered;
   }
   return result;
+});
+
+const currentChartSeries = computed(() => {
+  const td = store.pivotTableData;
+  if (!td.bodyRows?.length) return [];
+  const type = store.chartType;
+  const isPie = type === 'pie' || type === 'doughnut';
+
+  if (isPie) {
+    // Labels are categories
+    const rowHeaderKeys = td.headers.filter(h => h.isRowHeader).map(h => h.key);
+    return td.bodyRows.map(row => rowHeaderKeys.map(k => row[k] || '').join(' | '));
+  }
+
+  if (td.hasPivotColumns) {
+    // Labels are column value groups
+    const valueHeaders = td.headers.filter(h => h.isValue);
+    return [...new Set(valueHeaders.map(h => h.label))];
+  }
+
+  // Labels are value field names
+  const valueHeaders = td.headers.filter((_, i) => i >= store.pivotRows.length);
+  return valueHeaders.map(h => h.label);
 });
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
@@ -282,6 +373,14 @@ function onDrop(event, zone) {
     const field = JSON.parse(event.dataTransfer.getData('application/json'));
     store.addFieldToZone(field, zone);
   } catch (e) { /* ignore */ }
+}
+
+function getFilterLabel(f) {
+  if (!f.value && f.value !== 0) return '(vacío)';
+  const opMap = {
+    eq: '=', neq: '≠', like: 'contiene', gt: '>', lt: '<', gte: '≥', lte: '≤', in: 'uno de'
+  };
+  return `${opMap[f.operator] || f.operator} "${f.value}"`;
 }
 
 async function handleSave() {

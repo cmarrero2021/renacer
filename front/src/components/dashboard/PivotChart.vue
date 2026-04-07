@@ -54,7 +54,7 @@ const chartData = computed(() => {
           data: td.bodyRows.map(row => {
             return valueHeaders.reduce((sum, h) => sum + (Number(row[h.key]) || 0), 0);
           }),
-          backgroundColor: COLORS.slice(0, labels.length),
+          backgroundColor: labels.map((label, i) => store.chartCustomColors[label] || COLORS[i % COLORS.length]),
         }],
       };
     }
@@ -63,11 +63,12 @@ const chartData = computed(() => {
     const colValuesSet = [...new Set(valueHeaders.map(h => h.label))];
     const datasets = colValuesSet.map((cv, i) => {
       const colHeaders = valueHeaders.filter(h => h.label === cv);
+      const baseColor = store.chartCustomColors[cv] || COLORS[i % COLORS.length];
       return {
         label: cv,
         data: td.bodyRows.map(row => colHeaders.reduce((sum, h) => sum + (Number(row[h.key]) || 0), 0)),
-        backgroundColor: COLORS[i % COLORS.length] + (['bar', 'hbar'].includes(type) ? 'CC' : 'FF'),
-        borderColor: COLORS[i % COLORS.length],
+        backgroundColor: baseColor + (['bar', 'hbar'].includes(type) ? 'CC' : 'FF'),
+        borderColor: baseColor,
         borderWidth: 1,
       };
     });
@@ -85,20 +86,23 @@ const chartData = computed(() => {
       labels,
       datasets: [{
         data: td.bodyRows.map(row => Number(row[firstValKey]) || 0),
-        backgroundColor: COLORS.slice(0, labels.length),
+        backgroundColor: labels.map((label, i) => store.chartCustomColors[label] || COLORS[i % COLORS.length]),
       }],
     };
   }
 
-  const datasets = valueHeaderKeys.map((h, i) => ({
-    label: h.label,
-    data: td.bodyRows.map(row => Number(row[h.key]) || 0),
-    backgroundColor: COLORS[i % COLORS.length] + (['bar', 'hbar'].includes(type) ? 'CC' : '33'),
-    borderColor: COLORS[i % COLORS.length],
-    borderWidth: type === 'line' ? 2 : 1,
-    fill: type === 'line' ? false : undefined,
-    tension: 0.3,
-  }));
+  const datasets = valueHeaderKeys.map((h, i) => {
+    const baseColor = store.chartCustomColors[h.label] || COLORS[i % COLORS.length];
+    return {
+      label: h.label,
+      data: td.bodyRows.map(row => Number(row[h.key]) || 0),
+      backgroundColor: baseColor + (['bar', 'hbar'].includes(type) ? 'CC' : '33'),
+      borderColor: baseColor,
+      borderWidth: type === 'line' ? 2 : 1,
+      fill: type === 'line' ? false : undefined,
+      tension: 0.3,
+    };
+  });
 
   return { labels, datasets };
 });

@@ -19,6 +19,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     const chartType = ref('bar');
     const chartStacked = ref(false);
     const chartShowLabels = ref(false);
+    const chartCustomColors = ref({});
 
     // Data
     const rawData = ref([]);
@@ -207,7 +208,14 @@ export const useDashboardStore = defineStore('dashboard', () => {
             case 'columns': pivotColumns.value.push(fieldCopy); break;
             case 'values': pivotValues.value.push(fieldCopy); break;
             case 'filters':
-                pivotFilters.value.push({ field: field.key, label: field.label, operator: 'eq', value: '' });
+                pivotFilters.value.push({
+                    field: field.key,
+                    label: field.label,
+                    operator: (field.numeric || field.date) ? 'eq' : 'like',
+                    value: '',
+                    numeric: !!field.numeric,
+                    date: !!field.date
+                });
                 break;
         }
     }
@@ -268,7 +276,8 @@ export const useDashboardStore = defineStore('dashboard', () => {
             chart_config: {
                 type: chartType.value,
                 stacked: chartStacked.value,
-                showLabels: chartShowLabels.value
+                showLabels: chartShowLabels.value,
+                customColors: chartCustomColors.value
             },
             visibility,
         };
@@ -304,6 +313,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         chartType.value = chart.type || 'bar';
         chartStacked.value = chart.stacked || false;
         chartShowLabels.value = chart.showLabels || false;
+        chartCustomColors.value = chart.customColors || {};
 
         await fetchData();
     }
@@ -326,7 +336,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
         // State
         availableFields, loading, dataLoading,
         pivotRows, pivotColumns, pivotValues, pivotFilters,
-        chartType, chartStacked, chartShowLabels,
+        chartType, chartStacked, chartShowLabels, chartCustomColors,
         rawData, dataColumns, totalRows,
         savedQueries, currentQueryId, currentQueryName,
         // Computed

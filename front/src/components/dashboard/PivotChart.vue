@@ -64,7 +64,7 @@ const chartData = computed(() => {
       return {
         label: cv,
         data: td.bodyRows.map(row => colHeaders.reduce((sum, h) => sum + (Number(row[h.key]) || 0), 0)),
-        backgroundColor: COLORS[i % COLORS.length] + (type === 'bar' ? 'CC' : 'FF'),
+        backgroundColor: COLORS[i % COLORS.length] + (['bar', 'hbar'].includes(type) ? 'CC' : 'FF'),
         borderColor: COLORS[i % COLORS.length],
         borderWidth: 1,
       };
@@ -91,7 +91,7 @@ const chartData = computed(() => {
   const datasets = valueHeaderKeys.map((h, i) => ({
     label: h.label,
     data: td.bodyRows.map(row => Number(row[h.key]) || 0),
-    backgroundColor: COLORS[i % COLORS.length] + (type === 'bar' ? 'CC' : '33'),
+    backgroundColor: COLORS[i % COLORS.length] + (['bar', 'hbar'].includes(type) ? 'CC' : '33'),
     borderColor: COLORS[i % COLORS.length],
     borderWidth: type === 'line' ? 2 : 1,
     fill: type === 'line' ? false : undefined,
@@ -108,11 +108,30 @@ function renderChart() {
 
   const type = store.chartType;
   const isPie = type === 'pie' || type === 'doughnut';
+  const chartJsType = type === 'hbar' ? 'bar' : type;
+  const isHorizontal = type === 'hbar';
+
+  // Configure scales dynamically based on orientation
+  const scales = isPie ? {} : {
+    x: {
+      stacked: store.chartStacked,
+      beginAtZero: isHorizontal,
+      grid: { display: !isHorizontal },
+      ticks: isHorizontal ? { callback: val => Number(val).toLocaleString('es-VE') } : {}
+    },
+    y: {
+      stacked: store.chartStacked,
+      beginAtZero: !isHorizontal,
+      grid: { display: isHorizontal },
+      ticks: !isHorizontal ? { callback: val => Number(val).toLocaleString('es-VE') } : {}
+    }
+  };
 
   chartInstance = new Chart(chartCanvas.value, {
-    type,
+    type: chartJsType,
     data: chartData.value,
     options: {
+      indexAxis: isHorizontal ? 'y' : 'x',
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -121,19 +140,13 @@ function renderChart() {
         tooltip: {
           callbacks: {
             label: (ctx) => {
-              const val = ctx.parsed?.y ?? ctx.parsed ?? ctx.raw;
+              const val = isHorizontal ? ctx.parsed?.x : (ctx.parsed?.y ?? ctx.parsed ?? ctx.raw);
               return `${ctx.dataset.label || ctx.label}: ${Number(val).toLocaleString('es-VE')}`;
             },
           },
         },
       },
-      scales: isPie ? {} : {
-        x: { stacked: store.chartStacked, grid: { display: false } },
-        y: {
-          stacked: store.chartStacked, beginAtZero: true,
-          ticks: { callback: val => Number(val).toLocaleString('es-VE') },
-        },
-      },
+      scales
     },
   });
 }

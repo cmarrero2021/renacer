@@ -21,7 +21,7 @@ const routes = [
     children: [
       {
         path: "",
-        component: () => import("pages/DashboardPage.vue"),
+        component: () => import("pages/dashboard/DynamicDashboardPage.vue"),
       },
       {
         path: "marco-legal",
@@ -70,12 +70,7 @@ const routes = [
         path: "mantenimiento/enfriamiento",
         component: () => import("pages/admin/maintenance/CooldownMaintenancePage.vue"),
       },
-      // ── Dashboard Dinámico ─────────────────────────────────────────────
-      {
-        path: "dashboard-dinamico",
-        component: () => import("pages/dashboard/DynamicDashboardPage.vue"),
-        meta: { permission: "view_dashboard" },
-      },
+
     ],
   },
   {

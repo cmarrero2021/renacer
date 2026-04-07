@@ -185,11 +185,12 @@
                 <q-btn-toggle v-model="store.chartType" dense flat toggle-color="primary"
                   :options="[
                     { label: 'Barras', value: 'bar', icon: 'bar_chart' },
+                    { label: 'H. Barras', value: 'hbar', icon: 'align_horizontal_left' },
                     { label: 'Línea', value: 'line', icon: 'show_chart' },
                     { label: 'Torta', value: 'pie', icon: 'pie_chart' },
                     { label: 'Dona', value: 'doughnut', icon: 'donut_large' },
                   ]" />
-                <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar','line'].includes(store.chartType)" />
+                <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar','hbar','line'].includes(store.chartType)" />
               </div>
               <PivotChart ref="pivotChartRef" />
             </q-tab-panel>

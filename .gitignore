@@ -12,6 +12,6 @@ TODO_FILTROS.md
 bd/*.*
 *.sql
 recursos/
-
-
-front/src/pages/MarcoLegagal.bak
+*.rar
+*.bak
+# front/src/pages/MarcoLegagal.bak

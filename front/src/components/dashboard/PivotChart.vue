@@ -47,7 +47,17 @@ const chartData = computed(() => {
     const valueHeaders = td.headers.filter(h => h.isValue);
 
     if (isPie) {
-      // Pie: use first value column, sum per row
+      if (store.pivotRows.length === 0) {
+        // No rows: each value (column+field combo) is a slice
+        return {
+          labels: valueHeaders.map(h => `${h.label} - ${h.subLabel}`),
+          datasets: [{
+            data: valueHeaders.map(h => td.bodyRows.reduce((sum, row) => sum + (Number(row[h.key]) || 0), 0)),
+            backgroundColor: valueHeaders.map((h, i) => store.chartCustomColors[`${h.label} - ${h.subLabel}`] || COLORS[i % COLORS.length]),
+          }],
+        };
+      }
+      // Pie: use first value column, sum per row (standard behavior)
       return {
         labels,
         datasets: [{
@@ -81,11 +91,23 @@ const chartData = computed(() => {
   const labels = td.bodyRows.map(row => rowHeaderKeys.map(k => row[k] || '').join(' | '));
 
   if (isPie) {
-    const firstValKey = valueHeaderKeys[0]?.key;
+    if (store.pivotRows.length === 0) {
+      // No rows: each value field is a slice
+      return {
+        labels: valueHeaderKeys.map(h => h.label),
+        datasets: [{
+          data: valueHeaderKeys.map(h => td.bodyRows.reduce((sum, row) => sum + (Number(row[h.key]) || 0), 0)),
+          backgroundColor: valueHeaderKeys.map((h, i) => store.chartCustomColors[h.label] || COLORS[i % COLORS.length]),
+        }],
+      };
+    }
+    // With rows: each slice represents a row (category), value is the SUM of all measurement fields
     return {
       labels,
       datasets: [{
-        data: td.bodyRows.map(row => Number(row[firstValKey]) || 0),
+        data: td.bodyRows.map(row => {
+          return valueHeaderKeys.reduce((sum, h) => sum + (Number(row[h.key]) || 0), 0);
+        }),
         backgroundColor: labels.map((label, i) => store.chartCustomColors[label] || COLORS[i % COLORS.length]),
       }],
     };

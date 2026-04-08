@@ -4,7 +4,7 @@
     <div class="dashboard-toolbar">
       <div class="toolbar-left">
         <q-icon name="analytics" size="28px" color="primary" />
-        <span class="toolbar-title">Dashboard Dinámico</span>
+        <span class="toolbar-title">Analítica</span>
         <q-badge v-if="store.currentQueryName" color="accent" :label="store.currentQueryName" class="q-ml-sm" />
       </div>
       <div class="toolbar-actions">
@@ -23,13 +23,15 @@
         <q-btn-dropdown flat dense icon="folder_open" label="Cargar" color="secondary">
           <q-list style="min-width: 300px; max-height: 400px; overflow: auto">
             <q-item-label header>Consultas Guardadas</q-item-label>
-            <q-item v-for="sq in store.savedQueries" :key="sq.id" clickable v-close-popup @click="store.loadSavedQuery(sq)">
+            <q-item v-for="sq in store.savedQueries" :key="sq.id" clickable v-close-popup
+              @click="store.loadSavedQuery(sq)">
               <q-item-section>
                 <q-item-label>{{ sq.name }}</q-item-label>
                 <q-item-label caption>{{ sq.description || 'Sin descripción' }}</q-item-label>
               </q-item-section>
               <q-item-section side>
-                <q-badge :color="sq.visibility === 'public' ? 'green' : 'orange'" :label="sq.visibility === 'public' ? 'Público' : 'Privado'" />
+                <q-badge :color="sq.visibility === 'public' ? 'green' : 'orange'"
+                  :label="sq.visibility === 'public' ? 'Público' : 'Privado'" />
               </q-item-section>
             </q-item>
             <q-item v-if="!store.savedQueries.length">
@@ -40,16 +42,22 @@
         <q-separator vertical class="q-mx-sm" />
         <q-btn-dropdown flat dense icon="download" label="Exportar" color="positive" :disable="!store.rawData.length">
           <q-list>
-            <q-item clickable v-close-popup @click="exportExcel"><q-item-section avatar><q-icon name="grid_on" /></q-item-section><q-item-section>Excel (.xlsx)</q-item-section></q-item>
-            <q-item clickable v-close-popup @click="exportCSV"><q-item-section avatar><q-icon name="description" /></q-item-section><q-item-section>CSV</q-item-section></q-item>
-            <q-item clickable v-close-popup @click="exportJSON"><q-item-section avatar><q-icon name="data_object" /></q-item-section><q-item-section>JSON</q-item-section></q-item>
+            <q-item clickable v-close-popup @click="exportExcel"><q-item-section avatar><q-icon
+                  name="grid_on" /></q-item-section><q-item-section>Excel (.xlsx)</q-item-section></q-item>
+            <q-item clickable v-close-popup @click="exportCSV"><q-item-section avatar><q-icon
+                  name="description" /></q-item-section><q-item-section>CSV</q-item-section></q-item>
+            <q-item clickable v-close-popup @click="exportJSON"><q-item-section avatar><q-icon
+                  name="data_object" /></q-item-section><q-item-section>JSON</q-item-section></q-item>
             <q-separator />
-            <q-item clickable v-close-popup @click="exportChartPNG"><q-item-section avatar><q-icon name="image" /></q-item-section><q-item-section>Gráfico PNG</q-item-section></q-item>
-            <q-item clickable v-close-popup @click="exportChartPDF"><q-item-section avatar><q-icon name="picture_as_pdf" /></q-item-section><q-item-section>Gráfico PDF</q-item-section></q-item>
+            <q-item clickable v-close-popup @click="exportChartPNG"><q-item-section avatar><q-icon
+                  name="image" /></q-item-section><q-item-section>Gráfico PNG</q-item-section></q-item>
+            <q-item clickable v-close-popup @click="exportChartPDF"><q-item-section avatar><q-icon
+                  name="picture_as_pdf" /></q-item-section><q-item-section>Gráfico PDF</q-item-section></q-item>
           </q-list>
         </q-btn-dropdown>
         <q-separator vertical class="q-mx-sm" />
-        <q-btn flat dense icon="refresh" color="info" @click="store.fetchData" :loading="store.dataLoading" :disable="!store.hasConfig" />
+        <q-btn flat dense icon="refresh" color="info" @click="store.fetchData" :loading="store.dataLoading"
+          :disable="!store.hasConfig" />
         <q-btn flat dense icon="delete_sweep" color="negative" @click="store.clearConfig" :disable="!store.hasConfig" />
       </div>
     </div>
@@ -74,14 +82,10 @@
             </div>
             <transition name="slide">
               <div v-if="expandedCategories[category]" class="category-fields">
-                <div
-                  v-for="field in fields" :key="field.key"
-                  class="field-chip"
-                  draggable="true"
-                  @dragstart="onDragStart($event, field)"
-                  :title="field.label"
-                >
-                  <q-icon :name="field.numeric ? 'tag' : field.date ? 'event' : 'text_fields'" size="14px" class="field-icon" />
+                <div v-for="field in fields" :key="field.key" class="field-chip" draggable="true"
+                  @dragstart="onDragStart($event, field)" :title="field.label">
+                  <q-icon :name="field.numeric ? 'tag' : field.date ? 'event' : 'text_fields'" size="14px"
+                    class="field-icon" />
                   <span class="field-label">{{ field.label }}</span>
                 </div>
               </div>
@@ -94,11 +98,9 @@
       <div class="center-panel">
         <!-- Drop Zones -->
         <div class="drop-zones">
-          <div class="drop-zone"
-            @dragover.prevent @dragenter.prevent="dragOverZone = 'filters'"
+          <div class="drop-zone" @dragover.prevent @dragenter.prevent="dragOverZone = 'filters'"
             @dragleave="dragOverZone = null" @drop="onDrop($event, 'filters')"
-            :class="{ 'zone-active': dragOverZone === 'filters' }"
-          >
+            :class="{ 'zone-active': dragOverZone === 'filters' }">
             <span class="zone-label"><q-icon name="filter_alt" size="16px" /> Filtros</span>
             <div class="zone-chips">
               <q-chip v-for="f in store.pivotFilters" :key="f.field" removable dense
@@ -108,18 +110,18 @@
                 <q-menu padding style="min-width: 250px">
                   <div class="q-pa-md">
                     <div class="text-subtitle2 q-mb-sm">Configurar Filtro: {{ f.label }}</div>
-                    <q-select v-model="f.operator" dense outlined label="Operador" class="q-mb-sm"
-                      :options="[
-                        { label: 'Igual a', value: 'eq' },
-                        { label: 'Diferente de', value: 'neq' },
-                        { label: 'Contiene', value: 'like' },
-                        { label: 'Mayor que', value: 'gt' },
-                        { label: 'Menor que', value: 'lt' },
-                        { label: 'Mayor o igual', value: 'gte' },
-                        { label: 'Menor o igual', value: 'lte' },
-                        { label: 'Uno de (CSV)', value: 'in' },
-                      ]" emit-value map-options />
-                    <q-input v-model="f.value" dense outlined label="Valor" :type="f.date ? 'date' : 'text'" autofocus @keyup.enter="store.fetchData" />
+                    <q-select v-model="f.operator" dense outlined label="Operador" class="q-mb-sm" :options="[
+                      { label: 'Igual a', value: 'eq' },
+                      { label: 'Diferente de', value: 'neq' },
+                      { label: 'Contiene', value: 'like' },
+                      { label: 'Mayor que', value: 'gt' },
+                      { label: 'Menor que', value: 'lt' },
+                      { label: 'Mayor o igual', value: 'gte' },
+                      { label: 'Menor o igual', value: 'lte' },
+                      { label: 'Uno de (CSV)', value: 'in' },
+                    ]" emit-value map-options />
+                    <q-input v-model="f.value" dense outlined label="Valor" :type="f.date ? 'date' : 'text'" autofocus
+                      @keyup.enter="store.fetchData" />
                     <div class="row q-mt-md justify-end">
                       <q-btn flat label="Cerrar" v-close-popup size="sm" />
                       <q-btn color="primary" label="Ejecutar" v-close-popup size="sm" @click="store.fetchData" />
@@ -131,11 +133,9 @@
             </div>
           </div>
           <div class="drop-zones-row">
-            <div class="drop-zone zone-rows"
-              @dragover.prevent @dragenter.prevent="dragOverZone = 'rows'"
+            <div class="drop-zone zone-rows" @dragover.prevent @dragenter.prevent="dragOverZone = 'rows'"
               @dragleave="dragOverZone = null" @drop="onDrop($event, 'rows')"
-              :class="{ 'zone-active': dragOverZone === 'rows' }"
-            >
+              :class="{ 'zone-active': dragOverZone === 'rows' }">
               <span class="zone-label"><q-icon name="table_rows" size="16px" /> Filas</span>
               <div class="zone-chips">
                 <q-chip v-for="f in store.pivotRows" :key="f.key" removable dense
@@ -145,11 +145,9 @@
                 <span v-if="!store.pivotRows.length" class="zone-placeholder">Arrastre campos aquí</span>
               </div>
             </div>
-            <div class="drop-zone zone-columns"
-              @dragover.prevent @dragenter.prevent="dragOverZone = 'columns'"
+            <div class="drop-zone zone-columns" @dragover.prevent @dragenter.prevent="dragOverZone = 'columns'"
               @dragleave="dragOverZone = null" @drop="onDrop($event, 'columns')"
-              :class="{ 'zone-active': dragOverZone === 'columns' }"
-            >
+              :class="{ 'zone-active': dragOverZone === 'columns' }">
               <span class="zone-label"><q-icon name="view_column" size="16px" /> Columnas</span>
               <div class="zone-chips">
                 <q-chip v-for="f in store.pivotColumns" :key="f.key" removable dense
@@ -159,11 +157,9 @@
                 <span v-if="!store.pivotColumns.length" class="zone-placeholder">Arrastre campos aquí</span>
               </div>
             </div>
-            <div class="drop-zone zone-values"
-              @dragover.prevent @dragenter.prevent="dragOverZone = 'values'"
+            <div class="drop-zone zone-values" @dragover.prevent @dragenter.prevent="dragOverZone = 'values'"
               @dragleave="dragOverZone = null" @drop="onDrop($event, 'values')"
-              :class="{ 'zone-active': dragOverZone === 'values' }"
-            >
+              :class="{ 'zone-active': dragOverZone === 'values' }">
               <span class="zone-label"><q-icon name="functions" size="16px" /> Valores</span>
               <div class="zone-chips">
                 <q-chip v-for="f in store.pivotValues" :key="f.key" removable dense
@@ -171,8 +167,8 @@
                   {{ f.label }} ({{ f.aggregation }})
                   <q-menu>
                     <q-list dense>
-                      <q-item v-for="agg in ['SUM','COUNT','AVG','MIN','MAX']" :key="agg"
-                        clickable v-close-popup @click="store.changeAggregation(f.key, agg)">
+                      <q-item v-for="agg in ['SUM', 'COUNT', 'AVG', 'MIN', 'MAX']" :key="agg" clickable v-close-popup
+                        @click="store.changeAggregation(f.key, agg)">
                         <q-item-section>{{ agg }}</q-item-section>
                       </q-item>
                     </q-list>
@@ -192,9 +188,9 @@
 
         <!-- Results: Tabs for Table and Chart -->
         <div class="results-panel" v-if="store.rawData.length">
-          <q-tabs v-model="activeTab" dense align="left" class="results-tabs"
-            active-color="primary" indicator-color="primary">
-            <q-tab name="table" icon="grid_on" label="Tabla Pivote" />
+          <q-tabs v-model="activeTab" dense align="left" class="results-tabs" active-color="primary"
+            indicator-color="primary">
+            <q-tab name="table" icon="grid_on" label="Tabla" />
             <q-tab name="chart" icon="bar_chart" label="Gráfico" />
           </q-tabs>
           <q-separator />
@@ -204,17 +200,18 @@
             </q-tab-panel>
             <q-tab-panel name="chart" class="q-pa-sm">
               <div class="chart-toolbar">
-                <q-btn-toggle v-model="store.chartType" dense flat toggle-color="primary"
-                  :options="[
-                    { label: 'Barras', value: 'bar', icon: 'bar_chart' },
-                    { label: 'H. Barras', value: 'hbar', icon: 'align_horizontal_left' },
-                    { label: 'Línea', value: 'line', icon: 'show_chart' },
-                    { label: 'Torta', value: 'pie', icon: 'pie_chart' },
-                    { label: 'Dona', value: 'doughnut', icon: 'donut_large' },
-                  ]" />
-                <q-toggle v-model="store.chartStacked" label="Apilado" dense v-if="['bar', 'hbar', 'line'].includes(store.chartType)" />
+                <q-btn-toggle v-model="store.chartType" dense flat toggle-color="primary" :options="[
+                  { label: 'Barras', value: 'bar', icon: 'bar_chart' },
+                  { label: 'H. Barras', value: 'hbar', icon: 'align_horizontal_left' },
+                  { label: 'Línea', value: 'line', icon: 'show_chart' },
+                  { label: 'Torta', value: 'pie', icon: 'pie_chart' },
+                  { label: 'Dona', value: 'doughnut', icon: 'donut_large' },
+                ]" />
+                <q-toggle v-model="store.chartStacked" label="Apilado" dense
+                  v-if="['bar', 'hbar', 'line'].includes(store.chartType)" />
                 <q-toggle v-model="store.chartShowLabels" label="Mostrar Etiquetas" dense />
-                <q-btn flat round dense icon="palette" color="primary" @click="showColorDialog = true" v-if="store.rawData.length">
+                <q-btn flat round dense icon="palette" color="primary" @click="showColorDialog = true"
+                  v-if="store.rawData.length">
                   <q-tooltip>Personalizar Colores</q-tooltip>
                 </q-btn>
               </div>
@@ -244,8 +241,10 @@
         </q-card-section>
         <q-card-section>
           <q-input v-model="saveName" label="Nombre *" outlined dense class="q-mb-md" />
-          <q-input v-model="saveDescription" label="Descripción" outlined dense type="textarea" rows="2" class="q-mb-md" />
-          <q-select v-model="saveVisibility" :options="[{label:'Privada',value:'private'},{label:'Pública',value:'public'}]"
+          <q-input v-model="saveDescription" label="Descripción" outlined dense type="textarea" rows="2"
+            class="q-mb-md" />
+          <q-select v-model="saveVisibility"
+            :options="[{ label: 'Privada', value: 'private' }, { label: 'Pública', value: 'public' }]"
             label="Visibilidad" outlined dense emit-value map-options />
         </q-card-section>
         <q-card-actions align="right">
@@ -275,9 +274,12 @@
               </q-item-section>
               <q-item-section side>
                 <q-btn round flat>
-                  <div :style="{ background: store.chartCustomColors[series] || '#ddd', width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc' }"></div>
+                  <div
+                    :style="{ background: store.chartCustomColors[series] || '#ddd', width: '24px', height: '24px', borderRadius: '50%', border: '1px solid #ccc' }">
+                  </div>
                   <q-menu>
-                    <q-color v-model="store.chartCustomColors[series]" no-header no-footer default-view="palette" class="my-picker" />
+                    <q-color v-model="store.chartCustomColors[series]" no-header no-footer default-view="palette"
+                      class="my-picker" />
                   </q-menu>
                 </q-btn>
               </q-item-section>
@@ -341,20 +343,31 @@ const currentChartSeries = computed(() => {
   const isPie = type === 'pie' || type === 'doughnut';
 
   if (isPie) {
-    // Labels are categories
+    if (store.pivotRows.length === 0) {
+      if (td.hasPivotColumns) {
+        // Sin filas pero con columnas: cada combo columna-valor es una tajada
+        const valueHeaders = td.headers.filter(h => h.isValue);
+        return valueHeaders.map(h => `${h.label} - ${h.subLabel}`);
+      }
+      // Sin filas y sin columnas: cada campo de valor es una tajada
+      const valueHeaderKeys = td.headers.filter((_, i) => i >= store.pivotRows.length);
+      return valueHeaderKeys.map(h => h.label);
+    }
+    // Con filas: cada categoría de fila es una tajada
     const rowHeaderKeys = td.headers.filter(h => h.isRowHeader).map(h => h.key);
     return td.bodyRows.map(row => rowHeaderKeys.map(k => row[k] || '').join(' | '));
   }
 
   if (td.hasPivotColumns) {
-    // Labels are column value groups
+    // Barras/Líneas con columnas: cada grupo de columna es una serie
     const valueHeaders = td.headers.filter(h => h.isValue);
-    return [...new Set(valueHeaders.map(h => h.label))];
+    const colValuesSet = [...new Set(valueHeaders.map(h => h.label))];
+    return colValuesSet;
   }
 
-  // Labels are value field names
-  const valueHeaders = td.headers.filter((_, i) => i >= store.pivotRows.length);
-  return valueHeaders.map(h => h.label);
+  // Barras/Líneas simples: cada campo de valor es una serie
+  const valueHeaderKeys = td.headers.filter((_, i) => i >= store.pivotRows.length);
+  return valueHeaderKeys.map(h => h.label);
 });
 
 // ─── Methods ──────────────────────────────────────────────────────────────────
@@ -452,78 +465,260 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.dashboard-page { display: flex; flex-direction: column; height: calc(100vh - 50px); background: #f5f7fa; }
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 50px);
+  background: #f5f7fa;
+}
 
 .dashboard-toolbar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 8px 16px; background: white; border-bottom: 1px solid #e0e4e8;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 16px;
+  background: white;
+  border-bottom: 1px solid #e0e4e8;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
-.toolbar-left { display: flex; align-items: center; gap: 8px; }
-.toolbar-title { font-size: 18px; font-weight: 600; color: #1a1a2e; }
-.toolbar-actions { display: flex; align-items: center; gap: 4px; }
 
-.dashboard-content { display: flex; flex: 1; overflow: hidden; }
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbar-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dashboard-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
 
 /* ─── Fields Panel ──────────────────────────────────────────────── */
 .fields-panel {
-  width: 260px; min-width: 260px; background: white; border-right: 1px solid #e0e4e8;
-  display: flex; flex-direction: column; overflow: hidden;
+  width: 260px;
+  min-width: 260px;
+  background: white;
+  border-right: 1px solid #e0e4e8;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
+
 .panel-header {
-  display: flex; align-items: center; gap: 8px; padding: 12px;
-  font-weight: 600; color: #333; border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #eee;
 }
-.fields-list { flex: 1; overflow-y: auto; padding: 4px 0; }
-.field-category { margin-bottom: 2px; }
+
+.fields-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.field-category {
+  margin-bottom: 2px;
+}
+
 .category-header {
-  display: flex; align-items: center; gap: 4px; padding: 6px 12px;
-  cursor: pointer; font-size: 13px; font-weight: 600; color: #555;
-  background: #fafafa; user-select: none;
-}
-.category-header:hover { background: #f0f0f0; }
-.category-fields { padding: 2px 8px 4px 8px; }
-.field-chip {
-  display: flex; align-items: center; gap: 6px; padding: 5px 10px;
-  margin: 2px 0; border-radius: 4px; cursor: grab; font-size: 12px;
-  background: #f8f9ff; border: 1px solid #e8eaf6; transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
+  background: #fafafa;
   user-select: none;
 }
-.field-chip:hover { background: #e3f2fd; border-color: #90caf9; transform: translateX(2px); }
-.field-chip:active { cursor: grabbing; }
-.field-icon { color: #78909c; }
-.field-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.category-header:hover {
+  background: #f0f0f0;
+}
+
+.category-fields {
+  padding: 2px 8px 4px 8px;
+}
+
+.field-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  margin: 2px 0;
+  border-radius: 4px;
+  cursor: grab;
+  font-size: 12px;
+  background: #f8f9ff;
+  border: 1px solid #e8eaf6;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.field-chip:hover {
+  background: #e3f2fd;
+  border-color: #90caf9;
+  transform: translateX(2px);
+}
+
+.field-chip:active {
+  cursor: grabbing;
+}
+
+.field-icon {
+  color: #78909c;
+}
+
+.field-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* ─── Center Panel ──────────────────────────────────────────────── */
-.center-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 12px; gap: 10px; }
+.center-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 12px;
+  gap: 10px;
+}
 
 /* ─── Drop Zones ────────────────────────────────────────────────── */
-.drop-zones { display: flex; flex-direction: column; gap: 6px; }
-.drop-zones-row { display: flex; gap: 6px; }
-.drop-zone {
-  border: 2px dashed #ccc; border-radius: 8px; padding: 8px 12px;
-  background: #fafafa; transition: all 0.2s; min-height: 42px;
+.drop-zones {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.drop-zone.zone-active { border-color: #1976d2; background: #e3f2fd; }
-.zone-rows { flex: 1; }
-.zone-columns { flex: 1; }
-.zone-values { flex: 1; }
-.zone-label { font-size: 11px; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 4px; margin-bottom: 4px; }
-.zone-chips { display: flex; flex-wrap: wrap; gap: 4px; }
-.zone-placeholder { font-size: 12px; color: #bbb; font-style: italic; }
 
-.execute-bar { display: flex; }
+.drop-zones-row {
+  display: flex;
+  gap: 6px;
+}
+
+.drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: #fafafa;
+  transition: all 0.2s;
+  min-height: 42px;
+}
+
+.drop-zone.zone-active {
+  border-color: #1976d2;
+  background: #e3f2fd;
+}
+
+.zone-rows {
+  flex: 1;
+}
+
+.zone-columns {
+  flex: 1;
+}
+
+.zone-values {
+  flex: 1;
+}
+
+.zone-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.zone-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.zone-placeholder {
+  font-size: 12px;
+  color: #bbb;
+  font-style: italic;
+}
+
+.execute-bar {
+  display: flex;
+}
 
 /* ─── Results ───────────────────────────────────────────────────── */
-.results-panel { flex: 1; display: flex; flex-direction: column; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.results-tabs { background: #fafafa; }
-.results-content { flex: 1; overflow: auto; }
+.results-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
 
-.chart-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+.results-tabs {
+  background: #fafafa;
+}
 
-.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.results-content {
+  flex: 1;
+  overflow: auto;
+}
 
-.slide-enter-active, .slide-leave-active { transition: all 0.2s; overflow: hidden; }
-.slide-enter-from, .slide-leave-to { max-height: 0; opacity: 0; }
-.slide-enter-to, .slide-leave-from { max-height: 500px; opacity: 1; }
+.chart-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-enter-active,
+.slide-leave-active {
+  transition: all 0.2s;
+  overflow: hidden;
+}
+
+.slide-enter-from,
+.slide-leave-to {
+  max-height: 0;
+  opacity: 0;
+}
+
+.slide-enter-to,
+.slide-leave-from {
+  max-height: 500px;
+  opacity: 1;
+}
 </style>

@@ -298,8 +298,8 @@ const resolvers = {
             let selectParts = [];
             let columnNames = [];
 
-            if (groupByFields.length > 0) {
-                // Con agrupamiento: SELECT group fields + aggregated values
+            if (groupByFields.length > 0 || valueFields.length > 0) {
+                // Agregación (con o sin agrupamiento)
                 for (const gf of groupByFields) {
                     const def = FIELD_MAP[gf];
                     if (def) {
@@ -321,13 +321,13 @@ const resolvers = {
                         columnNames.push(`${vf.field}(${agg})`);
                     }
                 }
-                // Si no hay valores explícitos, agregar COUNT(*)
-                if (valueFields.length === 0) {
+                // Si hay valores pero no agrupación, resultará en 1 sola fila (Total Global)
+                if (groupByFields.length === 0 && valueFields.length === 0) {
                     selectParts.push('COUNT(*) AS count');
                     columnNames.push('count');
                 }
             } else {
-                // Sin agrupamiento: SELECT raw fields
+                // Sin agregación: SELECT raw fields
                 for (const rf of requestedFields) {
                     const def = FIELD_MAP[rf];
                     if (def) {

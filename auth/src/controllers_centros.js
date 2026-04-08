@@ -212,7 +212,7 @@ exports.listCentros = async (req, res) => {
       SELECT c.id, c.nombre_establecimiento, c.tipo_establecimiento,
              c.tipo_clasificacion, c.estado_centro, c.rif, c.nro_registro_mercantil,
              c.latitud, c.longitud,
-             p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado,
+             g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado,
              f.id AS ficha_id, f.nro_registro_nacional, f.tipo_solicitud,
              f.fecha_solicitud, f.version,
              CASE 
@@ -225,9 +225,7 @@ exports.listCentros = async (req, res) => {
                 ELSE (SELECT access_level FROM user_centro_access WHERE user_id = $${params.length + 1} AND centro_id = c.id AND deleted_at IS NULL LIMIT 1)
              END as access_level
       FROM public.centros c
-      LEFT JOIN public.parroquias p ON p.id = c.parroquia_id
-      LEFT JOIN public.municipios m ON m.id = p.municipio_id
-      LEFT JOIN public.estados e ON e.id = m.estado_id
+      LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
       LEFT JOIN public.fichas_establecimiento f ON f.centro_id = c.id AND f.is_current = TRUE AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
       ${filter.replace('$__PARAM__', `$${paramIdx}`)}
@@ -256,11 +254,9 @@ exports.getCentro = async (req, res) => {
         const filterSql = filter.replace('$__PARAM__', `$${filterParam}`);
 
         const result = await client.query(
-            `SELECT c.*, p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado
+            `SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
        FROM public.centros c
-       LEFT JOIN public.parroquias p ON p.id = c.parroquia_id
-       LEFT JOIN public.municipios m ON m.id = p.municipio_id
-       LEFT JOIN public.estados e ON e.id = m.estado_id
+       LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
        WHERE c.id = $${centroParam} AND c.deleted_at IS NULL ${filterSql}`,
             allParams
         );

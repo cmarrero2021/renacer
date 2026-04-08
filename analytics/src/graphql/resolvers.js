@@ -14,9 +14,9 @@ const FIELD_MAP = {
     'centro.longitud': { sql: 'c.longitud', table: 'centros', label: 'Longitud', category: 'Centro', numeric: true },
 
     // Geografía
-    'geo.estado': { sql: 'e.nombre', table: 'geo', label: 'Estado', category: 'Geografía' },
-    'geo.municipio': { sql: 'm.nombre', table: 'geo', label: 'Municipio', category: 'Geografía' },
-    'geo.parroquia': { sql: 'p.nombre', table: 'geo', label: 'Parroquia', category: 'Geografía' },
+    'geo.estado': { sql: 'g.estado', table: 'geo', label: 'Estado', category: 'Geografía' },
+    'geo.municipio': { sql: 'g.municipio', table: 'geo', label: 'Municipio', category: 'Geografía' },
+    'geo.parroquia': { sql: 'g.parroquia', table: 'geo', label: 'Parroquia', category: 'Geografía' },
 
     // Ficha
     'ficha.version': { sql: 'f.version', table: 'ficha', label: 'Versión Ficha', category: 'Ficha', numeric: true },
@@ -83,9 +83,7 @@ function buildJoins(requiredTables) {
     const unique = new Set(requiredTables);
 
     if (unique.has('geo')) {
-        joins.push(`LEFT JOIN public.parroquias p ON p.id = c.parroquia_id`);
-        joins.push(`LEFT JOIN public.municipios m ON m.id = p.municipio_id`);
-        joins.push(`LEFT JOIN public.estados e ON e.id = m.estado_id`);
+        joins.push(`LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id`);
     }
     if (unique.has('ficha') || unique.has('capacidad') || unique.has('personal') ||
         unique.has('servicios') || unique.has('infraestructura') || unique.has('poblacion')) {
@@ -165,11 +163,9 @@ const resolvers = {
             const filterSQL = filterClauses.length ? 'AND ' + filterClauses.join(' AND ') : '';
 
             const sql = `
-                SELECT c.*, p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado
+                SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
                 FROM public.centros c
-                LEFT JOIN public.parroquias p ON p.id = c.parroquia_id
-                LEFT JOIN public.municipios m ON m.id = p.municipio_id
-                LEFT JOIN public.estados e ON e.id = m.estado_id
+                LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
                 WHERE c.deleted_at IS NULL ${tenantClause} ${filterSQL}
                 ORDER BY c.nombre_establecimiento
             `;
@@ -191,11 +187,9 @@ const resolvers = {
             }
 
             const result = await client.query(
-                `SELECT c.*, p.nombre AS parroquia, m.nombre AS municipio, e.nombre AS estado
+                `SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
                  FROM public.centros c
-                 LEFT JOIN public.parroquias p ON p.id = c.parroquia_id
-                 LEFT JOIN public.municipios m ON m.id = p.municipio_id
-                 LEFT JOIN public.estados e ON e.id = m.estado_id
+                 LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
                  WHERE c.id = $1 AND c.deleted_at IS NULL`,
                 [args.id]
             );

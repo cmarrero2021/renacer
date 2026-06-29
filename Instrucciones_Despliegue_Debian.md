@@ -98,7 +98,20 @@ server {
         proxy_buffering off;
     }
 
-    # 2. Frontend SPA
+    # 2. API - Analytics
+    location /analytics/ {
+        proxy_pass http://192.168.0.32:4120;
+        proxy_http_version 1.1;
+
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_buffering off;
+    }
+
+    # 3. Frontend SPA
     location / {
         proxy_pass http://192.168.0.32:9110;
         proxy_http_version 1.1;
@@ -111,6 +124,23 @@ server {
         proxy_buffering off;
     }
 
+    # 4. WebSocket
+    location /ws {
+        proxy_pass http://192.168.0.32:4110;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "Upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_connect_timeout 86400s;
+        proxy_buffering off;
+    }
+
     # Logs
     access_log /var/log/nginx/renacer_access.log;
     error_log /var/log/nginx/renacer_error.log;
@@ -120,18 +150,28 @@ server {
 > **IMPORTANTE:** Guarda el archivo y reinicia Nginx (`sudo nginx -t && sudo systemctl reload nginx`). Notarás que NO hemos incluido las líneas `listen 443 ssl` ni las rutas de los certificados todavía. Esto es necesario para que Nginx arranque correctamente *antes* de generar el certificado.
 
 ### 2. Generar Certificado SSL (Certbot)
-Ahora que Nginx está corriendo sin errores con el subdominio en el puerto 80, ejecuta Certbot. El plugin de Nginx se encargará de modificar automáticamente el archivo que acabas de crear para añadir las líneas SSL y la redirección de HTTP a HTTPS:
+Ahora que Nginx está corriendo sin errores con el subdominio en el puerto 80, ejecuta Certbot:
 
 ```bash
 sudo certbot --nginx -d renacer.minaamp.gob.ve
 ```
-*(Cuando pregunte `Please choose whether or not to redirect HTTP traffic to HTTPS`, elige `2: Redirect`)*.
+
+> [!IMPORTANT]
+> Si Certbot **NO** te pregunta por la redirección (`Redirect HTTP to HTTPS`), deberás configurar el bloque del puerto 80 manualmente para asegurar que el sitio siempre cargue por HTTPS:
+> 
+> ```nginx
+> server {
+>     listen 80;
+>     server_name renacer.minaamp.gob.ve;
+>     return 301 https://$host$request_uri;
+> }
+> ```
 
 Para garantizar la autorenovación con un hook a Nginx, abre crontab:
 ```bash
 sudo crontab -e
 ```
-Y verifica que tienes una línea como esta (ajusta horario si aplica):
+Y verifica que tienes una línea como esta:
 ```cron
 0 3 * * * certbot renew --quiet --post-hook "systemctl reload nginx"
 ```

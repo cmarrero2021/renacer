@@ -46,7 +46,7 @@ const {
   updateCooldownSettings,
   assignUserPassword
 } = require("./controllers");
-const { authenticate, authorize, checkBlacklist } = require("./middlewares");
+const { authenticate, authorize } = require("./middlewares");
 
 // Rutas Públicas
 router.get("/prueba", prueba);
@@ -59,9 +59,6 @@ router.post("/verify-2fa", verify2FA); // Verificar código 2FA
 router.post("/request-reset", requestPasswordReset); // Solicitar código de recuperación
 router.post("/verify-reset-code", verifyResetCode); // Verificar código
 router.post("/reset-password", resetPassword); // Restablecer contraseña
-
-// Middleware para verificar tokens en la lista negra
-router.use(checkBlacklist);
 
 // Sesiones
 router.get(

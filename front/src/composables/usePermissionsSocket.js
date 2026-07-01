@@ -1,12 +1,12 @@
-import { ref, onUnmounted } from "vue";
+import { shallowRef, onUnmounted } from "vue";
 import { LocalStorage, Notify } from "quasar";
 
 const WS_URL = import.meta.env.VITE_WS_URL;
 
-// Estado compartido (singleton entre componentes)
-const permissions = ref(LocalStorage.getItem("permissions") || []);
-const role = ref(LocalStorage.getItem("role") || "");
-const isConnected = ref(false);
+const permissions = shallowRef(LocalStorage.getItem("permissions") || []);
+const role = shallowRef(LocalStorage.getItem("role") || "");
+const isConnected = shallowRef(false);
+const lastUpdated = shallowRef(null);
 
 let ws = null;
 let reconnectTimer = null;
@@ -14,17 +14,62 @@ let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 20;
 const BASE_RECONNECT_DELAY = 2000;
 
-/**
- * Composable para manejar la conexión WebSocket de permisos en tiempo real
- */
+// ─── Debounce de mensajes ─────────────────────────────────────────────────
+let debounceTimer = null;
+let pendingUpdate = null;
+let lastNotifyTime = 0;
+
+const DEBOUNCE_MS = 500;
+const NOTIFY_THROTTLE_MS = 5000;
+
+function applyPendingUpdate() {
+  if (!pendingUpdate) return;
+
+  const { newPermissions, newRole, reason } = pendingUpdate;
+  pendingUpdate = null;
+
+  // Dedup: si el JSON es idéntico, saltar
+  const currentKey = JSON.stringify([permissions.value, role.value]);
+  const newKey = JSON.stringify([newPermissions, newRole]);
+  if (currentKey === newKey) return;
+
+  permissions.value = newPermissions;
+  role.value = newRole;
+  lastUpdated.value = Date.now();
+
+  LocalStorage.set("permissions", newPermissions);
+  LocalStorage.set("role", newRole);
+
+  // Notify trottled: máximo 1 cada 5s
+  const now = Date.now();
+  if (now - lastNotifyTime > NOTIFY_THROTTLE_MS) {
+    lastNotifyTime = now;
+    Notify.create({
+      message: reason
+        ? `Permisos actualizados: ${reason}`
+        : "Tus permisos han sido actualizados",
+      color: "info",
+      icon: "sync",
+      position: "top-right",
+      timeout: 3000,
+    });
+  }
+}
+
+function scheduleApply() {
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(applyPendingUpdate, DEBOUNCE_MS);
+}
+
+// ─── Composable ──────────────────────────────────────────────────────────
+
 export function usePermissionsSocket() {
   const connect = () => {
     const token = LocalStorage.getItem("token");
     if (!token || !WS_URL) return;
 
-    // Limpiar conexión anterior si existe
     if (ws) {
-      ws.onclose = null; // Evitar reconexión en cierre intencional
+      ws.onclose = null;
       ws.close();
     }
 
@@ -32,11 +77,8 @@ export function usePermissionsSocket() {
       ws = new WebSocket(WS_URL);
 
       ws.onopen = () => {
-        console.log("🔌 WebSocket conectado");
         isConnected.value = true;
         reconnectAttempts = 0;
-
-        // Enviar token para autenticarse
         ws.send(JSON.stringify({ type: "auth", token }));
       };
 
@@ -44,36 +86,21 @@ export function usePermissionsSocket() {
         try {
           const data = JSON.parse(event.data);
 
-          if (data.type === "auth_success") {
-            console.log("✅ WebSocket autenticado");
-          }
+          if (data.type === "auth_success") return;
 
           if (data.type === "auth_error") {
-            console.error("❌ WebSocket auth error:", data.message);
             ws.close();
+            return;
           }
 
           if (data.type === "permissions_updated") {
-            console.log("📡 Permisos actualizados recibidos:", data.reason);
-
-            // Actualizar estado reactivo
-            permissions.value = data.permissions || [];
-            role.value = data.role || "";
-
-            // Persistir en LocalStorage
-            LocalStorage.set("permissions", data.permissions || []);
-            if (data.role !== undefined) {
-              LocalStorage.set("role", data.role || "");
-            }
-
-            // Notificar al usuario
-            Notify.create({
-              message: "Tus permisos han sido actualizados",
-              color: "info",
-              icon: "sync",
-              position: "top-right",
-              timeout: 3000,
-            });
+            // Acumular en lugar de aplicar inmediatamente
+            pendingUpdate = {
+              newPermissions: data.permissions || [],
+              newRole: data.role ?? role.value,
+              reason: data.reason || "",
+            };
+            scheduleApply();
           }
         } catch (err) {
           // Ignorar mensajes mal formados
@@ -81,34 +108,22 @@ export function usePermissionsSocket() {
       };
 
       ws.onclose = (event) => {
-        console.log(
-          `🔌 WebSocket desconectado (code: ${event.code}, reason: ${event.reason})`
-        );
         isConnected.value = false;
         ws = null;
 
-        // Reconectar automáticamente si no fue un cierre intencional
         if (event.code !== 4003 && event.code !== 1000) {
           scheduleReconnect();
         }
       };
 
-      ws.onerror = (error) => {
-        console.error("❌ WebSocket error:", error);
-      };
+      ws.onerror = () => {};
     } catch (err) {
-      console.error("❌ Error creando WebSocket:", err);
       scheduleReconnect();
     }
   };
 
   const scheduleReconnect = () => {
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-      console.log("⚠️ Máximo de intentos de reconexión alcanzado");
-      return;
-    }
-
-    // No reconectar si no hay token (usuario no logueado)
+    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) return;
     if (!LocalStorage.getItem("token")) return;
 
     const delay = Math.min(
@@ -117,38 +132,32 @@ export function usePermissionsSocket() {
     );
     reconnectAttempts++;
 
-    console.log(
-      `🔄 Reconectando en ${Math.round(delay / 1000)}s (intento ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS})`
-    );
-
     clearTimeout(reconnectTimer);
-    reconnectTimer = setTimeout(() => {
-      connect();
-    }, delay);
+    reconnectTimer = setTimeout(connect, delay);
   };
 
   const disconnect = () => {
     clearTimeout(reconnectTimer);
-    reconnectAttempts = MAX_RECONNECT_ATTEMPTS; // Prevenir reconexión
+    clearTimeout(debounceTimer);
+    pendingUpdate = null;
+    reconnectAttempts = MAX_RECONNECT_ATTEMPTS;
     if (ws) {
-      ws.onclose = null; // Evitar reconexión al cerrar
+      ws.onclose = null;
       ws.close(1000, "Logout");
       ws = null;
     }
     isConnected.value = false;
   };
 
-  /**
-   * Verifica si el usuario tiene un permiso específico
-   * Usa el ref reactivo (se actualiza en tiempo real)
-   */
+  const syncFromStorage = () => {
+    permissions.value = LocalStorage.getItem("permissions") || [];
+    role.value = LocalStorage.getItem("role") || "";
+  };
+
   const hasPermission = (permissionName) => {
     return permissions.value.some((p) => p.name === permissionName);
   };
 
-  /**
-   * Verifica si el usuario es administrador
-   */
   const isAdmin = () => {
     const r = role.value || LocalStorage.getItem("role") || "";
     return ["admin", "administrador", "administrator", "admininstrador"].includes(
@@ -156,25 +165,13 @@ export function usePermissionsSocket() {
     );
   };
 
-  /**
-   * Sincroniza el estado reactivo desde LocalStorage
-   * (llamar después del login)
-   */
-  const syncFromStorage = () => {
-    permissions.value = LocalStorage.getItem("permissions") || [];
-    role.value = LocalStorage.getItem("role") || "";
-  };
-
-  // Limpiar al desmontar componente
-  onUnmounted(() => {
-    // No desconectar aquí ya que el estado es compartido
-    // Solo desconectar explícitamente en logout
-  });
+  onUnmounted(() => {});
 
   return {
     permissions,
     role,
     isConnected,
+    lastUpdated,
     connect,
     disconnect,
     hasPermission,

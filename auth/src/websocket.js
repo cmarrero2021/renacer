@@ -40,6 +40,27 @@ function sendToUser(userId, permissions, role, reason) {
   lastUserSync.set(userId, Date.now());
 }
 
+/**
+ * Difunde una actualización de catálogo a todas las conexiones WebSocket activas
+ */
+function broadcastCatalogUpdate(catalogKey) {
+  const message = JSON.stringify({
+    type: "catalogs_updated",
+    catalog: catalogKey,
+    timestamp: Date.now(),
+  });
+
+  console.log(`📢 Difundiendo actualización de catálogo '${catalogKey}' a conexiones activas`);
+
+  for (const [userId, connections] of userConnections.entries()) {
+    for (const ws of connections) {
+      if (ws.readyState === ws.OPEN) {
+        ws.send(message);
+      }
+    }
+  }
+}
+
 function processUser(userId) {
   const connections = userConnections.get(userId);
   if (!connections || connections.size === 0) return;
@@ -182,8 +203,9 @@ const startPgListener = async (wss) => {
     try {
       await pgClient.connect();
       await pgClient.query("LISTEN permissions_changed");
+      await pgClient.query("LISTEN catalogs_changed");
       attempt = 0;
-      console.log("🔔 pg_notify: Escuchando canal 'permissions_changed'");
+      console.log("🔔 pg_notify: Escuchando canales 'permissions_changed' y 'catalogs_changed'");
 
       // Re-sincronizar estado con la BD para todos los usuarios conectados
       // (recupera cualquier NOTIFY perdido durante la desconexión)
@@ -191,6 +213,16 @@ const startPgListener = async (wss) => {
 
       pgClient.on("notification", (msg) => {
         try {
+          if (msg.channel === "catalogs_changed") {
+            let cat = msg.payload;
+            try {
+              const parsed = JSON.parse(msg.payload);
+              cat = parsed.catalog || parsed.table || cat;
+            } catch (e) {}
+            broadcastCatalogUpdate(cat);
+            return;
+          }
+
           const payload = JSON.parse(msg.payload);
           const { user_ids, reason } = payload;
 
@@ -341,4 +373,4 @@ const setupWebSocket = (server) => {
   return wss;
 };
 
-module.exports = { setupWebSocket };
+module.exports = { setupWebSocket, broadcastCatalogUpdate };

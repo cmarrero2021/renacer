@@ -102,9 +102,15 @@ export function usePermissionsSocket() {
             };
             scheduleApply();
           }
+
+          if (data.type === "catalogs_updated") {
+            // Notificar a componentes y stores de catálogos
+            window.dispatchEvent(new CustomEvent("catalogs-updated", { detail: data }));
+          }
         } catch (err) {
           // Ignorar mensajes mal formados
         }
+
       };
 
       ws.onclose = (event) => {

@@ -89,8 +89,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { LocalStorage } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
+import { useCatalogosStore } from 'src/stores/catalogos.store';
 
 const centrosStore = useCentrosStore();
+const catalogosStore = useCatalogosStore();
 
 // Búsqueda y filtros
 const search = ref('');
@@ -118,8 +120,6 @@ function canDeleteRow(row) {
     return row.access_level === 'admin';
 }
 
-
-
 // Opciones de filtro
 const opcionesEstado = [
     { value: 'activo', label: 'Activo' },
@@ -127,13 +127,7 @@ const opcionesEstado = [
     { value: 'suspendido', label: 'Suspendido' },
 ];
 
-const opcionesTipo = [
-    { value: 'publico', label: 'Público' },
-    { value: 'afiliada_ivss', label: 'Afiliada IVSS' },
-    { value: 'privado', label: 'Privado' },
-    { value: 'religiosa', label: 'Religioso' },
-    { value: 'otra', label: 'Otro' },
-];
+const opcionesTipo = computed(() => catalogosStore.opcionesTipoEstab);
 
 // Columnas
 const columns = [
@@ -172,7 +166,7 @@ function colorEstado(estado) {
 }
 
 function labelTipo(tipo) {
-    return opcionesTipo.find(o => o.value === tipo)?.label || tipo || '—';
+    return (opcionesTipo.value || []).find(o => o.value === tipo)?.label || tipo || '—';
 }
 
 function confirmarEliminar(row) {
@@ -187,5 +181,6 @@ async function eliminarCentro() {
 
 onMounted(() => {
     centrosStore.fetchCentros();
+    catalogosStore.fetchAll();
 });
 </script>

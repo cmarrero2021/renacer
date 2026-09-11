@@ -22,6 +22,8 @@ yarn.lock
 *.tmp
 *.swp
 *.swo
+*.rar
+*.sql
 
 # Ignorar archivos de pruebas
 coverage/

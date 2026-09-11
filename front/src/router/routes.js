@@ -70,6 +70,15 @@ const routes = [
         path: "mantenimiento/enfriamiento",
         component: () => import("pages/admin/maintenance/CooldownMaintenancePage.vue"),
       },
+      // Rutas de Catálogos
+      {
+        path: "catalogos",
+        redirect: "/admin/catalogos/tipos_establecimiento",
+      },
+      {
+        path: "catalogos/:catalogo",
+        component: () => import("pages/catalogos/CatalogosPage.vue"),
+      },
 
     ],
   },

@@ -7,6 +7,7 @@ const dotenv = require('dotenv');
 const cors = require('cors');
 const routes = require('./routes');
 const routesCentros = require('./routes_centros');
+const routesCatalogos = require('./routes_catalogos');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
 const { setupWebSocket } = require('./websocket');
@@ -39,6 +40,7 @@ app.use(express.json());
 // Rutas principales
 app.use('/auth', routes);
 app.use('/auth', routesCentros);
+app.use('/auth', routesCatalogos);
 
 // Endpoint para listar rutas (sin autenticación)
 app.get('/list-endpoints', (req, res) => {

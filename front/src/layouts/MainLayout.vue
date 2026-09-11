@@ -74,6 +74,33 @@
             </q-item>
           </q-expansion-item>
 
+          <!-- Menú expandible de Catálogos -->
+          <q-expansion-item v-if="isAdmin() || hasPermission('view_catalogos_menu')" icon="category"
+            label="Catálogos" expand-separator>
+            <!-- Catálogos de Negocio -->
+            <q-item-label header class="text-caption text-grey-6 q-pt-sm q-pb-xs q-pl-md">Establecimientos</q-item-label>
+            <q-item clickable v-ripple to="/admin/catalogos/tipos_establecimiento"
+              v-if="isAdmin() || hasPermission('view_tipos_establecimiento')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="domain" /></q-item-section>
+              <q-item-section>Tipos de Establecimiento</q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/tipos_clasificacion"
+              v-if="isAdmin() || hasPermission('view_tipos_clasificacion')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="apartment" /></q-item-section>
+              <q-item-section>Tipos de Clasificación</q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/tipos_documentos"
+              v-if="isAdmin() || hasPermission('view_tipos_documentos')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="folder_shared" /></q-item-section>
+              <q-item-section>Tipos de Documentos</q-item-section>
+            </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/servicios_catalogo"
+              v-if="isAdmin() || hasPermission('view_servicios_catalogo')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="medical_services" /></q-item-section>
+              <q-item-section>Servicios</q-item-section>
+            </q-item>
+          </q-expansion-item>
+
           <!-- Menú expandible de Mantenimiento -->
           <q-expansion-item v-if="isAdmin() || hasPermission('view_maintenance_menu')" icon="build"
             label="Mantenimiento" expand-separator>
@@ -88,6 +115,7 @@
               <q-item-section>Enfriamiento</q-item-section>
             </q-item>
           </q-expansion-item>
+
         </q-list>
       </q-scroll-area>
     </q-drawer>
@@ -104,10 +132,12 @@ import { useRouter } from 'vue-router'
 import { LocalStorage, Notify } from 'quasar'
 import axios from 'axios'
 import { usePermissionsSocket } from 'src/composables/usePermissionsSocket'
+import { useCatalogosStore } from 'src/stores/catalogos.store'
 
 const leftDrawerOpen = ref(false)
 const router = useRouter()
 const logoutUrl = import.meta.env.VITE_LOGOUT_URL
+const catalogosStore = useCatalogosStore()
 
 // Composable de permisos en tiempo real
 const { hasPermission, isAdmin, connect, disconnect, syncFromStorage } = usePermissionsSocket()
@@ -130,10 +160,11 @@ const toggleLeftDrawer = () => {
   leftDrawerOpen.value = !leftDrawerOpen.value
 }
 
-// Conectar WebSocket al montar el layout
+// Conectar WebSocket y pre-cargar catálogos al montar el layout
 onMounted(() => {
   syncFromStorage()
   connect()
+  catalogosStore.fetchAll()
 })
 
 const logout = async () => {

@@ -24,13 +24,15 @@ export const useCentrosStore = defineStore('centros', () => {
     const estados = ref([]);
     const municipios = ref([]);
     const parroquias = ref([]);
+    const currentEstadoId = ref(null);
+    const currentMunicipioId = ref(null);
 
     // ─── Getters ──────────────────────────────────────────────────────────────
     const centroCount = computed(() => centros.value.length);
 
     // ─── Acciones: geo-catálogos ──────────────────────────────────────────────
-    async function fetchEstados() {
-        if (estados.value.length) return; // cache
+    async function fetchEstados(force = false) {
+        if (estados.value.length && !force) return; // cache
         try {
             const { data } = await geoService.getEstados();
             estados.value = data;
@@ -40,6 +42,7 @@ export const useCentrosStore = defineStore('centros', () => {
     }
 
     async function fetchMunicipios(estadoId) {
+        currentEstadoId.value = estadoId;
         municipios.value = [];
         parroquias.value = [];
         if (!estadoId) return;
@@ -52,15 +55,54 @@ export const useCentrosStore = defineStore('centros', () => {
     }
 
     async function fetchParroquias(municipioId, estadoId) {
+        currentMunicipioId.value = municipioId;
+        if (estadoId) currentEstadoId.value = estadoId;
         parroquias.value = [];
         if (!municipioId) return;
         try {
-            const { data } = await geoService.getParroquias(municipioId, estadoId);
+            const { data } = await geoService.getParroquias(municipioId, estadoId || currentEstadoId.value);
             parroquias.value = data;
         } catch {
             Notify.create({ type: 'negative', message: 'Error al cargar parroquias.' });
         }
     }
+
+    async function refreshGeoCatalog(cat) {
+        if (!cat || ['estados', 'paises'].includes(cat)) {
+            await fetchEstados(true);
+        }
+        if (!cat || cat === 'municipios') {
+            if (currentEstadoId.value) {
+                try {
+                    const { data } = await geoService.getMunicipios(currentEstadoId.value);
+                    municipios.value = data;
+                } catch (e) {
+                    console.error('Error refrescando municipios:', e);
+                }
+            }
+        }
+        if (!cat || cat === 'parroquias') {
+            if (currentMunicipioId.value) {
+                try {
+                    const { data } = await geoService.getParroquias(currentMunicipioId.value, currentEstadoId.value);
+                    parroquias.value = data;
+                } catch (e) {
+                    console.error('Error refrescando parroquias:', e);
+                }
+            }
+        }
+    }
+
+    // Escuchar actualizaciones en tiempo real de catálogos geográficos
+    if (typeof window !== 'undefined') {
+        window.addEventListener('catalogs-updated', (event) => {
+            const cat = event?.detail?.catalog;
+            if (!cat || ['estados', 'municipios', 'parroquias', 'paises'].includes(cat)) {
+                refreshGeoCatalog(cat);
+            }
+        });
+    }
+
 
     // ─── Acciones: centros ────────────────────────────────────────────────────
     async function fetchCentros() {
@@ -255,10 +297,11 @@ export const useCentrosStore = defineStore('centros', () => {
         // State
         centros, current, ficha, loading,
         estados, municipios, parroquias,
+        currentEstadoId, currentMunicipioId,
         // Getters
         centroCount,
         // Actions - geo
-        fetchEstados, fetchMunicipios, fetchParroquias,
+        fetchEstados, fetchMunicipios, fetchParroquias, refreshGeoCatalog,
         // Actions - centros
         fetchCentros, fetchCentro, createCentro, updateCentro, deleteCentro,
         // Actions - fichas

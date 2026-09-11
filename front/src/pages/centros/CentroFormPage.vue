@@ -619,10 +619,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, defineComponent, h } from 'vue';
+import { ref, computed, onMounted, watch, defineComponent, h } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { Notify } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
+import { useCatalogosStore } from 'src/stores/catalogos.store';
 import { miCentroService, fichasService, geoService } from 'src/services/centros.service';
 
 // ── Sub-componentes inline ────────────────────────────────────────────────────
@@ -677,6 +678,7 @@ const TabActions = defineComponent({
 const router = useRouter();
 const route = useRoute();
 const centrosStore = useCentrosStore();
+const catalogosStore = useCatalogosStore();
 const isEdit = computed(() => !!route.params.id);
 
 // ── IDs persistentes ──────────────────────────────────────────────────────────
@@ -708,22 +710,11 @@ function nextTab() {
     if (idx < steps.length - 1) activeTab.value = steps[idx + 1].name;
 }
 
-// ── Opciones ──────────────────────────────────────────────────────────────────
-const opcionesTipoEstab = [
-    { value: 'publico', label: 'Público' },
-    { value: 'afiliada_ivss', label: 'Afiliada IVSS' },
-    { value: 'privado', label: 'Privado' },
-    { value: 'religiosa', label: 'Religioso' },
-    { value: 'otra', label: 'Otra' },
-];
-const opcionesTipoClasif = [
-    { value: 'geriatrico', label: 'Geriátrico' },
-    { value: 'gronto_psiquiatrico', label: 'Gronto-Psiquiátrico' },
-    { value: 'casa_hogar', label: 'Casa Hogar' },
-    { value: 'unidades_gerontologicas', label: 'Unidades Gerontológicas' },
-    { value: 'fundacion', label: 'Fundación' },
-    { value: 'otras', label: 'Otras' },
-];
+// ── Opciones dinámicas de catálogos ──────────────────────────────────────────
+const opcionesTipoEstab = computed(() => catalogosStore.opcionesTipoEstab);
+const opcionesTipoClasif = computed(() => catalogosStore.opcionesTipoClasif);
+const listaServicios = computed(() => catalogosStore.opcionesServicios);
+
 const opcionesRifTipo = [
     { value: 'J', label: 'J – Jurídico' },
     { value: 'G', label: 'G – Gobierno' },
@@ -749,28 +740,6 @@ const camposPersonal = [
     { field: 'num_servicios_generales', label: 'Serv. Generales' },
     { field: 'num_personal_cocina', label: 'Personal Cocina' },
     { field: 'num_personal_no_adscrito', label: 'Personal No Adscrito' },
-];
-const listaServicios = [
-    { field: 'farmacia', label: 'Farmacia' },
-    { field: 'evaluacion_nutricional', label: 'Evaluación Nutricional' },
-    { field: 'actividades_recreativas', label: 'Actividades Recreativas' },
-    { field: 'servicio_emergencia', label: 'Servicio de Emergencia' },
-    { field: 'servicio_funerario', label: 'Servicio Funerario' },
-    { field: 'medicos', label: 'Médicos', desc: 'medicos_descripcion' },
-    { field: 'lavanderia', label: 'Lavandería', desc: 'lavanderia_descripcion' },
-    { field: 'barberia_peluqueria', label: 'Barbería / Peluquería' },
-    { field: 'otros', label: 'Otros Servicios', desc: 'otros_descripcion' },
-];
-const DOCUMENTOS_LISTA = [
-    { tipo_documento: 'carta_solicitud', tipo_documento_label: 'Carta de solicitud' },
-    { tipo_documento: 'copia_cedula_propietario', tipo_documento_label: 'Copia cédula propietario' },
-    { tipo_documento: 'registro_mercantil', tipo_documento_label: 'Registro mercantil' },
-    { tipo_documento: 'rif', tipo_documento_label: 'RIF' },
-    { tipo_documento: 'documento_inmueble', tipo_documento_label: 'Documento del inmueble' },
-    { tipo_documento: 'conformidad_uso', tipo_documento_label: 'Conformidad de uso' },
-    { tipo_documento: 'permiso_sanitario_local', tipo_documento_label: 'Permiso sanitario local' },
-    { tipo_documento: 'permiso_sanitario_alimentos', tipo_documento_label: 'Permiso sanitario alimentos' },
-    { tipo_documento: 'plano_inmueble', tipo_documento_label: 'Plano del inmueble' },
 ];
 
 // ── Helpers de fecha dd/mm/aaaa ↔ yyyy-mm-dd ────────────────────────────────
@@ -826,7 +795,25 @@ const serv = ref({
     medicos_descripcion: '', lavanderia: false, lavanderia_descripcion: '',
     barberia_peluqueria: false, otros: false, otros_descripcion: ''
 });
-const docs = ref(DOCUMENTOS_LISTA.map(d => ({ ...d, tiene_original: false, tiene_copia: false, descripcion: '' })));
+const docs = ref([]);
+
+function syncDocsFromCatalog() {
+    const existing = new Map(docs.value.map(d => [d.tipo_documento, d]));
+    docs.value = catalogosStore.opcionesDocumentos.map(catDoc => {
+        const prev = existing.get(catDoc.tipo_documento);
+        return {
+            tipo_documento: catDoc.tipo_documento,
+            tipo_documento_label: catDoc.tipo_documento_label,
+            tiene_original: prev ? prev.tiene_original : false,
+            tiene_copia: prev ? prev.tiene_copia : false,
+            descripcion: prev ? prev.descripcion : (catDoc.descripcion || '')
+        };
+    });
+}
+
+watch(() => catalogosStore.opcionesDocumentos, () => {
+    syncDocsFromCatalog();
+}, { immediate: true, deep: true });
 
 // ── Columnas de tablas ────────────────────────────────────────────────────────
 const colsPob = [
@@ -1286,7 +1273,10 @@ function warn() { Notify.create({ type: 'warning', message: 'Primero guarda los 
 
 // ── Inicialización ────────────────────────────────────────────────────────────
 onMounted(async () => {
-    await centrosStore.fetchEstados();
+    await Promise.allSettled([
+        centrosStore.fetchEstados(),
+        catalogosStore.fetchAll()
+    ]);
 
     // Verificar si el usuario ya tiene un centro (modo crear)
     if (!isEdit.value) {
@@ -1324,6 +1314,27 @@ onMounted(async () => {
                 telefonos: centro.telefonos || [],
                 correos: centro.correos || [],
             });
+
+            // Extraer RIF si viene combinado (ej: J-12345678-9)
+            if (centro.rif) {
+                const parts = String(centro.rif).split('-');
+                if (parts.length >= 2) {
+                    datos.value.rif_tipo = parts[0];
+                    datos.value.rif_numero = parts.slice(1).join('-');
+                }
+            }
+
+            // Cargar cascada geográfica en edición
+            if (centro.estado_id) {
+                estadoSel.value = centro.estado_id;
+                await centrosStore.fetchMunicipios(centro.estado_id);
+            }
+            if (centro.municipio_id) {
+                municipioSel.value = centro.municipio_id;
+                await centrosStore.fetchParroquias(centro.municipio_id, centro.estado_id);
+            }
+            datos.value.parroquia_id = centro.parroquia_id;
+
             savedTabs.value.datos = true;
         }
         // Cargar ficha actual

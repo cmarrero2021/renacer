@@ -142,7 +142,7 @@ async function getCentroFilter(userId, client) {
 
 
 // ============================================================
-// GEO: Catálogos geográficos (públicos dentro de la sesión)
+// GEO: Catálogos geográficos (públicos dentro de la sesión - basados en tabla verificada geografia)
 // ============================================================
 
 exports.listEstados = async (req, res) => {
@@ -150,7 +150,8 @@ exports.listEstados = async (req, res) => {
     try {
         const result = await client.query(
             `SELECT DISTINCT cod_entida AS id, estado AS nombre
-       FROM public.geografia ORDER BY estado`
+             FROM public.geografia
+             ORDER BY estado ASC`
         );
         res.json(result.rows);
     } catch (err) {
@@ -164,13 +165,20 @@ exports.listMunicipios = async (req, res) => {
     const { estado_id } = req.query;
     const client = await pool.connect();
     try {
-        const query = estado_id
-            ? `SELECT DISTINCT cod_munici AS id, municipio AS nombre
-         FROM public.geografia WHERE cod_entida = $1 ORDER BY municipio`
-            : `SELECT DISTINCT cod_munici AS id, municipio AS nombre
-         FROM public.geografia ORDER BY municipio`;
-        const params = estado_id ? [estado_id] : [];
-        const result = await client.query(query, params);
+        const params = [];
+        let where = '';
+        if (estado_id) {
+            params.push(estado_id);
+            const pIdx = params.length;
+            where = `WHERE (cod_entida = $${pIdx} OR edo_ine::text = $${pIdx} OR cod_entida = LPAD($${pIdx}, 2, '0'))`;
+        }
+        const result = await client.query(
+            `SELECT DISTINCT cod_munici AS id, cod_entida AS estado_id, municipio AS nombre
+             FROM public.geografia
+             ${where}
+             ORDER BY municipio ASC`,
+            params
+        );
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener municipios', detail: err.message });
@@ -183,13 +191,36 @@ exports.listParroquias = async (req, res) => {
     const { municipio_id, estado_id } = req.query;
     const client = await pool.connect();
     try {
-        const query = municipio_id
-            ? `SELECT cod_parroq AS id, parroquia AS nombre
-         FROM public.geografia WHERE cod_entida = $1 AND cod_munici = $2 ORDER BY parroquia`
-            : `SELECT cod_parroq AS id, parroquia AS nombre
-         FROM public.geografia ORDER BY parroquia`;
-        const params = (estado_id && municipio_id) ? [estado_id, municipio_id] : (municipio_id ? [municipio_id] : []);
-        const result = await client.query(query, params);
+        const params = [];
+        const conditions = [];
+
+        if (estado_id) {
+            params.push(estado_id);
+            const pIdx = params.length;
+            conditions.push(`(cod_entida = $${pIdx} OR edo_ine::text = $${pIdx} OR cod_entida = LPAD($${pIdx}, 2, '0'))`);
+        }
+        if (municipio_id) {
+            params.push(municipio_id);
+            const pIdx = params.length;
+            conditions.push(`(cod_munici = $${pIdx} OR mun_ine::text = $${pIdx} OR cod_munici = LPAD($${pIdx}, 2, '0'))`);
+        }
+
+        const whereSql = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        const result = await client.query(
+            `SELECT DISTINCT ON (cod_entida, cod_munici, cod_parroq)
+                    id AS geo_id,
+                    codigo_ine,
+                    cod_parroq,
+                    pq_ine,
+                    parish_id,
+                    COALESCE(codigo_ine::integer, id) AS id,
+                    parroquia AS nombre
+             FROM public.geografia
+             ${whereSql}
+             ORDER BY cod_entida, cod_munici, cod_parroq, parroquia ASC`,
+            params
+        );
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener parroquias', detail: err.message });
@@ -197,6 +228,7 @@ exports.listParroquias = async (req, res) => {
         client.release();
     }
 };
+
 
 // ============================================================
 // CENTROS: CRUD
@@ -225,7 +257,11 @@ exports.listCentros = async (req, res) => {
                 ELSE (SELECT access_level FROM user_centro_access WHERE user_id = $${params.length + 1} AND centro_id = c.id AND deleted_at IS NULL LIMIT 1)
              END as access_level
       FROM public.centros c
-      LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
+      LEFT JOIN public.geografia g ON (
+          g.codigo_ine::integer = c.parroquia_id 
+          OR g.id = c.parroquia_id 
+          OR g.parish_id = c.parroquia_id
+      )
       LEFT JOIN public.fichas_establecimiento f ON f.centro_id = c.id AND f.is_current = TRUE AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
       ${filter.replace('$__PARAM__', `$${paramIdx}`)}
@@ -254,10 +290,20 @@ exports.getCentro = async (req, res) => {
         const filterSql = filter.replace('$__PARAM__', `$${filterParam}`);
 
         const result = await client.query(
-            `SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
-       FROM public.centros c
-       LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
-       WHERE c.id = $${centroParam} AND c.deleted_at IS NULL ${filterSql}`,
+            `SELECT c.*,
+                    g.parroquia AS parroquia,
+                    g.municipio AS municipio,
+                    g.estado AS estado,
+                    g.cod_munici AS municipio_id,
+                    g.cod_entida AS estado_id,
+                    g.codigo_ine AS codigo_ine
+             FROM public.centros c
+             LEFT JOIN public.geografia g ON (
+                 g.codigo_ine::integer = c.parroquia_id 
+                 OR g.id = c.parroquia_id 
+                 OR g.parish_id = c.parroquia_id
+             )
+             WHERE c.id = $${centroParam} AND c.deleted_at IS NULL ${filterSql}`,
             allParams
         );
 
@@ -1220,7 +1266,8 @@ exports.resolveGeoEntities = async (req, res) => {
         // 1. PRIORIDAD: Resolución por Coordenadas (Point-in-Polygon)
         if (lat && lng) {
             const geoResult = await client.query(
-                `SELECT cod_entida, estado, cod_munici, municipio, cod_parroq, parroquia
+                `SELECT cod_entida, estado, cod_munici, municipio, cod_parroq, parroquia,
+                        COALESCE(codigo_ine::integer, id) AS parroquia_id
                  FROM public.geografia 
                  WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326)) 
                  LIMIT 1`,
@@ -1231,7 +1278,7 @@ exports.resolveGeoEntities = async (req, res) => {
                 const row = geoResult.rows[0];
                 response.estado = { id: row.cod_entida, nombre: row.estado };
                 response.municipio = { id: row.cod_munici, nombre: row.municipio };
-                response.parroquia = { id: row.cod_parroq, nombre: row.parroquia };
+                response.parroquia = { id: row.parroquia_id, nombre: row.parroquia };
                 return res.json(response);
             }
         }
@@ -1266,7 +1313,7 @@ exports.resolveGeoEntities = async (req, res) => {
         if (searchEst) {
             const estRes = await client.query(
                 `SELECT DISTINCT cod_entida AS id, estado AS nombre FROM public.geografia 
-                 WHERE estado ILIKE $1 OR estado ILIKE $2 OR $3 ILIKE '%' || estado || '%' LIMIT 1`,
+                 WHERE unaccent(estado) ILIKE unaccent($1) OR unaccent(estado) ILIKE unaccent($2) OR unaccent($3) ILIKE '%' || unaccent(estado) || '%' LIMIT 1`,
                 [searchEst, `%${searchEst}%`, estadoNombre]
             );
 
@@ -1275,7 +1322,7 @@ exports.resolveGeoEntities = async (req, res) => {
                 if (searchMun) {
                     const munRes = await client.query(
                         `SELECT DISTINCT cod_munici AS id, municipio AS nombre FROM public.geografia 
-                         WHERE cod_entida = $1 AND (municipio ILIKE $2 OR municipio ILIKE $3 OR $4 ILIKE '%' || municipio || '%') LIMIT 1`,
+                         WHERE cod_entida = $1 AND (unaccent(municipio) ILIKE unaccent($2) OR unaccent(municipio) ILIKE unaccent($3) OR unaccent($4) ILIKE '%' || unaccent(municipio) || '%') LIMIT 1`,
                         [response.estado.id, searchMun, `%${searchMun}%`, municipioNombre]
                     );
 
@@ -1283,8 +1330,8 @@ exports.resolveGeoEntities = async (req, res) => {
                         response.municipio = munRes.rows[0];
                         if (searchPar) {
                             const parRes = await client.query(
-                                `SELECT cod_parroq AS id, parroquia AS nombre FROM public.geografia 
-                                 WHERE cod_entida = $1 AND cod_munici = $2 AND (parroquia ILIKE $3 OR parroquia ILIKE $4 OR $5 ILIKE '%' || parroquia || '%') LIMIT 1`,
+                                `SELECT COALESCE(codigo_ine::integer, id) AS id, parroquia AS nombre FROM public.geografia 
+                                 WHERE cod_entida = $1 AND cod_munici = $2 AND (unaccent(parroquia) ILIKE unaccent($3) OR unaccent(parroquia) ILIKE unaccent($4) OR unaccent($5) ILIKE '%' || unaccent(parroquia) || '%') LIMIT 1`,
                                 [response.estado.id, response.municipio.id, searchPar, `%${searchPar}%`, parroquiaNombre]
                             );
                             if (parRes.rows.length > 0) response.parroquia = parRes.rows[0];

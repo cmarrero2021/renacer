@@ -264,11 +264,22 @@ exports.listCentros = async (req, res) => {
                 ELSE (SELECT access_level FROM user_centro_access WHERE user_id = $${params.length + 1} AND centro_id = c.id AND deleted_at IS NULL LIMIT 1)
              END as access_level
       FROM public.centros c
-      LEFT JOIN public.geografia g ON (
-          g.codigo_ine::integer = c.parroquia_id 
-          OR g.id = c.parroquia_id 
-          OR g.parish_id = c.parroquia_id
-      )
+      LEFT JOIN LATERAL (
+          SELECT g.parroquia, g.municipio, g.estado, g.cod_entida, g.cod_munici, g.codigo_ine
+          FROM public.geografia g
+          WHERE g.codigo_ine::integer = c.parroquia_id 
+             OR g.id = c.parroquia_id 
+             OR g.parish_id = c.parroquia_id
+          ORDER BY
+             (g.codigo_ine::integer = c.parroquia_id) DESC,
+             CASE WHEN c.latitud IS NOT NULL AND c.longitud IS NOT NULL AND g.geom IS NOT NULL
+                  THEN ST_Contains(g.geom, ST_SetSRID(ST_Point(c.longitud, c.latitud), 4326))
+                  ELSE FALSE 
+             END DESC,
+             (g.id = c.parroquia_id) DESC,
+             (g.parish_id = c.parroquia_id) DESC
+          LIMIT 1
+      ) g ON TRUE
       LEFT JOIN public.fichas_establecimiento f ON f.centro_id = c.id AND f.is_current = TRUE AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
       ${filter.replace('$__PARAM__', `$${paramIdx}`)}
@@ -305,11 +316,22 @@ exports.getCentro = async (req, res) => {
                     g.cod_entida AS estado_id,
                     g.codigo_ine AS codigo_ine
              FROM public.centros c
-             LEFT JOIN public.geografia g ON (
-                 g.codigo_ine::integer = c.parroquia_id 
-                 OR g.id = c.parroquia_id 
-                 OR g.parish_id = c.parroquia_id
-             )
+             LEFT JOIN LATERAL (
+                 SELECT g.parroquia, g.municipio, g.estado, g.cod_entida, g.cod_munici, g.codigo_ine
+                 FROM public.geografia g
+                 WHERE g.codigo_ine::integer = c.parroquia_id 
+                    OR g.id = c.parroquia_id 
+                    OR g.parish_id = c.parroquia_id
+                 ORDER BY
+                    (g.codigo_ine::integer = c.parroquia_id) DESC,
+                    CASE WHEN c.latitud IS NOT NULL AND c.longitud IS NOT NULL AND g.geom IS NOT NULL
+                         THEN ST_Contains(g.geom, ST_SetSRID(ST_Point(c.longitud, c.latitud), 4326))
+                         ELSE FALSE 
+                    END DESC,
+                    (g.id = c.parroquia_id) DESC,
+                    (g.parish_id = c.parroquia_id) DESC
+                 LIMIT 1
+             ) g ON TRUE
              WHERE c.id = $${centroParam} AND c.deleted_at IS NULL ${filterSql}`,
             allParams
         );

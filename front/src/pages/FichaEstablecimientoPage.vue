@@ -374,6 +374,22 @@
                                 dense />
                         </div>
 
+                        <!-- Áreas de Atención Médica o Enfermería -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-weight-medium q-mb-xs">Atención Médica o Enfermería</div>
+                            <div class="row items-center q-col-gutter-sm" style="height: 40px;">
+                                <q-toggle v-model="form.areasAtencionMedica" label="Tiene área" dense color="primary" />
+                            </div>
+                        </div>
+
+                        <!-- Áreas Verdes -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-weight-medium q-mb-xs">Áreas Verdes</div>
+                            <div class="row items-center q-col-gutter-sm" style="height: 40px;">
+                                <q-toggle v-model="form.areasVerdes" label="Tiene área" dense color="positive" />
+                            </div>
+                        </div>
+
                         <!-- Otros Aspectos (Sin etiqueta, alineado con inputs) -->
                         <div class="col-12 col-sm-6 col-md-8">
                             <div class="q-mb-xs" style="height: 19px;"></div>
@@ -687,6 +703,8 @@ const form = reactive({
     sanitariosAdecuados: false,
     areaCocina: '',
     cocinaAdecuada: false,
+    areasAtencionMedica: false,
+    areasVerdes: false,
     ventilacionAdecuada: false,
     iluminacionAdecuada: false,
     capacidadComedor: '',

@@ -383,6 +383,21 @@
                                                         ficha.infraestructura.sanitarios_adecuados ? 'Sí' : 'No' }}</td>
                                                 </tr>
                                                 <tr>
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área de cocina</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                        ficha.infraestructura.tiene_area_cocina ? 'Sí' : 'No' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Áreas de atención médica/enfermería</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                        ficha.infraestructura.areas_atencion_medica ? 'Sí' : 'No' }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Áreas verdes</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                        ficha.infraestructura.areas_verdes ? 'Sí' : 'No' }}</td>
+                                                </tr>
+                                                <tr>
                                                     <td class="text-caption text-grey" style="padding:2px 4px">Cap.
                                                         comedor</td>
                                                     <td class="text-body2" style="padding:2px 4px">{{
@@ -393,7 +408,7 @@
                                         </div>
                                         <div class="col-12 col-md-7">
                                             <div class="text-caption text-grey q-mb-xs">Servicios básicos</div>
-                                            <div class="row q-gutter-xs">
+                                            <div class="row q-gutter-xs q-mb-sm">
                                                 <q-chip
                                                     :color="ficha.infraestructura.luz_electrica ? 'positive' : 'grey-4'"
                                                     :text-color="ficha.infraestructura.luz_electrica ? 'white' : 'grey-7'"
@@ -414,6 +429,22 @@
                                                     :color="ficha.infraestructura.sistema_seguridad ? 'positive' : 'grey-4'"
                                                     :text-color="ficha.infraestructura.sistema_seguridad ? 'white' : 'grey-7'"
                                                     dense>Seguridad</q-chip>
+                                            </div>
+
+                                            <div class="text-caption text-grey q-mb-xs">Áreas e instalaciones</div>
+                                            <div class="row q-gutter-xs">
+                                                <q-chip
+                                                    :color="ficha.infraestructura.areas_atencion_medica ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.areas_atencion_medica ? 'white' : 'grey-7'"
+                                                    dense>Atención médica / enfermería</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.areas_verdes ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.areas_verdes ? 'white' : 'grey-7'"
+                                                    dense>Áreas verdes</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.tiene_area_cocina ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.tiene_area_cocina ? 'white' : 'grey-7'"
+                                                    dense>Cocina</q-chip>
                                             </div>
                                         </div>
                                     </div>

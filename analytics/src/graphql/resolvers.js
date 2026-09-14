@@ -62,6 +62,8 @@ const FIELD_MAP = {
     'infraestructura.sanitarios_adecuados': { sql: 'inf.sanitarios_adecuados', table: 'infraestructura', label: 'Sanitarios Adecuados', category: 'Infraestructura' },
     'infraestructura.cocina': { sql: 'inf.tiene_area_cocina', table: 'infraestructura', label: 'Tiene Área Cocina', category: 'Infraestructura' },
     'infraestructura.cocina_adecuada': { sql: 'inf.cocina_adecuada', table: 'infraestructura', label: 'Cocina Adecuada', category: 'Infraestructura' },
+    'infraestructura.areas_atencion_medica': { sql: 'inf.areas_atencion_medica', table: 'infraestructura', label: 'Áreas de Atención Médica/Enfermería', category: 'Infraestructura' },
+    'infraestructura.areas_verdes': { sql: 'inf.areas_verdes', table: 'infraestructura', label: 'Áreas Verdes', category: 'Infraestructura' },
     'infraestructura.ventilacion': { sql: 'inf.ventilacion_adecuada', table: 'infraestructura', label: 'Ventilación Adecuada', category: 'Infraestructura' },
     'infraestructura.iluminacion': { sql: 'inf.iluminacion_adecuada', table: 'infraestructura', label: 'Iluminación Adecuada', category: 'Infraestructura' },
     'infraestructura.luz_electrica': { sql: 'inf.luz_electrica', table: 'infraestructura', label: 'Luz Eléctrica', category: 'Infraestructura' },

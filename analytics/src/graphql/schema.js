@@ -130,6 +130,8 @@ const InfraestructuraType = new GraphQLObjectType({
         sanitarios_adecuados: { type: GraphQLBoolean },
         tiene_area_cocina: { type: GraphQLBoolean },
         cocina_adecuada: { type: GraphQLBoolean },
+        areas_atencion_medica: { type: GraphQLBoolean },
+        areas_verdes: { type: GraphQLBoolean },
         ventilacion_adecuada: { type: GraphQLBoolean },
         iluminacion_adecuada: { type: GraphQLBoolean },
         capacidad_comedor_pct: { type: GraphQLFloat },

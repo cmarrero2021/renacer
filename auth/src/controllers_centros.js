@@ -811,13 +811,16 @@ exports.createFicha = async (req, res) => {
                 `INSERT INTO public.ficha_infraestructura
          (ficha_id, estado_inmueble, num_dormitorios, dormitorios_adecuados,
           num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
+          areas_atencion_medica, areas_verdes,
           ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
           luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
                 [ficha.id, infraestructura.estado_inmueble, infraestructura.num_dormitorios,
                 infraestructura.dormitorios_adecuados, infraestructura.num_sanitarios,
                 infraestructura.sanitarios_adecuados, infraestructura.tiene_area_cocina,
-                infraestructura.cocina_adecuada, infraestructura.ventilacion_adecuada,
+                infraestructura.cocina_adecuada,
+                infraestructura.areas_atencion_medica ?? false, infraestructura.areas_verdes ?? false,
+                infraestructura.ventilacion_adecuada,
                 infraestructura.iluminacion_adecuada, infraestructura.capacidad_comedor_pct,
                 infraestructura.luz_electrica, infraestructura.agua_potable,
                 infraestructura.agua_servidas, infraestructura.deposito_basura,
@@ -1161,19 +1164,22 @@ exports.saveInfraestructura = async (req, res) => {
             `INSERT INTO public.ficha_infraestructura
              (ficha_id, estado_inmueble, num_dormitorios, dormitorios_adecuados,
               num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
+              areas_atencion_medica, areas_verdes,
               ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
               luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
              ON CONFLICT (ficha_id) DO UPDATE SET
                estado_inmueble=$2, num_dormitorios=$3, dormitorios_adecuados=$4,
                num_sanitarios=$5, sanitarios_adecuados=$6, tiene_area_cocina=$7,
-               cocina_adecuada=$8, ventilacion_adecuada=$9, iluminacion_adecuada=$10,
-               capacidad_comedor_pct=$11, luz_electrica=$12, agua_potable=$13,
-               agua_servidas=$14, deposito_basura=$15, sistema_seguridad=$16,
-               descripcion_otros=$17, updated_at=NOW()
+               cocina_adecuada=$8, areas_atencion_medica=$9, areas_verdes=$10,
+               ventilacion_adecuada=$11, iluminacion_adecuada=$12,
+               capacidad_comedor_pct=$13, luz_electrica=$14, agua_potable=$15,
+               agua_servidas=$16, deposito_basura=$17, sistema_seguridad=$18,
+               descripcion_otros=$19, updated_at=NOW()
              RETURNING *`,
             [fichaId, i.estado_inmueble, i.num_dormitorios, i.dormitorios_adecuados,
                 i.num_sanitarios, i.sanitarios_adecuados, i.tiene_area_cocina, i.cocina_adecuada,
+                i.areas_atencion_medica ?? false, i.areas_verdes ?? false,
                 i.ventilacion_adecuada, i.iluminacion_adecuada, i.capacidad_comedor_pct,
                 i.luz_electrica, i.agua_potable, i.agua_servidas, i.deposito_basura,
                 i.sistema_seguridad, i.descripcion_otros]

@@ -2,7 +2,7 @@
     <q-page padding>
         <!-- ───── Encabezado ───────────────────────────────────────────────── -->
         <div class="row items-center q-mb-md">
-            <q-btn flat round icon="arrow_back" @click="$router.back()" />
+            <q-btn flat round icon="arrow_back" @click="handleBack" />
             <div class="col q-ml-sm">
                 <div class="text-h5">
                     {{ isEdit ? 'Editar Ficha del Centro' : 'Registrar Centro de Atención' }}
@@ -11,6 +11,10 @@
                     ID Centro: {{ centroId }}
                     <span v-if="fichaId"> · Ficha: {{ fichaId }}</span>
                 </div>
+            </div>
+            <div class="col-auto" v-if="isEdit && fichaId">
+                <q-btn unelevated color="primary" icon="save" label="Guardar Todo" :loading="saving"
+                    @click="saveAll" />
             </div>
         </div>
 
@@ -429,8 +433,12 @@
                                 dense type="number" min="0" />
                         </div>
                     </div>
-                    <tab-actions :loading="saving" label="Guardar Capacidad" @save="saveCapacidad" @next="nextTab"
-                        :can-next="true" />
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Capacidad" :loading="saving"
+                            @click="saveCapacidad(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="saveCapacidad(true)" />
+                    </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -500,8 +508,12 @@
                         </template>
                     </q-table>
 
-                    <tab-actions :loading="saving" label="Guardar Población" @save="savePoblacion" @next="nextTab"
-                        :can-next="true" />
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Población" :loading="saving"
+                            @click="savePoblacion(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="savePoblacion(true)" />
+                    </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -545,6 +557,14 @@
                             <q-toggle v-model="infra.cocina_adecuada" label="Sí" />
                         </div>
                         <div class="col-12 col-md-4">
+                            <div class="text-caption q-mb-xs">Áreas de atención médica o enfermería</div>
+                            <q-toggle v-model="infra.areas_atencion_medica" label="Tiene" />
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="text-caption q-mb-xs">Áreas verdes</div>
+                            <q-toggle v-model="infra.areas_verdes" label="Tiene" />
+                        </div>
+                        <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Ventilación adecuada</div>
                             <q-toggle v-model="infra.ventilacion_adecuada" label="Sí" />
                         </div>
@@ -569,8 +589,12 @@
                     <q-input v-model="infra.descripcion_otros" label="Observaciones adicionales" outlined dense
                         type="textarea" rows="2" class="q-mb-md" />
 
-                    <tab-actions :loading="saving" label="Guardar Infraestructura" @save="saveInfraestructura"
-                        @next="nextTab" :can-next="true" />
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Infraestructura" :loading="saving"
+                            @click="saveInfraestructura(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="saveInfraestructuraAndNext" />
+                    </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -606,8 +630,12 @@
                         </div>
                     </div>
 
-                    <tab-actions :loading="saving" label="Guardar Personal" @save="savePersonal" @next="nextTab"
-                        :can-next="true" />
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Personal" :loading="saving"
+                            @click="savePersonal(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="savePersonal(true)" />
+                    </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -629,8 +657,12 @@
                         </div>
                     </div>
 
-                    <tab-actions :loading="saving" label="Guardar Servicios" @save="saveServicios" @next="nextTab"
-                        :can-next="true" />
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Servicios" :loading="saving"
+                            @click="saveServicios(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="saveServicios(true)" />
+                    </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
@@ -674,7 +706,7 @@ import { useRouter, useRoute } from 'vue-router';
 import { Notify, useQuasar } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
-import { miCentroService, fichasService, geoService } from 'src/services/centros.service';
+import { miCentroService, fichasService, geoService, centrosService } from 'src/services/centros.service';
 
 // ── Sub-componentes inline ────────────────────────────────────────────────────
 const InnerProgress = defineComponent({
@@ -702,24 +734,6 @@ const SectionHeader = defineComponent({
             h('span', { class: 'text-subtitle2 text-weight-bold' }, props.label),
             h('q-space'),
             ...(slots.default ? slots.default() : [])
-        ]);
-    }
-});
-
-const TabActions = defineComponent({
-    props: ['loading', 'label', 'canNext'],
-    emits: ['save', 'next'],
-    setup(props, { emit }) {
-        return () => h('div', { class: 'row justify-end q-mt-md q-gutter-sm' }, [
-            h('q-btn', {
-                unelevated: true, color: 'primary', icon: 'save',
-                label: props.label, loading: props.loading,
-                onClick: () => emit('save')
-            }),
-            props.canNext ? h('q-btn', {
-                outline: true, color: 'primary', icon: 'arrow_forward',
-                label: 'Siguiente', onClick: () => emit('next')
-            }) : null
         ]);
     }
 });
@@ -793,7 +807,12 @@ const savedTabs = ref({
 });
 const savedCount = computed(() => Object.values(savedTabs.value).filter(Boolean).length);
 function tabEnabled(name) { return savedTabs.value.datos; }
-function goToTab(name) { if (tabEnabled(name) || name === 'datos') activeTab.value = name; }
+async function goToTab(name) {
+    if (activeTab.value === 'infraestructura' && name !== 'infraestructura' && fichaId.value && hasInfraestructura.value) {
+        await saveInfraestructura(true);
+    }
+    if (tabEnabled(name) || name === 'datos') activeTab.value = name;
+}
 function nextTab() {
     const idx = steps.findIndex(s => s.name === activeTab.value);
     if (idx < steps.length - 1) activeTab.value = steps[idx + 1].name;
@@ -835,13 +854,19 @@ const camposPersonal = [
 function toDisplay(iso) {
     if (!iso) return '';
     if (iso.includes('/')) return iso;
-    return iso.slice(8, 10) + '/' + iso.slice(5, 7) + '/' + iso.slice(0, 4);
+    const clean = iso.slice(0, 10);
+    const parts = clean.split('-');
+    if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return clean;
 }
 function toISO(disp) {
-    if (!disp || disp.length < 10) return null;
+    if (!disp) return null;
+    if (disp.includes('-')) return disp.slice(0, 10);
     const [d, m, y] = disp.split('/');
     if (!d || !m || !y || y.length < 4) return null;
-    return `${y}-${m}-${d}`;
+    return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
 }
 
 // ── Datos de cada tab ─────────────────────────────────────────────────────────
@@ -866,7 +891,8 @@ const pob = ref({ fecha_corte: '', registros: [] });
 const infra = ref({
     estado_inmueble: null, num_dormitorios: null, dormitorios_adecuados: null,
     num_sanitarios: null, sanitarios_adecuados: null, tiene_area_cocina: null,
-    cocina_adecuada: null, ventilacion_adecuada: null, iluminacion_adecuada: null,
+    cocina_adecuada: null, areas_atencion_medica: false, areas_verdes: false,
+    ventilacion_adecuada: null, iluminacion_adecuada: null,
     capacidad_comedor_pct: null, luz_electrica: null, agua_potable: null,
     agua_servidas: null, deposito_basura: null, sistema_seguridad: null,
     descripcion_otros: ''
@@ -962,6 +988,15 @@ function tabProgress(name) {
     const c = tabFieldCount(name);
     return c.total ? c.filled / c.total : 0;
 }
+
+const hasInfraestructura = computed(() => {
+    return infra.value.estado_inmueble != null
+        || infra.value.num_dormitorios != null
+        || infra.value.num_sanitarios != null
+        || infra.value.areas_atencion_medica
+        || infra.value.areas_verdes
+        || infra.value.luz_electrica || infra.value.agua_potable;
+});
 
 // ── Helpers de listas dinámicas ───────────────────────────────────────────────
 function addProp() { datos.value.propietarios.push({ nombre: '', cedula_tipo: 'V', cedula_nro: '' }); }
@@ -1158,7 +1193,7 @@ async function saveDatos() {
     saving.value = true;
     try {
         const rifCompleto = datos.value.rif_numero
-            ? `${datos.value.rif_tipo}-${datos.value.rif_numero}`
+            ? (datos.value.rif_numero.includes('-') ? datos.value.rif_numero : `${datos.value.rif_tipo}-${datos.value.rif_numero}`)
             : null;
 
         if (!centroId.value) {
@@ -1211,6 +1246,11 @@ async function saveDatos() {
             fichaId.value = fRes.data.ficha.id;
         } else {
             await fichasService.update(fichaId.value, fichaPayload);
+            // En modo edición, persistir también infraestructura si está disponible
+            if (hasInfraestructura.value) {
+                await fichasService.saveInfraestructura(fichaId.value, infra.value);
+                savedTabs.value.infraestructura = true;
+            }
         }
 
         savedTabs.value.datos = true;
@@ -1230,19 +1270,24 @@ async function saveDatos() {
     }
 }
 
-async function saveCapacidad() {
+async function saveCapacidad(andNext = false) {
     if (!fichaId.value) return warn();
     saving.value = true;
     try {
         await fichasService.saveCapacidad(fichaId.value, cap.value);
         savedTabs.value.capacidad = true;
         Notify.create({ type: 'positive', message: 'Capacidad guardada.' });
-        nextTab();
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar capacidad.' }); }
-    finally { saving.value = false; }
+        if (andNext) nextTab();
+        return true;
+    } catch { 
+        Notify.create({ type: 'negative', message: 'Error al guardar capacidad.' }); 
+        return false;
+    } finally { 
+        saving.value = false; 
+    }
 }
 
-async function savePoblacion() {
+async function savePoblacion(andNext = false) {
     if (!fichaId.value) return warn();
     if (!pob.value.fecha_corte) return Notify.create({ type: 'warning', message: 'Indique la fecha de corte.' });
     saving.value = true;
@@ -1250,45 +1295,74 @@ async function savePoblacion() {
         await fichasService.addPoblacion(fichaId.value, pob.value);
         savedTabs.value.poblacion = true;
         Notify.create({ type: 'positive', message: 'Población guardada.' });
-        nextTab();
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar población.' }); }
-    finally { saving.value = false; }
+        if (andNext) nextTab();
+        return true;
+    } catch { 
+        Notify.create({ type: 'negative', message: 'Error al guardar población.' }); 
+        return false;
+    } finally { 
+        saving.value = false; 
+    }
 }
 
-async function saveInfraestructura() {
+async function saveInfraestructura(silent = false) {
     if (!fichaId.value) return warn();
     saving.value = true;
     try {
         await fichasService.saveInfraestructura(fichaId.value, infra.value);
         savedTabs.value.infraestructura = true;
-        Notify.create({ type: 'positive', message: 'Infraestructura guardada.' });
-        nextTab();
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar infraestructura.' }); }
-    finally { saving.value = false; }
+        if (!silent) {
+            Notify.create({ type: 'positive', message: 'Infraestructura guardada correctamente.' });
+        }
+        return true;
+    } catch (err) { 
+        console.error('Error al guardar infraestructura:', err);
+        if (!silent) {
+            Notify.create({ type: 'negative', message: 'Error al guardar infraestructura.' }); 
+        }
+        return false;
+    } finally { 
+        saving.value = false; 
+    }
 }
 
-async function savePersonal() {
+async function saveInfraestructuraAndNext() {
+    const ok = await saveInfraestructura(false);
+    if (ok) nextTab();
+}
+
+async function savePersonal(andNext = false) {
     if (!fichaId.value) return warn();
     saving.value = true;
     try {
         await fichasService.savePersonal(fichaId.value, pers.value);
         savedTabs.value.personal = true;
         Notify.create({ type: 'positive', message: 'Personal guardado.' });
-        nextTab();
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar personal.' }); }
-    finally { saving.value = false; }
+        if (andNext) nextTab();
+        return true;
+    } catch { 
+        Notify.create({ type: 'negative', message: 'Error al guardar personal.' }); 
+        return false;
+    } finally { 
+        saving.value = false; 
+    }
 }
 
-async function saveServicios() {
+async function saveServicios(andNext = false) {
     if (!fichaId.value) return warn();
     saving.value = true;
     try {
         await fichasService.saveServicios(fichaId.value, serv.value);
         savedTabs.value.servicios = true;
         Notify.create({ type: 'positive', message: 'Servicios guardados.' });
-        nextTab();
-    } catch { Notify.create({ type: 'negative', message: 'Error al guardar servicios.' }); }
-    finally { saving.value = false; }
+        if (andNext) nextTab();
+        return true;
+    } catch { 
+        Notify.create({ type: 'negative', message: 'Error al guardar servicios.' }); 
+        return false;
+    } finally { 
+        saving.value = false; 
+    }
 }
 
 async function saveDocumentos() {
@@ -1302,36 +1376,31 @@ async function saveDocumentos() {
             || cap.value.capacidad_actual_residente != null
             || cap.value.atencion_ambulatoria;
 
-        const hasInfraestructura = infra.value.estado_inmueble != null
-            || infra.value.num_dormitorios != null
-            || infra.value.num_sanitarios != null
-            || infra.value.luz_electrica || infra.value.agua_potable;
-
         const hasPersonal = Object.values(pers.value)
             .some(v => typeof v === 'number' && v > 0);
 
         const hasServicios = Object.entries(serv.value)
             .some(([k, v]) => v === true && !k.endsWith('_descripcion'));
 
-        if (!savedTabs.value.capacidad && hasCapacidad) {
+        if ((isEdit.value || !savedTabs.value.capacidad) && hasCapacidad) {
             pendientes.push(
                 fichasService.saveCapacidad(fichaId.value, cap.value)
                     .then(() => { savedTabs.value.capacidad = true; })
             );
         }
-        if (!savedTabs.value.infraestructura && hasInfraestructura) {
+        if ((isEdit.value || !savedTabs.value.infraestructura) && hasInfraestructura.value) {
             pendientes.push(
                 fichasService.saveInfraestructura(fichaId.value, infra.value)
                     .then(() => { savedTabs.value.infraestructura = true; })
             );
         }
-        if (!savedTabs.value.personal && hasPersonal) {
+        if ((isEdit.value || !savedTabs.value.personal) && hasPersonal) {
             pendientes.push(
                 fichasService.savePersonal(fichaId.value, pers.value)
                     .then(() => { savedTabs.value.personal = true; })
             );
         }
-        if (!savedTabs.value.servicios && hasServicios) {
+        if ((isEdit.value || !savedTabs.value.servicios) && hasServicios) {
             pendientes.push(
                 fichasService.saveServicios(fichaId.value, serv.value)
                     .then(() => { savedTabs.value.servicios = true; })
@@ -1351,7 +1420,7 @@ async function saveDocumentos() {
         // ── Guardar documentos ──
         await fichasService.saveDocumentos(fichaId.value, { documentos: docs.value });
         savedTabs.value.documentos = true;
-        Notify.create({ type: 'positive', message: '\u00a1Ficha completada exitosamente!' });
+        Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente!' });
         router.push(`/admin/centros/${centroId.value}`);
     } catch (err) {
         console.error(err);
@@ -1360,6 +1429,112 @@ async function saveDocumentos() {
         saving.value = false;
     }
 }
+
+async function saveAll() {
+    if (!fichaId.value) return warn();
+    saving.value = true;
+    try {
+        const tareas = [];
+
+        // 1. Guardar Datos Centro y Ficha Base
+        if (centroId.value) {
+            const rifCompleto = datos.value.rif_numero
+                ? (datos.value.rif_numero.includes('-') ? datos.value.rif_numero : `${datos.value.rif_tipo}-${datos.value.rif_numero}`)
+                : null;
+            tareas.push(
+                centrosService.update(centroId.value, {
+                    nombre_establecimiento: datos.value.nombre_establecimiento,
+                    parroquia_id: datos.value.parroquia_id,
+                    rif: rifCompleto,
+                    nro_registro_mercantil: datos.value.nro_registro_mercantil,
+                    tipo_establecimiento: datos.value.tipo_establecimiento,
+                    tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
+                    tipo_clasificacion: datos.value.tipo_clasificacion,
+                    latitud: datos.value.latitud,
+                    longitud: datos.value.longitud,
+                    foto_base64: datos.value.foto_base64,
+                }).then(() => { savedTabs.value.datos = true; })
+            );
+            tareas.push(
+                fichasService.update(fichaId.value, {
+                    fecha_solicitud: toISO(datos.value.fecha_solicitud),
+                    nro_registro_nacional: datos.value.nro_registro_nacional || null,
+                    tipo_solicitud: datos.value.tipo_solicitud || null,
+                    fecha_fundacion: toISO(datos.value.fecha_fundacion),
+                    costo_mensual: datos.value.costo_mensual ? Number(datos.value.costo_mensual) : null,
+                    direccion: datos.value.direccion || null,
+                })
+            );
+        }
+
+        // 2. Guardar Infraestructura
+        tareas.push(
+            fichasService.saveInfraestructura(fichaId.value, infra.value)
+                .then(() => { savedTabs.value.infraestructura = true; })
+        );
+
+        // 3. Guardar Capacidad
+        tareas.push(
+            fichasService.saveCapacidad(fichaId.value, cap.value)
+                .then(() => { savedTabs.value.capacidad = true; })
+        );
+
+        // 4. Guardar Personal
+        tareas.push(
+            fichasService.savePersonal(fichaId.value, pers.value)
+                .then(() => { savedTabs.value.personal = true; })
+        );
+
+        // 5. Guardar Servicios
+        tareas.push(
+            fichasService.saveServicios(fichaId.value, serv.value)
+                .then(() => { savedTabs.value.servicios = true; })
+        );
+
+        // 6. Guardar Población si tiene fecha_corte
+        if (pob.value.fecha_corte && pob.value.registros.length > 0) {
+            tareas.push(
+                fichasService.addPoblacion(fichaId.value, pob.value)
+                    .then(() => { savedTabs.value.poblacion = true; })
+            );
+        }
+
+        // 7. Guardar Documentos si hay docs
+        if (docs.value.length) {
+            tareas.push(
+                fichasService.saveDocumentos(fichaId.value, { documentos: docs.value })
+                    .then(() => { savedTabs.value.documentos = true; })
+            );
+        }
+
+        const results = await Promise.allSettled(tareas);
+        const rejected = results.filter(r => r.status === 'rejected');
+        if (rejected.length > 0) {
+            console.error('Algunas secciones tuvieron advertencias:', rejected);
+            Notify.create({ type: 'warning', message: 'Se guardó la información principal, pero algunas secciones tuvieron advertencias.' });
+        } else {
+            Notify.create({ type: 'positive', message: '¡Todos los cambios de la ficha fueron guardados exitosamente!' });
+        }
+    } catch (err) {
+        console.error(err);
+        Notify.create({ type: 'negative', message: 'Error al guardar los datos de la ficha.' });
+    } finally {
+        saving.value = false;
+    }
+}
+
+async function handleBack() {
+    if (fichaId.value && hasInfraestructura.value) {
+        await saveInfraestructura(true);
+    }
+    router.back();
+}
+
+watch(activeTab, async (newTab, oldTab) => {
+    if (oldTab === 'infraestructura' && fichaId.value && hasInfraestructura.value) {
+        await saveInfraestructura(true);
+    }
+});
 
 function warn() { Notify.create({ type: 'warning', message: 'Primero guarda los datos del centro.' }); }
 
@@ -1435,17 +1610,22 @@ onMounted(async () => {
         if (ficha) {
             fichaId.value = ficha.id;
             Object.assign(datos.value, {
-                fecha_solicitud: ficha.fecha_solicitud?.slice(0, 10),
+                fecha_solicitud: toDisplay(ficha.fecha_solicitud),
                 nro_registro_nacional: ficha.nro_registro_nacional,
                 tipo_solicitud: ficha.tipo_solicitud,
-                fecha_fundacion: ficha.fecha_fundacion?.slice(0, 10),
+                fecha_fundacion: toDisplay(ficha.fecha_fundacion),
                 costo_mensual: ficha.costo_mensual,
                 direccion: ficha.direccion,
             });
             if (ficha.capacidad) { Object.assign(cap.value, ficha.capacidad); savedTabs.value.capacidad = true; }
             if (ficha.servicios) { Object.assign(serv.value, ficha.servicios); savedTabs.value.servicios = true; }
             if (ficha.personal) { Object.assign(pers.value, ficha.personal); savedTabs.value.personal = true; }
-            if (ficha.infraestructura) { Object.assign(infra.value, ficha.infraestructura); savedTabs.value.infraestructura = true; }
+            if (ficha.infraestructura) {
+                Object.assign(infra.value, ficha.infraestructura);
+                infra.value.areas_atencion_medica = !!ficha.infraestructura.areas_atencion_medica;
+                infra.value.areas_verdes = !!ficha.infraestructura.areas_verdes;
+                savedTabs.value.infraestructura = true;
+            }
             if (ficha.poblacion?.length) { savedTabs.value.poblacion = true; }
             if (ficha.documentos?.length) {
                 ficha.documentos.forEach(d => {

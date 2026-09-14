@@ -8,7 +8,8 @@ const {
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos,
     purgeDeletedRecords, listMaintenanceLogs,
-    proxyGeocode, proxyReverseGeocode, resolveGeoEntities
+    proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
+    uploadFoto, deleteFoto
 } = require('./controllers_centros');
 
 
@@ -36,6 +37,10 @@ router.post('/centros', authorize('create_centro'), createCentro);
 router.get('/centros/:id', getCentro); // Protegido por verifyCentroAccess
 router.put('/centros/:id', updateCentro); // Protegido por verifyCentroAccess
 router.delete('/centros/:id', deleteCentro); // Protegido por verifyCentroAccess
+
+// ─── Foto del Centro ─────────────────────────────────────────────
+router.post('/centros/:id/foto', uploadFoto);   // Subir / reemplazar foto
+router.delete('/centros/:id/foto', deleteFoto); // Eliminar foto
 
 // ─── Fichas (versionadas) ─────────────────────────────────────────────────
 router.get('/centros/:centroId/fichas', listFichas); // Protegido por verifyCentroAccess

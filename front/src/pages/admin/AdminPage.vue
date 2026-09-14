@@ -1495,13 +1495,15 @@ const assignCentroModalOpen = ref(false)
 const selectedCentroToAdd = ref(null)
 const selectedCentroAccessLevel = ref('read')
 const accessLevelOptions = [
-    { label: 'Lectura', value: 'read' },
-    { label: 'Escritura', value: 'write' },
+    { label: 'Lectura (Usuario)', value: 'read' },
+    { label: 'Escritura (Operador)', value: 'write' },
     { label: 'Administrador (Delegado)', value: 'admin' },
 ]
 
 const openAssignCentroModal = async (user) => {
     selectedUser.value = user
+    selectedCentroToAdd.value = null
+    selectedCentroAccessLevel.value = 'read'
     await centrosStore.fetchUserCentros(user.id)
     assignCentroModalOpen.value = true
     if (centrosStore.centros.length === 0) {
@@ -1518,10 +1520,13 @@ const filteredCentroOptions = computed(() => {
 
 const handleGrantCentroAccess = async () => {
     if (!selectedCentroToAdd.value) return
-    const ok = await centrosStore.grantAccess(selectedCentroToAdd.value.value, selectedUser.value.id, selectedCentroAccessLevel.value)
+    const rawLvl = selectedCentroAccessLevel.value
+    const lvlVal = typeof rawLvl === 'object' && rawLvl !== null ? rawLvl.value : rawLvl
+    const ok = await centrosStore.grantAccess(selectedCentroToAdd.value.value, selectedUser.value.id, lvlVal || 'read')
     if (ok) {
         await centrosStore.fetchUserCentros(selectedUser.value.id)
         selectedCentroToAdd.value = null
+        selectedCentroAccessLevel.value = 'read'
     }
 }
 
@@ -1537,7 +1542,11 @@ const handleRevokeCentroAccess = async (centro) => {
 }
 
 const labelAccess = (lvl) => {
-    return { read: 'Lectura', write: 'Escritura', admin: 'Administrador' }[lvl] || lvl
+    return {
+        read: 'Lectura', lectura: 'Lectura', user: 'Lectura (Usuario)', usuario: 'Lectura (Usuario)',
+        write: 'Escritura', escritura: 'Escritura', operador: 'Escritura',
+        admin: 'Administrador', administrador: 'Administrador'
+    }[lvl] || lvl
 }
 
 const confirmPurge = () => {

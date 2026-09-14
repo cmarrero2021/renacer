@@ -333,6 +333,56 @@
                             </div>
                         </div>
 
+                        <!-- Foto del Centro -->
+                        <section-header icon="photo_camera" label="Foto del Establecimiento" />
+                        <div class="row q-col-gutter-md q-mb-md">
+                            <div class="col-12">
+                                <!-- Input oculto -->
+                                <input
+                                    ref="fotoInputRef"
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/gif"
+                                    style="display:none"
+                                    @change="handleFotoSelected"
+                                />
+
+                                <!-- Preview / Placeholder -->
+                                <div v-if="datos.foto_base64" class="foto-preview-wrapper q-mb-sm">
+                                    <img :src="datos.foto_base64" alt="Vista previa" class="foto-preview" />
+                                    <div class="foto-preview-overlay">
+                                        <q-btn
+                                            round
+                                            icon="edit"
+                                            color="white"
+                                            text-color="primary"
+                                            size="sm"
+                                            class="q-mr-sm"
+                                            title="Cambiar foto"
+                                            @click="() => fotoInputRef.click()"
+                                        />
+                                        <q-btn
+                                            round
+                                            icon="delete"
+                                            color="white"
+                                            text-color="negative"
+                                            size="sm"
+                                            title="Eliminar foto"
+                                            @click="eliminarFoto"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div v-else
+                                    class="foto-dropzone column items-center justify-center text-grey cursor-pointer"
+                                    @click="() => fotoInputRef.click()"
+                                >
+                                    <q-icon name="add_photo_alternate" size="4rem" color="grey-4" />
+                                    <div class="text-body2 q-mt-sm">Haz clic para seleccionar una foto</div>
+                                    <div class="text-caption text-grey-5 q-mt-xs">JPG, PNG, WEBP &mdash; Máximo 1 MB</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Aviso/botón guardar -->
                         <q-banner v-if="!savedTabs.datos" rounded inline-actions
                             class="bg-amber-1 text-amber-9 q-mt-md">
@@ -621,7 +671,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, defineComponent, h } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Notify } from 'quasar';
+import { Notify, useQuasar } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
 import { miCentroService, fichasService, geoService } from 'src/services/centros.service';
@@ -685,6 +735,45 @@ const isEdit = computed(() => !!route.params.id);
 const centroId = ref(route.params.id || null);
 const fichaId = ref(null);
 const saving = ref(false);
+const $q = useQuasar();
+
+// ── Foto del Establecimiento ──────────────────────────────────────────────────
+const fotoInputRef = ref(null);
+
+function handleFotoSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    // Limpiar para poder reseleccionar el mismo archivo
+    event.target.value = null;
+
+    if (file.size > 1048576) {
+        Notify.create({ type: 'negative', message: 'La foto excede el límite de 1 MB. Seleccione una imagen más pequeña.' });
+        return;
+    }
+    if (!file.type.startsWith('image/')) {
+        Notify.create({ type: 'negative', message: 'El archivo seleccionado no es una imagen válida.' });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        datos.value.foto_base64 = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function eliminarFoto() {
+    $q.dialog({
+        title: 'Eliminar Foto',
+        message: '¿Estás seguro de eliminar la foto?',
+        cancel: { label: 'Cancelar', flat: true },
+        ok: { label: 'Eliminar', color: 'negative' },
+        persistent: true
+    }).onOk(() => {
+        datos.value.foto_base64 = null;
+    });
+}
+
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const activeTab = ref('datos');
@@ -766,6 +855,7 @@ const datos = ref({
     parroquia_id: null, tipo_establecimiento: null,
     tipo_establecimiento_descripcion: '', tipo_clasificacion: null,
     latitud: null, longitud: null,
+    foto_base64: null,
     propietarios: [], representantes: [], telefonos: [], correos: [],
 });
 const cap = ref({
@@ -1083,6 +1173,7 @@ async function saveDatos() {
                 tipo_clasificacion: datos.value.tipo_clasificacion,
                 latitud: datos.value.latitud,
                 longitud: datos.value.longitud,
+                foto_base64: datos.value.foto_base64 || null,
                 propietarios: datos.value.propietarios,
                 representantes: datos.value.representantes,
                 telefonos: datos.value.telefonos,
@@ -1101,17 +1192,18 @@ async function saveDatos() {
                 tipo_clasificacion: datos.value.tipo_clasificacion,
                 latitud: datos.value.latitud,
                 longitud: datos.value.longitud,
+                foto_base64: datos.value.foto_base64,
             });
         }
 
         // Crear o actualizar ficha base (fechas a ISO)
         const fichaPayload = {
             fecha_solicitud: toISO(datos.value.fecha_solicitud),
-            nro_registro_nacional: datos.value.nro_registro_nacional,
-            tipo_solicitud: datos.value.tipo_solicitud,
+            nro_registro_nacional: datos.value.nro_registro_nacional || null,
+            tipo_solicitud: datos.value.tipo_solicitud || null,
             fecha_fundacion: toISO(datos.value.fecha_fundacion),
-            costo_mensual: datos.value.costo_mensual,
-            direccion: datos.value.direccion,
+            costo_mensual: datos.value.costo_mensual ? Number(datos.value.costo_mensual) : null,
+            direccion: datos.value.direccion || null,
         };
 
         if (!fichaId.value) {
@@ -1309,6 +1401,7 @@ onMounted(async () => {
                 tipo_clasificacion: centro.tipo_clasificacion,
                 latitud: centro.latitud !== undefined ? Number(centro.latitud) : null,
                 longitud: centro.longitud !== undefined ? Number(centro.longitud) : null,
+                foto_base64: centro.foto_base64 || null,
                 propietarios: centro.propietarios || [],
                 representantes: centro.representantes || [],
                 telefonos: centro.telefonos || [],
@@ -1365,3 +1458,58 @@ onMounted(async () => {
     }
 });
 </script>
+
+<style scoped>
+/* ── Foto del Establecimiento ── */
+.foto-preview-wrapper {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+    min-height: 200px;
+    max-height: 360px;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 2px solid #e0e0e0;
+    background: #f5f5f5;
+}
+
+.foto-preview {
+    width: 100%;
+    min-height: 200px;
+    max-height: 360px;
+    object-fit: contain;
+    display: block;
+}
+
+.foto-preview-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.5));
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+
+.foto-preview-wrapper:hover .foto-preview-overlay {
+    opacity: 1;
+}
+
+.foto-dropzone {
+    width: 100%;
+    height: 180px;
+    border: 2px dashed #bdbdbd;
+    border-radius: 10px;
+    background: #fafafa;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.foto-dropzone:hover {
+    border-color: var(--q-primary);
+    background: #f0f7ff;
+}
+</style>

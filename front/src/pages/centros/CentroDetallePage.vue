@@ -35,6 +35,26 @@
                 <q-tab-panel name="resumen">
                     <div class="row q-col-gutter-md">
 
+                        <!-- ── FOTO DEL CENTRO ──── -->
+                        <div class="col-12" v-if="centro.foto_base64">
+                            <q-card flat bordered>
+                                <q-card-section class="q-pb-sm">
+                                    <p class="text-subtitle1 text-weight-bold q-mb-sm">
+                                        <q-icon name="photo_camera" /> Foto del Centro
+                                    </p>
+                                </q-card-section>
+                                <q-card-section class="q-pt-none">
+                                    <div class="foto-container">
+                                        <img
+                                            :src="centro.foto_base64"
+                                            alt="Foto del centro"
+                                            class="foto-centro"
+                                        />
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </div>
+
                         <div class="col-12 col-md-6">
                             <q-card flat bordered>
                                 <q-card-section>
@@ -583,12 +603,13 @@ function formatDate(d) {
     return isNaN(dt) ? d : dt.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
+
 const showAddDialog = ref(false);
 const selectedUser = ref(null);
 const selectedAccessLevel = ref('read');
 const accessLevelOptions = [
-    { label: 'Lectura', value: 'read' },
-    { label: 'Escritura', value: 'write' },
+    { label: 'Lectura (Usuario)', value: 'read' },
+    { label: 'Escritura (Operador)', value: 'write' },
     { label: 'Administrador (Delegado)', value: 'admin' },
 ];
 
@@ -618,10 +639,13 @@ async function filterUsers(val, update) {
 
 async function handleGrantAccess() {
     if (!selectedUser.value) return;
-    const ok = await centrosStore.grantAccess(centroId.value, selectedUser.value.value, selectedAccessLevel.value);
+    const rawLvl = selectedAccessLevel.value;
+    const lvlVal = typeof rawLvl === 'object' && rawLvl !== null ? rawLvl.value : rawLvl;
+    const ok = await centrosStore.grantAccess(centroId.value, selectedUser.value.value, lvlVal || 'read');
     if (ok) {
         showAddDialog.value = false;
         selectedUser.value = null;
+        selectedAccessLevel.value = 'read';
     }
 }
 
@@ -650,7 +674,11 @@ function confirmarEliminar() {
 
 
 function labelAccess(lvl) {
-    return { read: 'Lectura', write: 'Escritura', admin: 'Administrador' }[lvl] || lvl;
+    return {
+        read: 'Lectura', lectura: 'Lectura', user: 'Lectura (Usuario)', usuario: 'Lectura (Usuario)',
+        write: 'Escritura', escritura: 'Escritura', operador: 'Escritura',
+        admin: 'Administrador', administrador: 'Administrador'
+    }[lvl] || lvl;
 }
 
 watch(tab, (newTab) => {
@@ -668,3 +696,26 @@ onMounted(async () => {
 });
 
 </script>
+
+<style scoped>
+.foto-container {
+    width: 100%;
+    min-height: 220px;
+    max-height: 400px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.foto-centro {
+    width: 100%;
+    min-height: 220px;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 8px;
+    display: block;
+}
+</style>

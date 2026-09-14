@@ -220,14 +220,18 @@ export const useCentrosStore = defineStore('centros', () => {
         }
     }
 
-    async function grantAccess(centroId, userId, accessLevel) {
+    async function grantAccess(centroId, userId, accessLevel = 'read') {
         try {
-            await centroAccessService.grant(centroId, { user_id: userId, access_level: accessLevel });
+            const levelVal = typeof accessLevel === 'object' && accessLevel !== null ? accessLevel.value : accessLevel;
+            await centroAccessService.grant(centroId, { user_id: userId, access_level: levelVal || 'read' });
             await fetchCentroUsers(centroId);
             Notify.create({ type: 'positive', message: 'Acceso otorgado correctamente.' });
             return true;
         } catch (err) {
-            Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al otorgar acceso.' });
+            const errorMsg = err?.response?.data?.detail 
+                ? `${err.response.data.error}: ${err.response.data.detail}`
+                : (err?.response?.data?.error || 'Error al otorgar acceso.');
+            Notify.create({ type: 'negative', message: errorMsg });
             return false;
         }
     }
@@ -290,6 +294,53 @@ export const useCentrosStore = defineStore('centros', () => {
         }
     }
 
+    async function uploadFoto(centroId, file) {
+        // Validar tamaño: 1 MB = 1,048,576 bytes
+        if (file.size > 1048576) {
+            Notify.create({ type: 'negative', message: 'La foto excede el límite de 1 MB.' });
+            return false;
+        }
+        loading.value = true;
+        try {
+            const base64 = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+            const { data } = await centrosService.uploadFoto(centroId, base64);
+            // Actualizar el estado local del centro con la nueva foto
+            if (current.value) {
+                current.value = { ...current.value, foto_base64: data.foto_base64 };
+            }
+            Notify.create({ type: 'positive', message: 'Foto guardada correctamente.' });
+            return true;
+        } catch (err) {
+            const msg = err?.response?.data?.error || 'Error al guardar la foto.';
+            Notify.create({ type: 'negative', message: msg });
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
+
+    async function deleteFoto(centroId) {
+        loading.value = true;
+        try {
+            await centrosService.deleteFoto(centroId);
+            if (current.value) {
+                current.value = { ...current.value, foto_base64: null };
+            }
+            Notify.create({ type: 'positive', message: 'Foto eliminada.' });
+            return true;
+        } catch (err) {
+            Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al eliminar la foto.' });
+            return false;
+        } finally {
+            loading.value = false;
+        }
+    }
+
 
 
     return {
@@ -304,6 +355,8 @@ export const useCentrosStore = defineStore('centros', () => {
         fetchEstados, fetchMunicipios, fetchParroquias, refreshGeoCatalog,
         // Actions - centros
         fetchCentros, fetchCentro, createCentro, updateCentro, deleteCentro,
+        // Actions - foto
+        uploadFoto, deleteFoto,
         // Actions - fichas
         fetchFichaActual, saveFicha,
         // Actions - acceso

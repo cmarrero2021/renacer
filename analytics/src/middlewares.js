@@ -49,7 +49,7 @@ exports.authenticate = async (req, res, next) => {
                         ARRAY[]::text[]
                     ) AS roles,
                     COALESCE(
-                        (SELECT ARRAY_AGG(DISTINCT p.name) FROM (
+                        (SELECT ARRAY_AGG(DISTINCT perms.name) FROM (
                             SELECT p.name FROM user_permissions up JOIN permissions p ON p.id = up.permission_id WHERE up.user_id = $1
                             UNION
                             SELECT p.name FROM user_roles ur JOIN role_permissions rp ON ur.role_id = rp.role_id JOIN permissions p ON p.id = rp.permission_id WHERE ur.user_id = $1

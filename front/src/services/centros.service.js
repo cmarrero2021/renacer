@@ -25,6 +25,8 @@ export const centrosService = {
     create: (data) => authApi.post('/centros', data),
     update: (id, data) => authApi.put(`/centros/${id}`, data),
     delete: (id) => authApi.delete(`/centros/${id}`),
+    uploadFoto: (id, fotoBase64) => authApi.post(`/centros/${id}/foto`, { foto_base64: fotoBase64 }),
+    deleteFoto: (id) => authApi.delete(`/centros/${id}/foto`),
 };
 
 // ─── Fichas ───────────────────────────────────────────────────────────────────

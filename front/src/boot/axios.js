@@ -65,9 +65,23 @@ const transformPayload = (obj) => {
   const newObj = {};
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {
-      // Campos que NO deben ser alterados (Passwords y Tokens)
       const lowKey = key.toLowerCase();
-      if (lowKey.includes('password') ||
+
+      // 1. Data URLs, Base64, Fotos, Archivos, Imágenes: JAMÁS alterar casing (el base64 es sensible a mayúsculas/minúsculas)
+      if (value.startsWith('data:') ||
+        lowKey.includes('foto') ||
+        lowKey.includes('image') ||
+        lowKey.includes('imagen') ||
+        lowKey.includes('base64') ||
+        lowKey.includes('avatar') ||
+        lowKey.includes('file') ||
+        lowKey.includes('archivo') ||
+        lowKey.includes('logo') ||
+        lowKey.includes('icon')) {
+        newObj[key] = value;
+      }
+      // 2. Passwords, Tokens y Claves secretas: NO alterar
+      else if (lowKey.includes('password') ||
         lowKey.includes('pass') ||
         lowKey.includes('contrasena') ||
         lowKey.includes('contraseña') ||
@@ -78,19 +92,23 @@ const transformPayload = (obj) => {
         lowKey.includes('code')) {
         newObj[key] = value;
       }
-      // Campos que deben ser MINÚSCULAS o permanecer como están (incluye metadatos técnicos)
-      else if (key.toLowerCase().includes('email') ||
-        key.toLowerCase().includes('correo') ||
-        key.toLowerCase().includes('username') ||
-        key.toLowerCase().includes('user') ||
-        key.toLowerCase().includes('login') ||
-        key.toLowerCase().includes('url') ||
-        key.toLowerCase().includes('website') ||
-        key.toLowerCase().includes('sitio_web') ||
-        ['status', 'type', 'action', 'resource', 'state', 'method', 'mode'].includes(key.toLowerCase())) {
+      // 3. Emails, URLs, Usernames y Códigos técnicos/enums: MINÚSCULAS o valor limpio
+      else if (lowKey.includes('email') ||
+        lowKey.includes('correo') ||
+        lowKey.includes('username') ||
+        lowKey.includes('user') ||
+        lowKey.includes('login') ||
+        lowKey.includes('url') ||
+        lowKey.includes('website') ||
+        lowKey.includes('sitio_web') ||
+        [
+          'status', 'type', 'action', 'resource', 'state', 'method', 'mode',
+          'tipo_solicitud', 'tipo_clasificacion', 'tipo_establecimiento', 'tipo_documento',
+          'categoria', 'modalidad', 'estado_centro'
+        ].includes(lowKey)) {
         newObj[key] = value.toLowerCase().trim();
       }
-      // Campos que deben ser MAYÚSCULAS
+      // 4. Texto general del negocio (nombres, descripciones, etc.): MAYÚSCULAS
       else {
         newObj[key] = value.toUpperCase().trim();
       }

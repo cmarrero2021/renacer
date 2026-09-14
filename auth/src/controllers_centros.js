@@ -30,7 +30,11 @@ async function verifyCentroAccess(userId, centroId, client, requiredLevel = 'rea
     if (ownResult.rows.length > 0) return true;
 
     // 3. Verificar acceso delegado
-    const accessLevels = requiredLevel === 'read' ? ['read', 'write', 'admin'] : (requiredLevel === 'write' ? ['write', 'admin'] : ['admin']);
+    const accessLevels = requiredLevel === 'read'
+        ? ['read', 'write', 'admin', 'user', 'usuario', 'lectura', 'escritura', 'administrador']
+        : (requiredLevel === 'write'
+            ? ['write', 'admin', 'escritura', 'administrador']
+            : ['admin', 'administrador']);
     const delegatedResult = await client.query(
         `SELECT 1 FROM user_centro_access 
          WHERE user_id = $1 AND centro_id = $2 AND access_level = ANY($3) AND deleted_at IS NULL`,
@@ -70,7 +74,10 @@ async function getEffectiveAccessLevel(userId, centroId, client) {
     );
 
     if (delegatedResult.rows.length > 0) {
-        return delegatedResult.rows[0].access_level;
+        const lvl = String(delegatedResult.rows[0].access_level || '').toLowerCase().trim();
+        if (['admin', 'administrador'].includes(lvl)) return 'admin';
+        if (['write', 'escritura', 'operador', 'editor'].includes(lvl)) return 'write';
+        return 'read';
     }
 
     return null; // Sin acceso
@@ -337,14 +344,29 @@ exports.getCentro = async (req, res) => {
     }
 };
 
+// Constante de límite de foto: 1 MB en base64 (~1.37 MB) con margen de seguridad
+const FOTO_MAX_BYTES = 1.5 * 1024 * 1024; // 1.5 MB de base64 (margen para overhead base64)
+
+// Valida que el string base64 de la foto no exceda el límite
+function validateFotoSize(fotoBase64) {
+    if (!fotoBase64) return true;
+    const byteLength = Buffer.byteLength(fotoBase64, 'utf8');
+    return byteLength <= FOTO_MAX_BYTES;
+}
+
 exports.createCentro = async (req, res) => {
     const {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
         tipo_establecimiento, tipo_establecimiento_descripcion,
         tipo_clasificacion, estado_centro = 'activo',
         latitud = null, longitud = null,
+        foto_base64 = null,
         propietarios = [], representantes = [], telefonos = [], correos = []
     } = req.body;
+
+    if (foto_base64 && !validateFotoSize(foto_base64)) {
+        return res.status(400).json({ error: 'La foto excede el límite permitido de 1 MB.' });
+    }
 
     const client = await pool.connect();
     try {
@@ -354,11 +376,11 @@ exports.createCentro = async (req, res) => {
             `INSERT INTO public.centros
        (nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
         tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
-        latitud, longitud)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+        latitud, longitud, foto_base64)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
                 tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
-                latitud, longitud]
+                latitud, longitud, foto_base64]
         );
         const centro = centroResult.rows[0];
 
@@ -421,8 +443,14 @@ exports.updateCentro = async (req, res) => {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
         tipo_establecimiento, tipo_establecimiento_descripcion,
         tipo_clasificacion, estado_centro,
-        latitud, longitud
+        latitud, longitud,
+        foto_base64
     } = req.body;
+
+    // Validar tamaño de foto si se envía
+    if (foto_base64 !== undefined && foto_base64 !== null && !validateFotoSize(foto_base64)) {
+        return res.status(400).json({ error: 'La foto excede el límite permitido de 1 MB.' });
+    }
 
     const client = await pool.connect();
     try {
@@ -432,6 +460,10 @@ exports.updateCentro = async (req, res) => {
         if (!hasAccess) {
             return res.status(403).json({ error: 'Sin acceso para editar este centro.' });
         }
+
+        // Construir la actualización de foto_base64:
+        // Si se envía explícitamente (incluso null), se actualiza; si no viene en el body, se conserva
+        const updateFoto = 'foto_base64' in req.body;
 
         const result = await client.query(
             `UPDATE public.centros SET
@@ -445,16 +477,81 @@ exports.updateCentro = async (req, res) => {
          estado_centro = COALESCE($8, estado_centro),
          latitud = COALESCE($9, latitud),
          longitud = COALESCE($10, longitud),
+         foto_base64 = CASE WHEN $12::boolean THEN $11::text ELSE foto_base64 END,
          updated_at = NOW()
-       WHERE id = $11 AND deleted_at IS NULL RETURNING *`,
+       WHERE id = $13 AND deleted_at IS NULL RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
                 tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
-                latitud, longitud, id]
+                latitud, longitud, foto_base64 ?? null, updateFoto, id]
         );
 
         res.json({ message: 'Centro actualizado.', centro: result.rows[0] });
     } catch (err) {
         res.status(500).json({ error: 'Error al actualizar el centro', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+exports.uploadFoto = async (req, res) => {
+    const { id } = req.params;
+    const { foto_base64 } = req.body;
+
+    if (!foto_base64) {
+        return res.status(400).json({ error: 'No se recibió ninguna foto.' });
+    }
+
+    if (!validateFotoSize(foto_base64)) {
+        return res.status(400).json({ error: 'La foto excede el límite permitido de 1 MB.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        const hasAccess = await verifyCentroAccess(req.userId, id, client, 'write');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso para editar este centro.' });
+        }
+
+        const result = await client.query(
+            `UPDATE public.centros SET foto_base64 = $1, updated_at = NOW()
+             WHERE id = $2 AND deleted_at IS NULL RETURNING id, foto_base64`,
+            [foto_base64, id]
+        );
+
+        if (!result.rows.length) {
+            return res.status(404).json({ error: 'Centro no encontrado.' });
+        }
+
+        res.json({ message: 'Foto actualizada.', foto_base64: result.rows[0].foto_base64 });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al guardar la foto', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+exports.deleteFoto = async (req, res) => {
+    const { id } = req.params;
+    const client = await pool.connect();
+    try {
+        const hasAccess = await verifyCentroAccess(req.userId, id, client, 'write');
+        if (!hasAccess) {
+            return res.status(403).json({ error: 'Sin acceso para editar este centro.' });
+        }
+
+        const result = await client.query(
+            `UPDATE public.centros SET foto_base64 = NULL, updated_at = NOW()
+             WHERE id = $1 AND deleted_at IS NULL RETURNING id`,
+            [id]
+        );
+
+        if (!result.rows.length) {
+            return res.status(404).json({ error: 'Centro no encontrado.' });
+        }
+
+        res.json({ message: 'Foto eliminada correctamente.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al eliminar la foto', detail: err.message });
     } finally {
         client.release();
     }
@@ -638,8 +735,8 @@ exports.createFicha = async (req, res) => {
        (centro_id, version, fecha_solicitud, nro_registro_nacional, tipo_solicitud,
         fecha_fundacion, costo_mensual, direccion, is_current)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE) RETURNING *`,
-            [centroId, nextVersion, fecha_solicitud, nro_registro_nacional, tipo_solicitud,
-                fecha_fundacion, costo_mensual, direccion]
+            [centroId, nextVersion, fecha_solicitud || null, nro_registro_nacional || null, (tipo_solicitud && tipo_solicitud.trim()) || null,
+                fecha_fundacion || null, costo_mensual || null, direccion || null]
         );
         const ficha = fichaResult.rows[0];
 
@@ -740,18 +837,17 @@ exports.updateFicha = async (req, res) => {
         if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para editar esta ficha.' });
 
         const result = await client.query(
-
             `UPDATE public.fichas_establecimiento SET
          fecha_solicitud = COALESCE($1, fecha_solicitud),
          nro_registro_nacional = COALESCE($2, nro_registro_nacional),
-         tipo_solicitud = COALESCE($3, tipo_solicitud),
+         tipo_solicitud = COALESCE(NULLIF($3, ''), tipo_solicitud),
          fecha_fundacion = COALESCE($4, fecha_fundacion),
          costo_mensual = COALESCE($5, costo_mensual),
          direccion = COALESCE($6, direccion),
          updated_at = NOW()
        WHERE id = $7 AND deleted_at IS NULL RETURNING *`,
-            [fields.fecha_solicitud, fields.nro_registro_nacional, fields.tipo_solicitud,
-            fields.fecha_fundacion, fields.costo_mensual, fields.direccion, fichaId]
+            [fields.fecha_solicitud || null, fields.nro_registro_nacional || null, fields.tipo_solicitud || null,
+            fields.fecha_fundacion || null, fields.costo_mensual || null, fields.direccion || null, fichaId]
         );
         if (!result.rows.length) {
             return res.status(404).json({ error: 'Ficha no encontrada.' });
@@ -833,20 +929,39 @@ exports.listCentroUsers = async (req, res) => {
 
 exports.grantCentroAccess = async (req, res) => {
     const { centroId } = req.params;
-    const { user_id, access_level = 'read' } = req.body;
+    let { user_id, access_level } = req.body;
     const client = await pool.connect();
     try {
         const hasAccess = await verifyCentroAccess(req.userId, centroId, client, 'admin');
         if (!hasAccess) return res.status(403).json({ error: 'Sin acceso para otorgar permisos en este centro.' });
 
-        await client.query(
+        // Si viene como objeto { label, value }, extraer value
+        if (typeof access_level === 'object' && access_level !== null) {
+            access_level = access_level.value;
+        }
 
+        // Normalizar access_level a valores canónicos: 'read', 'write', 'admin'
+        let normalizedLevel = 'read';
+        if (access_level) {
+            const lvl = String(access_level).toLowerCase().trim();
+            if (['admin', 'administrador', 'owner', 'superadmin'].includes(lvl)) {
+                normalizedLevel = 'admin';
+            } else if (['write', 'escritura', 'editor', 'operador', 'edicion'].includes(lvl)) {
+                normalizedLevel = 'write';
+            } else if (['read', 'lectura', 'lector', 'user', 'usuario', 'viewer', 'consulta', 'consultor'].includes(lvl)) {
+                normalizedLevel = 'read';
+            } else {
+                normalizedLevel = 'read';
+            }
+        }
+
+        await client.query(
             `INSERT INTO public.user_centro_access (user_id, centro_id, access_level, granted_by)
        VALUES ($1, $2, $3, $4)
        ON CONFLICT (user_id, centro_id) DO UPDATE
        SET access_level = EXCLUDED.access_level, granted_by = EXCLUDED.granted_by,
            granted_at = NOW(), deleted_at = NULL`,
-            [user_id, centroId, access_level, req.userId]
+            [user_id, centroId, normalizedLevel, req.userId]
         );
         res.status(201).json({ message: 'Acceso otorgado.' });
     } catch (err) {

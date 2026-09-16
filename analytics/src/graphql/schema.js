@@ -145,6 +145,24 @@ const InfraestructuraType = new GraphQLObjectType({
     }
 });
 
+const AccesibilidadType = new GraphQLObjectType({
+    name: 'Accesibilidad',
+    fields: {
+        id: { type: GraphQLInt },
+        rampas_fijas: { type: GraphQLBoolean },
+        piso_antirresbalante: { type: GraphQLBoolean },
+        alfombras_sueltas: { type: GraphQLBoolean },
+        ascensores: { type: GraphQLBoolean },
+        num_ascensores: { type: GraphQLInt },
+        pasamanos: { type: GraphQLBoolean },
+        escaleras_antirresbalantes: { type: GraphQLBoolean },
+        banos_geriatricos: { type: GraphQLBoolean },
+        senales_accesibles: { type: GraphQLBoolean },
+        timbres_emergencia: { type: GraphQLBoolean },
+        pasillos_accesibles_sillas: { type: GraphQLBoolean },
+    }
+});
+
 const PoblacionType = new GraphQLObjectType({
     name: 'Poblacion',
     fields: {
@@ -186,6 +204,7 @@ const FichaType = new GraphQLObjectType({
         personal: { type: PersonalType },
         servicios: { type: ServiciosType },
         infraestructura: { type: InfraestructuraType },
+        accesibilidad: { type: AccesibilidadType },
         poblacion: { type: new GraphQLList(PoblacionType) },
         documentos: { type: new GraphQLList(DocumentoType) },
     }

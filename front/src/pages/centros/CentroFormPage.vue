@@ -603,7 +603,117 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 5 ▸ PERSONAL                                             -->
+                <!-- TAB 5 ▸ ACCESIBILIDAD                                         -->
+                <!-- ══════════════════════════════════════════════════════════════ -->
+                <q-tab-panel name="accesibilidad">
+                    <inner-progress :value="tabProgress('accesibilidad')" :count="tabFieldCount('accesibilidad')" />
+                    <section-header icon="accessible" label="Accesibilidad del Inmueble" />
+
+                    <div class="row q-col-gutter-md q-mb-md">
+                        <!-- Rampas fijas -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Rampas fijas</div>
+                                <q-toggle v-model="acc.rampas_fijas" :label="acc.rampas_fijas ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Piso en acabado antiresbalante -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Piso en acabado antirresbalante</div>
+                                <q-toggle v-model="acc.piso_antirresbalante" :label="acc.piso_antirresbalante ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Alfombras sueltas -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Alfombras sueltas</div>
+                                <q-toggle v-model="acc.alfombras_sueltas" :label="acc.alfombras_sueltas ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Ascensores y Cuántos -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Ascensores</div>
+                                <div class="row items-center justify-between">
+                                    <q-toggle v-model="acc.ascensores" :label="acc.ascensores ? 'Sí' : 'No'" color="primary" />
+                                    <div v-if="acc.ascensores" style="max-width: 140px;">
+                                        <q-input
+                                            v-model.number="acc.num_ascensores"
+                                            label="¿Cuántos? *"
+                                            outlined
+                                            dense
+                                            type="number"
+                                            min="1"
+                                            :rules="[val => (val !== null && val !== '' && Number(val) > 0) || 'Requerido']"
+                                        />
+                                    </div>
+                                </div>
+                            </q-card>
+                        </div>
+
+                        <!-- Pasamanos -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Pasamanos</div>
+                                <q-toggle v-model="acc.pasamanos" :label="acc.pasamanos ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Escaleras con huellas antirresbalantes -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Escaleras con huellas antirresbalantes</div>
+                                <q-toggle v-model="acc.escaleras_antirresbalantes" :label="acc.escaleras_antirresbalantes ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Baños Geriátricos -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Baños Geriátricos</div>
+                                <q-toggle v-model="acc.banos_geriatricos" :label="acc.banos_geriatricos ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Señales visuales, audibles y táctiles -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Señales visuales, audibles y táctiles</div>
+                                <q-toggle v-model="acc.senales_accesibles" :label="acc.senales_accesibles ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Timbres de emergencia -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Timbres de emergencia</div>
+                                <q-toggle v-model="acc.timbres_emergencia" :label="acc.timbres_emergencia ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+
+                        <!-- Pasillos accesibles para sillas de ruedas -->
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <q-card flat bordered class="q-pa-sm">
+                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Pasillos accesibles para sillas de ruedas</div>
+                                <q-toggle v-model="acc.pasillos_accesibles_sillas" :label="acc.pasillos_accesibles_sillas ? 'Sí' : 'No'" color="primary" />
+                            </q-card>
+                        </div>
+                    </div>
+
+                    <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Accesibilidad" :loading="saving"
+                            @click="saveAccesibilidad(false)" />
+                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
+                            :loading="saving" @click="saveAccesibilidadAndNext" />
+                    </div>
+                </q-tab-panel>
+
+                <!-- ══════════════════════════════════════════════════════════════ -->
+                <!-- TAB 6 ▸ PERSONAL                                             -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="personal">
                     <inner-progress :value="tabProgress('personal')" :count="tabFieldCount('personal')" />
@@ -801,20 +911,24 @@ const steps = [
     { name: 'capacidad', label: '2. Capacidad', icon: 'people' },
     { name: 'poblacion', label: '3. Población', icon: 'bar_chart' },
     { name: 'infraestructura', label: '4. Infraestructura', icon: 'home' },
-    { name: 'personal', label: '5. Personal', icon: 'group' },
-    { name: 'servicios', label: '6. Servicios', icon: 'medical_services' },
-    { name: 'documentos', label: '7. Documentos', icon: 'folder' },
+    { name: 'accesibilidad', label: '5. Accesibilidad', icon: 'accessible' },
+    { name: 'personal', label: '6. Personal', icon: 'group' },
+    { name: 'servicios', label: '7. Servicios', icon: 'medical_services' },
+    { name: 'documentos', label: '8. Documentos', icon: 'folder' },
 ];
 
 const savedTabs = ref({
     datos: false, capacidad: false, poblacion: false,
-    infraestructura: false, personal: false, servicios: false, documentos: false
+    infraestructura: false, accesibilidad: false, personal: false, servicios: false, documentos: false
 });
 const savedCount = computed(() => Object.values(savedTabs.value).filter(Boolean).length);
 function tabEnabled(name) { return savedTabs.value.datos; }
 async function goToTab(name) {
     if (activeTab.value === 'infraestructura' && name !== 'infraestructura' && fichaId.value && hasInfraestructura.value) {
         await saveInfraestructura(true);
+    }
+    if (activeTab.value === 'accesibilidad' && name !== 'accesibilidad' && fichaId.value && hasAccesibilidad.value) {
+        await saveAccesibilidad(true);
     }
     if (tabEnabled(name) || name === 'datos') activeTab.value = name;
 }
@@ -903,6 +1017,19 @@ const infra = ref({
     agua_servidas: null, deposito_basura: null, sistema_seguridad: null,
     descripcion_otros: ''
 });
+const acc = ref({
+    rampas_fijas: false,
+    piso_antirresbalante: false,
+    alfombras_sueltas: false,
+    ascensores: false,
+    num_ascensores: null,
+    pasamanos: false,
+    escaleras_antirresbalantes: false,
+    banos_geriatricos: false,
+    senales_accesibles: false,
+    timbres_emergencia: false,
+    pasillos_accesibles_sillas: false,
+});
 const pers = ref({
     num_medicos_geriatra: null, num_medicos_psiquiatra: null,
     num_enfermeros: null, num_cuidadores: null, num_camareros: null,
@@ -972,6 +1099,11 @@ const tabFieldDefs = {
     poblacion: ['fecha_corte', 'registros'],
     infraestructura: ['estado_inmueble_id', 'num_dormitorios', 'num_sanitarios',
         'luz_electrica', 'agua_potable', 'agua_servidas'],
+    accesibilidad: [
+        'rampas_fijas', 'piso_antirresbalante', 'alfombras_sueltas', 'ascensores',
+        'pasamanos', 'escaleras_antirresbalantes', 'banos_geriatricos',
+        'senales_accesibles', 'timbres_emergencia', 'pasillos_accesibles_sillas'
+    ],
     personal: ['num_medicos_geriatra', 'num_enfermeros', 'num_cuidadores',
         'num_servicios_generales', 'num_personal_cocina'],
     servicios: ['farmacia', 'evaluacion_nutricional', 'medicos', 'lavanderia', 'barberia_peluqueria'],
@@ -979,7 +1111,7 @@ const tabFieldDefs = {
 };
 
 const tabSources = {
-    datos, capacidad: cap, poblacion: pob, infraestructura: infra, personal: pers, servicios: serv
+    datos, capacidad: cap, poblacion: pob, infraestructura: infra, accesibilidad: acc, personal: pers, servicios: serv
 };
 
 function tabFieldCount(name) {
@@ -1002,6 +1134,19 @@ const hasInfraestructura = computed(() => {
         || infra.value.areas_atencion_medica
         || infra.value.areas_verdes
         || infra.value.luz_electrica || infra.value.agua_potable;
+});
+
+const hasAccesibilidad = computed(() => {
+    return acc.value.rampas_fijas
+        || acc.value.piso_antirresbalante
+        || acc.value.alfombras_sueltas
+        || acc.value.ascensores
+        || acc.value.pasamanos
+        || acc.value.escaleras_antirresbalantes
+        || acc.value.banos_geriatricos
+        || acc.value.senales_accesibles
+        || acc.value.timbres_emergencia
+        || acc.value.pasillos_accesibles_sillas;
 });
 
 // ── Helpers de listas dinámicas ───────────────────────────────────────────────
@@ -1337,6 +1482,36 @@ async function saveInfraestructuraAndNext() {
     if (ok) nextTab();
 }
 
+async function saveAccesibilidad(silent = false) {
+    if (!fichaId.value) return warn();
+    if (acc.value.ascensores && (!acc.value.num_ascensores || acc.value.num_ascensores <= 0)) {
+        Notify.create({ type: 'warning', message: 'Debe indicar la cantidad de ascensores si el establecimiento posee ascensores.' });
+        return false;
+    }
+    saving.value = true;
+    try {
+        await fichasService.saveAccesibilidad(fichaId.value, acc.value);
+        savedTabs.value.accesibilidad = true;
+        if (!silent) {
+            Notify.create({ type: 'positive', message: 'Accesibilidad guardada correctamente.' });
+        }
+        return true;
+    } catch (err) {
+        console.error('Error al guardar accesibilidad:', err);
+        if (!silent) {
+            Notify.create({ type: 'negative', message: 'Error al guardar accesibilidad.' });
+        }
+        return false;
+    } finally {
+        saving.value = false;
+    }
+}
+
+async function saveAccesibilidadAndNext() {
+    const ok = await saveAccesibilidad(false);
+    if (ok) nextTab();
+}
+
 async function savePersonal(andNext = false) {
     if (!fichaId.value) return warn();
     saving.value = true;
@@ -1398,6 +1573,12 @@ async function saveDocumentos() {
             pendientes.push(
                 fichasService.saveInfraestructura(fichaId.value, infra.value)
                     .then(() => { savedTabs.value.infraestructura = true; })
+            );
+        }
+        if ((isEdit.value || !savedTabs.value.accesibilidad) && hasAccesibilidad.value) {
+            pendientes.push(
+                fichasService.saveAccesibilidad(fichaId.value, acc.value)
+                    .then(() => { savedTabs.value.accesibilidad = true; })
             );
         }
         if ((isEdit.value || !savedTabs.value.personal) && hasPersonal) {
@@ -1479,6 +1660,12 @@ async function saveAll() {
                 .then(() => { savedTabs.value.infraestructura = true; })
         );
 
+        // 2.1 Guardar Accesibilidad
+        tareas.push(
+            fichasService.saveAccesibilidad(fichaId.value, acc.value)
+                .then(() => { savedTabs.value.accesibilidad = true; })
+        );
+
         // 3. Guardar Capacidad
         tareas.push(
             fichasService.saveCapacidad(fichaId.value, cap.value)
@@ -1533,12 +1720,18 @@ async function handleBack() {
     if (fichaId.value && hasInfraestructura.value) {
         await saveInfraestructura(true);
     }
+    if (fichaId.value && hasAccesibilidad.value) {
+        await saveAccesibilidad(true);
+    }
     router.back();
 }
 
 watch(activeTab, async (newTab, oldTab) => {
     if (oldTab === 'infraestructura' && fichaId.value && hasInfraestructura.value) {
         await saveInfraestructura(true);
+    }
+    if (oldTab === 'accesibilidad' && fichaId.value && hasAccesibilidad.value) {
+        await saveAccesibilidad(true);
     }
 });
 
@@ -1635,6 +1828,13 @@ onMounted(async () => {
                 infra.value.areas_atencion_medica = !!ficha.infraestructura.areas_atencion_medica;
                 infra.value.areas_verdes = !!ficha.infraestructura.areas_verdes;
                 savedTabs.value.infraestructura = true;
+            }
+            if (ficha.accesibilidad) {
+                Object.assign(acc.value, ficha.accesibilidad);
+                if (ficha.accesibilidad.num_ascensores != null) {
+                    acc.value.num_ascensores = Number(ficha.accesibilidad.num_ascensores);
+                }
+                savedTabs.value.accesibilidad = true;
             }
             if (ficha.poblacion?.length) { savedTabs.value.poblacion = true; }
             if (ficha.documentos?.length) {

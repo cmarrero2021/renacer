@@ -452,6 +452,95 @@
                             </q-card>
                         </q-expansion-item>
 
+                        <!-- Accesibilidad -->
+                        <q-expansion-item v-if="ficha.accesibilidad" icon="accessible" label="Accesibilidad"
+                            class="q-mb-sm">
+                            <q-card flat bordered>
+                                <q-card-section>
+                                    <div class="row q-col-gutter-md">
+                                        <div class="col-12 col-md-6">
+                                            <table style="width:100%; border-collapse:collapse">
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Rampas fijas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.rampas_fijas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.rampas_fijas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Piso acabado antirresbalante</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.piso_antirresbalante ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.piso_antirresbalante ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Alfombras sueltas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.alfombras_sueltas ? 'warning' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.alfombras_sueltas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Ascensores</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.ascensores ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.ascensores ? ('Sí' + (ficha.accesibilidad.num_ascensores ? ' (' + ficha.accesibilidad.num_ascensores + ')' : '')) : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Pasamanos</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.pasamanos ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.pasamanos ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-12 col-md-6">
+                                            <table style="width:100%; border-collapse:collapse">
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Escaleras con huellas antirresbalantes</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.escaleras_antirresbalantes ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.escaleras_antirresbalantes ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Baños Geriátricos</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.banos_geriatricos ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.banos_geriatricos ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Señales visuales, audibles y táctiles</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.senales_accesibles ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.senales_accesibles ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Timbres de emergencia</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.timbres_emergencia ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.timbres_emergencia ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Pasillos accesibles para sillas de ruedas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.pasillos_accesibles_sillas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.pasillos_accesibles_sillas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </q-expansion-item>
+
                         <!-- Documentos -->
                         <q-expansion-item v-if="ficha.documentos?.length" icon="folder" label="Documentos"
                             class="q-mb-sm">

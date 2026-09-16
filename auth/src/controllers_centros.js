@@ -692,7 +692,7 @@ exports.getFichaActual = async (req, res) => {
         const ficha = fichaResult.rows[0];
 
         // Cargar tablas dependientes
-        const [documentos, servicios, personal, infraestructura, capacidad, poblacion] = await Promise.all([
+        const [documentos, servicios, personal, infraestructura, accesibilidad, capacidad, poblacion] = await Promise.all([
             client.query('SELECT * FROM public.ficha_documentos WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_servicios WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [ficha.id]),
@@ -703,6 +703,7 @@ exports.getFichaActual = async (req, res) => {
                 LEFT JOIN public.estados_inmueble ei ON ei.id = fi.estado_inmueble_id
                 WHERE fi.ficha_id = $1
             `, [ficha.id]),
+            client.query('SELECT * FROM public.ficha_accesibilidad WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_capacidad WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_poblacion WHERE ficha_id = $1 ORDER BY fecha_corte DESC', [ficha.id]),
         ]);
@@ -713,6 +714,7 @@ exports.getFichaActual = async (req, res) => {
             servicios: servicios.rows[0] || null,
             personal: personal.rows[0] || null,
             infraestructura: infraestructura.rows[0] || null,
+            accesibilidad: accesibilidad.rows[0] || null,
             capacidad: capacidad.rows[0] || null,
             poblacion: poblacion.rows,
         });
@@ -729,7 +731,7 @@ exports.createFicha = async (req, res) => {
         fecha_solicitud, nro_registro_nacional, tipo_solicitud,
         fecha_fundacion, costo_mensual, direccion,
         documentos = [], servicios = null, personal = null,
-        infraestructura = null, capacidad = null
+        infraestructura = null, accesibilidad = null, capacidad = null
     } = req.body;
 
     const client = await pool.connect();
@@ -831,6 +833,23 @@ exports.createFicha = async (req, res) => {
                 infraestructura.luz_electrica, infraestructura.agua_potable,
                 infraestructura.agua_servidas, infraestructura.deposito_basura,
                 infraestructura.sistema_seguridad, infraestructura.descripcion_otros]
+            );
+        }
+
+        // Insertar accesibilidad (1:1)
+        if (accesibilidad) {
+            await client.query(
+                `INSERT INTO public.ficha_accesibilidad
+         (ficha_id, rampas_fijas, piso_antirresbalante, alfombras_sueltas, ascensores,
+          num_ascensores, pasamanos, escaleras_antirresbalantes, banos_geriatricos,
+          senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                [ficha.id, accesibilidad.rampas_fijas ?? false, accesibilidad.piso_antirresbalante ?? false,
+                accesibilidad.alfombras_sueltas ?? false, accesibilidad.ascensores ?? false,
+                accesibilidad.ascensores ? (accesibilidad.num_ascensores ? parseInt(accesibilidad.num_ascensores, 10) : null) : null,
+                accesibilidad.pasamanos ?? false, accesibilidad.escaleras_antirresbalantes ?? false,
+                accesibilidad.banos_geriatricos ?? false, accesibilidad.senales_accesibles ?? false,
+                accesibilidad.timbres_emergencia ?? false, accesibilidad.pasillos_accesibles_sillas ?? false]
             );
         }
 
@@ -1193,6 +1212,41 @@ exports.saveInfraestructura = async (req, res) => {
         res.json({ message: 'Infraestructura guardada.', data: r.rows[0] });
     } catch (err) {
         res.status(500).json({ error: 'Error al guardar infraestructura', detail: err.message });
+    } finally { client.release(); }
+};
+
+exports.saveAccesibilidad = async (req, res) => {
+    const { fichaId } = req.params;
+    const a = req.body;
+    const client = await pool.connect();
+    try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
+        const r = await client.query(
+            `INSERT INTO public.ficha_accesibilidad
+             (ficha_id, rampas_fijas, piso_antirresbalante, alfombras_sueltas, ascensores,
+              num_ascensores, pasamanos, escaleras_antirresbalantes, banos_geriatricos,
+              senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+             ON CONFLICT (ficha_id) DO UPDATE SET
+               rampas_fijas=$2, piso_antirresbalante=$3, alfombras_sueltas=$4, ascensores=$5,
+               num_ascensores=$6, pasamanos=$7, escaleras_antirresbalantes=$8, banos_geriatricos=$9,
+               senales_accesibles=$10, timbres_emergencia=$11, pasillos_accesibles_sillas=$12, updated_at=NOW()
+             RETURNING *`,
+            [fichaId, a.rampas_fijas ?? false, a.piso_antirresbalante ?? false,
+             a.alfombras_sueltas ?? false, a.ascensores ?? false,
+             a.ascensores ? (a.num_ascensores ? parseInt(a.num_ascensores, 10) : null) : null,
+             a.pasamanos ?? false, a.escaleras_antirresbalantes ?? false,
+             a.banos_geriatricos ?? false, a.senales_accesibles ?? false,
+             a.timbres_emergencia ?? false, a.pasillos_accesibles_sillas ?? false]
+        );
+        res.json({ message: 'Accesibilidad guardada.', data: r.rows[0] });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al guardar accesibilidad', detail: err.message });
     } finally { client.release(); }
 };
 

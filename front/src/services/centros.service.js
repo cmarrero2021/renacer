@@ -40,6 +40,7 @@ export const fichasService = {
     saveServicios: (fichaId, data) => authApi.put(`/fichas/${fichaId}/servicios`, data),
     savePersonal: (fichaId, data) => authApi.put(`/fichas/${fichaId}/personal`, data),
     saveInfraestructura: (fichaId, data) => authApi.put(`/fichas/${fichaId}/infraestructura`, data),
+    saveAccesibilidad: (fichaId, data) => authApi.put(`/fichas/${fichaId}/accesibilidad`, data),
     saveDocumentos: (fichaId, data) => authApi.put(`/fichas/${fichaId}/documentos`, data),
     addPoblacion: (fichaId, data) => authApi.post(`/fichas/${fichaId}/poblacion`, data),
 };

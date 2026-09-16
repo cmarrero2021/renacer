@@ -6,7 +6,7 @@ const {
     listCentros, getCentro, createCentro, updateCentro, deleteCentro,
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
-    getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveDocumentos,
+    getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveAccesibilidad, saveDocumentos,
     purgeDeletedRecords, listMaintenanceLogs,
     proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
     uploadFoto, deleteFoto
@@ -53,6 +53,7 @@ router.put('/fichas/:fichaId/capacidad', saveCapacidad);
 router.put('/fichas/:fichaId/servicios', saveServicios);
 router.put('/fichas/:fichaId/personal', savePersonal);
 router.put('/fichas/:fichaId/infraestructura', saveInfraestructura);
+router.put('/fichas/:fichaId/accesibilidad', saveAccesibilidad);
 router.put('/fichas/:fichaId/documentos', saveDocumentos);
 
 

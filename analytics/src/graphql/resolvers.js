@@ -70,6 +70,19 @@ const FIELD_MAP = {
     'infraestructura.agua_potable': { sql: 'inf.agua_potable', table: 'infraestructura', label: 'Agua Potable', category: 'Infraestructura' },
     'infraestructura.sistema_seguridad': { sql: 'inf.sistema_seguridad', table: 'infraestructura', label: 'Sistema de Seguridad', category: 'Infraestructura' },
 
+    // Accesibilidad
+    'accesibilidad.rampas_fijas': { sql: 'acc.rampas_fijas', table: 'accesibilidad', label: 'Rampas Fijas', category: 'Accesibilidad' },
+    'accesibilidad.piso_antirresbalante': { sql: 'acc.piso_antirresbalante', table: 'accesibilidad', label: 'Piso Antirresbalante', category: 'Accesibilidad' },
+    'accesibilidad.alfombras_sueltas': { sql: 'acc.alfombras_sueltas', table: 'accesibilidad', label: 'Alfombras Sueltas', category: 'Accesibilidad' },
+    'accesibilidad.ascensores': { sql: 'acc.ascensores', table: 'accesibilidad', label: 'Ascensores', category: 'Accesibilidad' },
+    'accesibilidad.num_ascensores': { sql: 'acc.num_ascensores', table: 'accesibilidad', label: 'Nº Ascensores', category: 'Accesibilidad', numeric: true },
+    'accesibilidad.pasamanos': { sql: 'acc.pasamanos', table: 'accesibilidad', label: 'Pasamanos', category: 'Accesibilidad' },
+    'accesibilidad.escaleras_antirresbalantes': { sql: 'acc.escaleras_antirresbalantes', table: 'accesibilidad', label: 'Escaleras Antirresbalantes', category: 'Accesibilidad' },
+    'accesibilidad.banos_geriatricos': { sql: 'acc.banos_geriatricos', table: 'accesibilidad', label: 'Baños Geriátricos', category: 'Accesibilidad' },
+    'accesibilidad.senales_accesibles': { sql: 'acc.senales_accesibles', table: 'accesibilidad', label: 'Señales Accesibles', category: 'Accesibilidad' },
+    'accesibilidad.timbres_emergencia': { sql: 'acc.timbres_emergencia', table: 'accesibilidad', label: 'Timbres de Emergencia', category: 'Accesibilidad' },
+    'accesibilidad.pasillos_accesibles_sillas': { sql: 'acc.pasillos_accesibles_sillas', table: 'accesibilidad', label: 'Pasillos Accesibles Sillas', category: 'Accesibilidad' },
+
     // Población
     'poblacion.fecha_corte': { sql: 'pob.fecha_corte', table: 'poblacion', label: 'Fecha de Corte', category: 'Población', date: true },
     'poblacion.modalidad': { sql: 'pob.modalidad', table: 'poblacion', label: 'Modalidad', category: 'Población' },
@@ -88,7 +101,7 @@ function buildJoins(requiredTables) {
         joins.push(`LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id`);
     }
     if (unique.has('ficha') || unique.has('capacidad') || unique.has('personal') ||
-        unique.has('servicios') || unique.has('infraestructura') || unique.has('poblacion')) {
+        unique.has('servicios') || unique.has('infraestructura') || unique.has('accesibilidad') || unique.has('poblacion')) {
         joins.push(`LEFT JOIN public.fichas_establecimiento f ON f.centro_id = c.id AND f.is_current = TRUE AND f.deleted_at IS NULL`);
     }
     if (unique.has('capacidad')) {
@@ -103,6 +116,9 @@ function buildJoins(requiredTables) {
     if (unique.has('infraestructura')) {
         joins.push(`LEFT JOIN public.ficha_infraestructura inf ON inf.ficha_id = f.id AND inf.deleted_at IS NULL`);
         joins.push(`LEFT JOIN public.estados_inmueble ei ON ei.id = inf.estado_inmueble_id`);
+    }
+    if (unique.has('accesibilidad')) {
+        joins.push(`LEFT JOIN public.ficha_accesibilidad acc ON acc.ficha_id = f.id AND acc.deleted_at IS NULL`);
     }
     if (unique.has('poblacion')) {
         joins.push(`LEFT JOIN public.ficha_poblacion pob ON pob.ficha_id = f.id AND pob.deleted_at IS NULL`);

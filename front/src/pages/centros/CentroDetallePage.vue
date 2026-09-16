@@ -355,7 +355,7 @@
                                                     <td class="text-caption text-grey"
                                                         style="width:55%;padding:2px 4px">Estado inmueble</td>
                                                     <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.estado_inmueble || '—' }}</td>
+                                                        ficha.infraestructura.estado_inmueble_nombre || '—' }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="text-caption text-grey" style="padding:2px 4px">Nro.

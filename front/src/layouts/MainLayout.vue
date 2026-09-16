@@ -99,6 +99,11 @@
               <q-item-section avatar><q-icon name="medical_services" /></q-item-section>
               <q-item-section>Servicios</q-item-section>
             </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/estados_inmueble"
+              v-if="isAdmin() || hasPermission('view_estados_inmueble')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="home_work" /></q-item-section>
+              <q-item-section>Estados del Inmueble</q-item-section>
+            </q-item>
           </q-expansion-item>
 
           <!-- Menú expandible de Mantenimiento -->

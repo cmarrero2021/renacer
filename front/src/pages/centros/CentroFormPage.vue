@@ -525,12 +525,17 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
-                            <q-select v-model="infra.estado_inmueble" :options="[
-                                { value: 'excelente', label: 'Excelente' },
-                                { value: 'bueno', label: 'Bueno' },
-                                { value: 'deficiente', label: 'Deficiente' }
-                            ]" option-value="value" option-label="label" emit-value map-options outlined dense
-                                label="Estado del inmueble" />
+                            <q-select
+                                v-model="infra.estado_inmueble_id"
+                                :options="opcionesEstadoInmueble"
+                                option-value="value"
+                                option-label="label"
+                                emit-value
+                                map-options
+                                outlined
+                                dense
+                                label="Estado del inmueble"
+                            />
                         </div>
                         <div class="col-12 col-md-4">
                             <q-input v-model.number="infra.num_dormitorios" label="Nro. de dormitorios" outlined dense
@@ -821,6 +826,7 @@ function nextTab() {
 // ── Opciones dinámicas de catálogos ──────────────────────────────────────────
 const opcionesTipoEstab = computed(() => catalogosStore.opcionesTipoEstab);
 const opcionesTipoClasif = computed(() => catalogosStore.opcionesTipoClasif);
+const opcionesEstadoInmueble = computed(() => catalogosStore.opcionesEstadoInmueble);
 const listaServicios = computed(() => catalogosStore.opcionesServicios);
 
 const opcionesRifTipo = [
@@ -889,7 +895,7 @@ const cap = ref({
 });
 const pob = ref({ fecha_corte: '', registros: [] });
 const infra = ref({
-    estado_inmueble: null, num_dormitorios: null, dormitorios_adecuados: null,
+    estado_inmueble_id: null, num_dormitorios: null, dormitorios_adecuados: null,
     num_sanitarios: null, sanitarios_adecuados: null, tiene_area_cocina: null,
     cocina_adecuada: null, areas_atencion_medica: false, areas_verdes: false,
     ventilacion_adecuada: null, iluminacion_adecuada: null,
@@ -964,7 +970,7 @@ const tabFieldDefs = {
         'rif', 'propietarios', 'telefonos', 'latitud', 'longitud'],
     capacidad: ['capacidad_total_residente', 'capacidad_actual_residente', 'atencion_ambulatoria'],
     poblacion: ['fecha_corte', 'registros'],
-    infraestructura: ['estado_inmueble', 'num_dormitorios', 'num_sanitarios',
+    infraestructura: ['estado_inmueble_id', 'num_dormitorios', 'num_sanitarios',
         'luz_electrica', 'agua_potable', 'agua_servidas'],
     personal: ['num_medicos_geriatra', 'num_enfermeros', 'num_cuidadores',
         'num_servicios_generales', 'num_personal_cocina'],
@@ -990,7 +996,7 @@ function tabProgress(name) {
 }
 
 const hasInfraestructura = computed(() => {
-    return infra.value.estado_inmueble != null
+    return infra.value.estado_inmueble_id != null
         || infra.value.num_dormitorios != null
         || infra.value.num_sanitarios != null
         || infra.value.areas_atencion_medica
@@ -1542,7 +1548,8 @@ function warn() { Notify.create({ type: 'warning', message: 'Primero guarda los 
 onMounted(async () => {
     await Promise.allSettled([
         centrosStore.fetchEstados(),
-        catalogosStore.fetchAll()
+        catalogosStore.fetchAll(true),
+        catalogosStore.fetchCatalog('estados_inmueble')
     ]);
 
     // Verificar si el usuario ya tiene un centro (modo crear)
@@ -1622,6 +1629,9 @@ onMounted(async () => {
             if (ficha.personal) { Object.assign(pers.value, ficha.personal); savedTabs.value.personal = true; }
             if (ficha.infraestructura) {
                 Object.assign(infra.value, ficha.infraestructura);
+                if (ficha.infraestructura.estado_inmueble_id != null) {
+                    infra.value.estado_inmueble_id = Number(ficha.infraestructura.estado_inmueble_id);
+                }
                 infra.value.areas_atencion_medica = !!ficha.infraestructura.areas_atencion_medica;
                 infra.value.areas_verdes = !!ficha.infraestructura.areas_verdes;
                 savedTabs.value.infraestructura = true;

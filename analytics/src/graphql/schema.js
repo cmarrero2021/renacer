@@ -123,7 +123,8 @@ const InfraestructuraType = new GraphQLObjectType({
     name: 'Infraestructura',
     fields: {
         id: { type: GraphQLInt },
-        estado_inmueble: { type: GraphQLString },
+        estado_inmueble_id:     { type: GraphQLInt },    // FK a public.estados_inmueble
+        estado_inmueble_nombre: { type: GraphQLString },  // JOIN: nombre del estado
         num_dormitorios: { type: GraphQLInt },
         dormitorios_adecuados: { type: GraphQLBoolean },
         num_sanitarios: { type: GraphQLInt },

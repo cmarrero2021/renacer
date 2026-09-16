@@ -90,6 +90,26 @@ const CATALOGS_CONFIG = {
         fields: ['codigo', 'nombre', 'categoria', 'descripcion', 'activo'],
         requiredFields: ['codigo', 'nombre'],
         orderBy: 'nombre ASC'
+    },
+    estados_inmueble: {
+        key: 'estados_inmueble',
+        tableName: 'public.estados_inmueble',
+        resource: 'estados_inmueble',
+        label: 'Estados del Inmueble',
+        icon: 'home_work',
+        description: 'Condición física del inmueble del establecimiento (Excelente, Bueno, Deficiente, etc.)',
+        primaryKey: 'id',
+        columns: [
+            { name: 'id',          label: 'ID',          field: 'id',          sortable: true, align: 'left' },
+            { name: 'nombre',      label: 'Nombre',      field: 'nombre',      sortable: true, align: 'left', required: true },
+            { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
+            { name: 'activo',      label: 'Estado',      field: 'activo',      sortable: true, align: 'center' },
+            { name: 'actions',     label: 'Acciones',    field: 'actions',                    align: 'center' }
+        ],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'activo'],
+        requiredFields: ['nombre'],
+        orderBy: 'nombre ASC'
     }
 };
 
@@ -108,6 +128,8 @@ function checkCatalogPermission(req, catalogKey, action) {
 
     // Verificación por acción
     if (action === 'view') {
+        const canAccessCentros = userPerms.some(p => ['list_centros', 'view_centro', 'create_centro', 'edit_centro'].includes(p));
+        if (canAccessCentros) return true;
         return userPerms.includes(`view_${catalogKey}`) || userPerms.includes(`view_${config.resource}`);
     }
     if (action === 'create') {

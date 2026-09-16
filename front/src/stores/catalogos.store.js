@@ -45,12 +45,20 @@ const DEFAULT_SERVICIOS = [
     { field: 'otros', label: 'Otros Servicios', desc: 'otros_descripcion' },
 ];
 
+const DEFAULT_ESTADOS_INMUEBLE = [
+    { value: 1, label: 'Excelente' },
+    { value: 2, label: 'Bueno' },
+    { value: 3, label: 'Deficiente' },
+    { value: 4, label: 'Regular' },
+];
+
 export const useCatalogosStore = defineStore('catalogos', () => {
     // ─── Estado ───────────────────────────────────────────────────────────────
     const tiposEstablecimiento = ref([]);
     const tiposClasificacion = ref([]);
     const tiposDocumentos = ref([]);
     const serviciosCatalogo = ref([]);
+    const estadosInmueble = ref([]);
     const loading = ref(false);
     const initialized = ref(false);
 
@@ -100,6 +108,15 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         return DEFAULT_SERVICIOS;
     });
 
+    const opcionesEstadoInmueble = computed(() => {
+        if (estadosInmueble.value.length > 0) {
+            return estadosInmueble.value
+                .filter(e => e.activo !== false)
+                .map(e => ({ value: Number(e.id), label: e.nombre }));
+        }
+        return DEFAULT_ESTADOS_INMUEBLE;
+    });
+
     // ─── Acciones de consulta ────────────────────────────────────────────────
     async function fetchCatalog(catalogKey) {
         try {
@@ -114,6 +131,8 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 tiposDocumentos.value = items;
             } else if (catalogKey === 'servicios_catalogo') {
                 serviciosCatalogo.value = items;
+            } else if (catalogKey === 'estados_inmueble') {
+                estadosInmueble.value = items;
             }
         } catch (err) {
             console.error(`Error al actualizar catálogo '${catalogKey}':`, err);
@@ -121,14 +140,15 @@ export const useCatalogosStore = defineStore('catalogos', () => {
     }
 
     async function fetchAll(force = false) {
-        if (initialized.value && !force) return;
+        if (initialized.value && !force && estadosInmueble.value.length > 0) return;
         loading.value = true;
         try {
             await Promise.allSettled([
                 fetchCatalog('tipos_establecimiento'),
                 fetchCatalog('tipos_clasificacion'),
                 fetchCatalog('tipos_documentos'),
-                fetchCatalog('servicios_catalogo')
+                fetchCatalog('servicios_catalogo'),
+                fetchCatalog('estados_inmueble')
             ]);
             initialized.value = true;
         } finally {
@@ -164,6 +184,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         tiposClasificacion,
         tiposDocumentos,
         serviciosCatalogo,
+        estadosInmueble,
         loading,
         initialized,
         // Getters reactivos
@@ -171,6 +192,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         opcionesTipoClasif,
         opcionesDocumentos,
         opcionesServicios,
+        opcionesEstadoInmueble,
         // Acciones
         fetchCatalog,
         fetchAll,

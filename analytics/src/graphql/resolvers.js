@@ -55,7 +55,7 @@ const FIELD_MAP = {
     'servicios.barberia_peluqueria': { sql: 'srv.barberia_peluqueria', table: 'servicios', label: 'Barbería/Peluquería', category: 'Servicios' },
 
     // Infraestructura
-    'infraestructura.estado_inmueble': { sql: 'inf.estado_inmueble', table: 'infraestructura', label: 'Estado del Inmueble', category: 'Infraestructura' },
+    'infraestructura.estado_inmueble': { sql: 'ei.nombre', table: 'infraestructura', label: 'Estado del Inmueble', category: 'Infraestructura' },
     'infraestructura.num_dormitorios': { sql: 'inf.num_dormitorios', table: 'infraestructura', label: 'Nº Dormitorios', category: 'Infraestructura', numeric: true },
     'infraestructura.dormitorios_adecuados': { sql: 'inf.dormitorios_adecuados', table: 'infraestructura', label: 'Dormitorios Adecuados', category: 'Infraestructura' },
     'infraestructura.num_sanitarios': { sql: 'inf.num_sanitarios', table: 'infraestructura', label: 'Nº Sanitarios', category: 'Infraestructura', numeric: true },
@@ -102,6 +102,7 @@ function buildJoins(requiredTables) {
     }
     if (unique.has('infraestructura')) {
         joins.push(`LEFT JOIN public.ficha_infraestructura inf ON inf.ficha_id = f.id AND inf.deleted_at IS NULL`);
+        joins.push(`LEFT JOIN public.estados_inmueble ei ON ei.id = inf.estado_inmueble_id`);
     }
     if (unique.has('poblacion')) {
         joins.push(`LEFT JOIN public.ficha_poblacion pob ON pob.ficha_id = f.id AND pob.deleted_at IS NULL`);

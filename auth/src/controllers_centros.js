@@ -696,7 +696,13 @@ exports.getFichaActual = async (req, res) => {
             client.query('SELECT * FROM public.ficha_documentos WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_servicios WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [ficha.id]),
-            client.query('SELECT * FROM public.ficha_infraestructura WHERE ficha_id = $1', [ficha.id]),
+            client.query(`
+                SELECT fi.*,
+                       ei.nombre AS estado_inmueble_nombre
+                FROM public.ficha_infraestructura fi
+                LEFT JOIN public.estados_inmueble ei ON ei.id = fi.estado_inmueble_id
+                WHERE fi.ficha_id = $1
+            `, [ficha.id]),
             client.query('SELECT * FROM public.ficha_capacidad WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_poblacion WHERE ficha_id = $1 ORDER BY fecha_corte DESC', [ficha.id]),
         ]);
@@ -809,13 +815,13 @@ exports.createFicha = async (req, res) => {
         if (infraestructura) {
             await client.query(
                 `INSERT INTO public.ficha_infraestructura
-         (ficha_id, estado_inmueble, num_dormitorios, dormitorios_adecuados,
+         (ficha_id, estado_inmueble_id, num_dormitorios, dormitorios_adecuados,
           num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
           areas_atencion_medica, areas_verdes,
           ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
           luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
-                [ficha.id, infraestructura.estado_inmueble, infraestructura.num_dormitorios,
+                [ficha.id, infraestructura.estado_inmueble_id, infraestructura.num_dormitorios,
                 infraestructura.dormitorios_adecuados, infraestructura.num_sanitarios,
                 infraestructura.sanitarios_adecuados, infraestructura.tiene_area_cocina,
                 infraestructura.cocina_adecuada,
@@ -1162,14 +1168,14 @@ exports.saveInfraestructura = async (req, res) => {
         const r = await client.query(
 
             `INSERT INTO public.ficha_infraestructura
-             (ficha_id, estado_inmueble, num_dormitorios, dormitorios_adecuados,
+             (ficha_id, estado_inmueble_id, num_dormitorios, dormitorios_adecuados,
               num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
               areas_atencion_medica, areas_verdes,
               ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
               luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
              ON CONFLICT (ficha_id) DO UPDATE SET
-               estado_inmueble=$2, num_dormitorios=$3, dormitorios_adecuados=$4,
+               estado_inmueble_id=$2, num_dormitorios=$3, dormitorios_adecuados=$4,
                num_sanitarios=$5, sanitarios_adecuados=$6, tiene_area_cocina=$7,
                cocina_adecuada=$8, areas_atencion_medica=$9, areas_verdes=$10,
                ventilacion_adecuada=$11, iluminacion_adecuada=$12,
@@ -1177,7 +1183,7 @@ exports.saveInfraestructura = async (req, res) => {
                agua_servidas=$16, deposito_basura=$17, sistema_seguridad=$18,
                descripcion_otros=$19, updated_at=NOW()
              RETURNING *`,
-            [fichaId, i.estado_inmueble, i.num_dormitorios, i.dormitorios_adecuados,
+            [fichaId, i.estado_inmueble_id, i.num_dormitorios, i.dormitorios_adecuados,
                 i.num_sanitarios, i.sanitarios_adecuados, i.tiene_area_cocina, i.cocina_adecuada,
                 i.areas_atencion_medica ?? false, i.areas_verdes ?? false,
                 i.ventilacion_adecuada, i.iluminacion_adecuada, i.capacidad_comedor_pct,

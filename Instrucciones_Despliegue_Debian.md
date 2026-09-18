@@ -84,6 +84,9 @@ server {
     listen 80;
     server_name renacer.minaamp.gob.ve;
 
+    # Permitir subida de documentos y archivos de hasta 50MB
+    client_max_body_size 50M;
+
     # 1. API - Auth
     location /auth/ {
         proxy_pass http://192.168.0.32:4110;

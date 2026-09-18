@@ -34,9 +34,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Middleware para parsear JSON y URL-encoded (15MB suficiente para metadata + base64 de transferencia)
-app.use(express.json({ limit: '15mb' }));
-app.use(express.urlencoded({ limit: '15mb', extended: true }));
+// Middleware para parsear JSON y URL-encoded (50MB para permitir carga de múltiples PDFs en base64)
+app.use(express.json({ limit: '150mb' }));
+app.use(express.urlencoded({ limit: '150mb', extended: true }));
 
 // Crear directorio de uploads si no existe
 const fs = require('fs');

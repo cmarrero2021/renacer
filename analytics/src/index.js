@@ -1,6 +1,13 @@
-// analytics/src/index.js
-// Micro-servicio Analytics: GraphQL + Dashboard Dinámico
-require('dotenv').config({ path: `.env.${process.env.NODE_ENV || 'development'}` });
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Cargar variables de entorno según NODE_ENV con resolución robusta de rutas
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+dotenv.config({ path: path.resolve(__dirname, '..', envFile) });
+dotenv.config({ path: path.resolve(process.cwd(), envFile) });
+if (!process.env.JWT_SECRET) {
+    dotenv.config({ path: path.resolve(__dirname, '..', '.env.development') });
+}
 
 const express = require('express');
 const cors = require('cors');
@@ -17,10 +24,10 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS || '')
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
-            callback(new Error('No autorizado por CORS'));
+            callback(new Error(`No autorizado por CORS: ${origin}`));
         }
     },
     credentials: true,

@@ -1185,7 +1185,7 @@ const tabSources = {
 
 function tabFieldCount(name) {
     if (name === 'documentos') {
-        const filled = docs.value.filter(d => d.tiene_original || d.tiene_copia).length;
+        const filled = docs.value.filter(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo).length;
         return { filled, total: docs.value.length };
     }
     const src = tabSources[name];
@@ -1195,6 +1195,17 @@ function tabProgress(name) {
     const c = tabFieldCount(name);
     return c.total ? c.filled / c.total : 0;
 }
+
+const allDocsHaveFile = computed(() => {
+    if (!docs.value || !docs.value.length) return false;
+    return docs.value.every(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo);
+});
+
+watch(allDocsHaveFile, (complete) => {
+    if (!complete) {
+        savedTabs.value.documentos = false;
+    }
+});
 
 const hasInfraestructura = computed(() => {
     return infra.value.estado_inmueble_id != null
@@ -1695,6 +1706,7 @@ function removeDocFile(row) {
     row.tiene_archivo = false;
     row.nuevo_archivo = false;
     row.eliminar_archivo = true;
+    savedTabs.value.documentos = false;
     Notify.create({
         type: 'info',
         message: 'Archivo marcado para eliminar. Guarda la sección para confirmar.'
@@ -1876,9 +1888,19 @@ async function saveDocumentos() {
         // ── Guardar documentos ──
         await fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() });
         markDocsSaved();
-        savedTabs.value.documentos = true;
-        Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente!' });
-        router.push(`/admin/centros/${centroId.value}`);
+        savedTabs.value.documentos = allDocsHaveFile.value;
+
+        if (allDocsHaveFile.value) {
+            Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente! Todos los documentos PDF fueron adjuntados.' });
+            router.push(`/admin/centros/${centroId.value}`);
+        } else {
+            const faltantes = docs.value.filter(d => !d.tiene_archivo && !d.archivo_nombre).length;
+            Notify.create({
+                type: 'warning',
+                icon: 'warning',
+                message: `Documentos guardados. Faltan ${faltantes} archivo(s) PDF por subir para completar el progreso de la ficha.`
+            });
+        }
     } catch (err) {
         console.error(err);
         Notify.create({ type: 'negative', message: err?.response?.data?.error || 'Error al guardar la ficha.' });
@@ -1968,7 +1990,7 @@ async function saveAll() {
                 fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() })
                     .then(() => {
                         markDocsSaved();
-                        savedTabs.value.documentos = true;
+                        savedTabs.value.documentos = allDocsHaveFile.value;
                     })
             );
         }
@@ -2115,7 +2137,7 @@ onMounted(async () => {
                     const row = docs.value.find(r => r.tipo_documento === d.tipo_documento);
                     if (row) Object.assign(row, d);
                 });
-                savedTabs.value.documentos = true;
+                savedTabs.value.documentos = allDocsHaveFile.value;
             }
         }
     }

@@ -394,6 +394,9 @@ server {
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
 
+    # Tamaño máximo de carga de archivos (PDFs, fotos, documentos)
+    client_max_body_size 50M;
+
     # API Auth
     location /auth/ {
         proxy_pass http://auth_backend;

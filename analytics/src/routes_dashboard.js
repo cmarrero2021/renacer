@@ -7,12 +7,16 @@ const { authenticate, authorize } = require('./middlewares');
 const controller = require('./controllers_dashboard');
 
 // ─── GraphQL Endpoint ─────────────────────────────────────────────────────────
-router.all('/graphql', (req, res, next) => {
+router.all('/graphql', async (req, res, next) => {
     if (req.method === 'OPTIONS') return next();
-    authenticate(req, res, (err) => {
-        if (err) return next(err);
-        createHandler({ schema, context: () => ({ userId: req.userId }) })(req, res, next);
-    });
+    try {
+        await authenticate(req, res, (err) => {
+            if (err) return next(err);
+            createHandler({ schema, context: () => ({ userId: req.userId }) })(req, res, next);
+        });
+    } catch (err) {
+        next(err);
+    }
 });
 
 // ─── Consultas Guardadas (REST) ───────────────────────────────────────────────

@@ -677,7 +677,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { LocalStorage, Notify } from 'quasar';
+import { LocalStorage, Notify, useQuasar } from 'quasar';
 
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';

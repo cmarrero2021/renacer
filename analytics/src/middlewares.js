@@ -18,8 +18,9 @@ exports.authenticate = async (req, res, next) => {
     }
     req.userId = decoded.userId;
 
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         const sessionResult = await client.query(
             'SELECT expires_at FROM sessions WHERE token = $1 AND is_revoked = FALSE',
             [token]
@@ -70,7 +71,7 @@ exports.authenticate = async (req, res, next) => {
         console.error('Error en authenticate:', err.message);
         return res.status(500).json({ error: 'Error al verificar la autenticación.' });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 };
 

@@ -2,7 +2,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("./db");
 
 exports.authenticate = async (req, res, next) => {
-  const token = req.header("Authorization")?.split(" ")[1];
+  const token = req.header("Authorization")?.split(" ")[1] || req.query.token;
   if (!token) {
     return res.status(401).json({ error: "Acceso denegado. Token no proporcionado." });
   }

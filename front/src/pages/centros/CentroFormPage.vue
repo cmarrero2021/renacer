@@ -781,24 +781,67 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 7 ▸ DOCUMENTOS                                           -->
+                <!-- TAB 8 ▸ DOCUMENTOS                                           -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="documentos">
                     <inner-progress :value="tabProgress('documentos')" :count="tabFieldCount('documentos')" />
                     <section-header icon="folder" label="Documentación Presentada" />
 
-                    <q-table :rows="docs" :columns="colsDocs" flat bordered dense hide-bottom>
+                    <div class="text-caption text-grey-7 q-mb-sm">
+                        <q-icon name="info" color="primary" class="q-mr-xs" />
+                        Puede subir los documentos escaneados en formato <strong>PDF</strong> (máximo <strong>10 MB</strong> por archivo).
+                    </div>
+
+                    <q-table :rows="docs" :columns="colsDocs" flat bordered dense hide-bottom :pagination="{ rowsPerPage: 0 }">
                         <template #body="{ row }">
                             <tr>
-                                <td>{{ row.tipo_documento_label }}</td>
-                                <td class="text-center">
+                                <td class="text-weight-medium">{{ row.tipo_documento_label }}</td>
+                                <td class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_original" dense color="positive" />
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_copia" dense color="info" />
                                 </td>
+                                <td style="min-width: 250px">
+                                    <!-- Si tiene archivo (cargado en sesión o guardado previamente) -->
+                                    <div v-if="row.tiene_archivo || row.archivo_base64 || row.archivo_nombre" class="row items-center q-gutter-xs">
+                                        <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf" removable
+                                            @remove="removeDocFile(row)" :title="row.archivo_nombre || 'Archivo PDF'">
+                                            <span class="ellipsis" style="max-width: 130px">
+                                                {{ row.archivo_nombre || 'documento.pdf' }}
+                                            </span>
+                                            <span v-if="row.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
+                                                ({{ formatFileSize(row.archivo_tamano) }})
+                                            </span>
+                                        </q-chip>
+                                        <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                            @click="previewDoc(row)" title="Ver PDF" />
+                                        <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                            @click="downloadDoc(row)" title="Descargar PDF" />
+                                    </div>
+                                    <!-- Si no tiene archivo -->
+                                    <div v-else class="row items-center">
+                                        <input
+                                            type="file"
+                                            accept="application/pdf,.pdf"
+                                            :id="'file-upload-' + row.tipo_documento"
+                                            style="display: none"
+                                            @change="onDocFileSelected($event, row)"
+                                        />
+                                        <q-btn
+                                            outline
+                                            dense
+                                            size="sm"
+                                            color="primary"
+                                            icon="upload_file"
+                                            label="Subir PDF"
+                                            @click="triggerFileUpload(row.tipo_documento)"
+                                        />
+                                        <span class="text-caption text-grey-5 q-ml-sm">PDF (máx. 10MB)</span>
+                                    </div>
+                                </td>
                                 <td>
-                                    <q-input v-model="row.descripcion" outlined dense placeholder="Nota" />
+                                    <q-input v-model="row.descripcion" outlined dense placeholder="Nota adicional" />
                                 </td>
                             </tr>
                         </template>
@@ -812,6 +855,23 @@
 
             </q-tab-panels>
         </q-card>
+
+        <!-- Modal Visor de PDF -->
+        <q-dialog v-model="pdfViewerOpen" maximized>
+            <q-card class="column full-height">
+                <q-bar class="bg-primary text-white">
+                    <q-icon name="picture_as_pdf" />
+                    <div>{{ pdfViewerTitle }}</div>
+                    <q-space />
+                    <q-btn dense flat icon="open_in_new" label="Abrir en pestaña" @click="openPdfInNewTab" class="q-mr-sm" />
+                    <q-btn dense flat icon="download" label="Descargar" @click="downloadCurrentPdf" class="q-mr-sm" />
+                    <q-btn dense flat icon="close" v-close-popup />
+                </q-bar>
+                <q-card-section class="col q-pa-none">
+                    <iframe :src="pdfViewerUrl" class="fit" style="border: none;"></iframe>
+                </q-card-section>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 
@@ -1051,11 +1111,19 @@ function syncDocsFromCatalog() {
     docs.value = catalogosStore.opcionesDocumentos.map(catDoc => {
         const prev = existing.get(catDoc.tipo_documento);
         return {
+            id: prev ? prev.id : undefined,
             tipo_documento: catDoc.tipo_documento,
             tipo_documento_label: catDoc.tipo_documento_label,
             tiene_original: prev ? prev.tiene_original : false,
             tiene_copia: prev ? prev.tiene_copia : false,
-            descripcion: prev ? prev.descripcion : (catDoc.descripcion || '')
+            descripcion: prev ? prev.descripcion : (catDoc.descripcion || ''),
+            archivo_base64: prev ? prev.archivo_base64 : null,
+            archivo_nombre: prev ? prev.archivo_nombre : null,
+            archivo_tamano: prev ? prev.archivo_tamano : null,
+            archivo_mimetype: prev ? prev.archivo_mimetype : 'application/pdf',
+            tiene_archivo: prev ? (prev.tiene_archivo || !!prev.archivo_base64 || !!prev.archivo_nombre) : false,
+            nuevo_archivo: prev ? prev.nuevo_archivo : false,
+            eliminar_archivo: prev ? prev.eliminar_archivo : false,
         };
     });
 }
@@ -1077,6 +1145,7 @@ const colsDocs = [
     { name: 'doc', label: 'Documento', field: 'tipo_documento_label', align: 'left' },
     { name: 'original', label: 'Tiene Original', field: 'tiene_original', align: 'center' },
     { name: 'copia', label: 'Tiene Copia', field: 'tiene_copia', align: 'center' },
+    { name: 'archivo', label: 'Archivo Digital (PDF máx. 10MB)', field: 'archivo_nombre', align: 'left' },
     { name: 'nota', label: 'Nota', field: 'descripcion', align: 'left' },
 ];
 
@@ -1546,6 +1615,206 @@ async function saveServicios(andNext = false) {
     }
 }
 
+// ── Funciones de soporte para carga y previsualización de documentos PDF ──────
+const pdfViewerOpen = ref(false);
+const pdfViewerUrl = ref('');
+const pdfViewerTitle = ref('');
+const currentPdfBlob = ref(null);
+const currentPdfFilename = ref('');
+
+function formatFileSize(bytes) {
+    if (!bytes && bytes !== 0) return '';
+    if (bytes < 1024) return bytes + ' B';
+    const kb = bytes / 1024;
+    if (kb < 1024) return kb.toFixed(1) + ' KB';
+    const mb = kb / 1024;
+    return mb.toFixed(1) + ' MB';
+}
+
+function triggerFileUpload(tipoDoc) {
+    const el = document.getElementById('file-upload-' + tipoDoc);
+    if (el) {
+        el.value = '';
+        el.click();
+    }
+}
+
+function onDocFileSelected(event, row) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validar formato PDF
+    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!isPdf) {
+        Notify.create({
+            type: 'negative',
+            icon: 'warning',
+            message: 'Solo se permiten archivos en formato PDF.'
+        });
+        return;
+    }
+
+    // Validar peso (límite 10 MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+        Notify.create({
+            type: 'negative',
+            icon: 'warning',
+            message: `El archivo "${file.name}" supera el tamaño máximo permitido de 10 MB (${formatFileSize(file.size)}).`
+        });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        row.archivo_base64 = e.target.result;
+        row.archivo_nombre = file.name;
+        row.archivo_tamano = file.size;
+        row.archivo_mimetype = 'application/pdf';
+        row.tiene_archivo = true;
+        row.nuevo_archivo = true;
+        row.eliminar_archivo = false;
+        Notify.create({
+            type: 'positive',
+            message: `Archivo "${file.name}" listo para guardar.`
+        });
+    };
+    reader.onerror = () => {
+        Notify.create({
+            type: 'negative',
+            message: 'Error al leer el archivo seleccionado.'
+        });
+    };
+    reader.readAsDataURL(file);
+}
+
+function removeDocFile(row) {
+    row.archivo_base64 = null;
+    row.archivo_nombre = null;
+    row.archivo_tamano = null;
+    row.tiene_archivo = false;
+    row.nuevo_archivo = false;
+    row.eliminar_archivo = true;
+    Notify.create({
+        type: 'info',
+        message: 'Archivo marcado para eliminar. Guarda la sección para confirmar.'
+    });
+}
+
+function dataURLtoBlob(dataurl) {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)[1];
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+}
+
+async function getDocBlob(row) {
+    if (row.nuevo_archivo && row.archivo_base64) {
+        return dataURLtoBlob(row.archivo_base64);
+    }
+    if (fichaId.value && (row.id || row.tipo_documento)) {
+        const identifier = row.id || row.tipo_documento;
+        const res = await fichasService.getDocumentoArchivo(fichaId.value, identifier);
+        return res.data;
+    }
+    throw new Error('No se puede obtener el archivo.');
+}
+
+async function previewDoc(row) {
+    try {
+        const blob = await getDocBlob(row);
+        currentPdfBlob.value = blob;
+        currentPdfFilename.value = row.archivo_nombre || `${row.tipo_documento}.pdf`;
+        if (pdfViewerUrl.value) {
+            URL.revokeObjectURL(pdfViewerUrl.value);
+        }
+        pdfViewerUrl.value = URL.createObjectURL(blob);
+        pdfViewerTitle.value = row.archivo_nombre || row.tipo_documento_label || 'Documento PDF';
+        pdfViewerOpen.value = true;
+    } catch (err) {
+        console.error(err);
+        Notify.create({
+            type: 'negative',
+            message: 'No se pudo abrir el archivo PDF.'
+        });
+    }
+}
+
+async function downloadDoc(row) {
+    try {
+        const blob = await getDocBlob(row);
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = row.archivo_nombre || `${row.tipo_documento}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+        console.error(err);
+        Notify.create({
+            type: 'negative',
+            message: 'No se pudo descargar el archivo PDF.'
+        });
+    }
+}
+
+function openPdfInNewTab() {
+    if (pdfViewerUrl.value) {
+        window.open(pdfViewerUrl.value, '_blank');
+    }
+}
+
+function downloadCurrentPdf() {
+    if (currentPdfBlob.value) {
+        const url = URL.createObjectURL(currentPdfBlob.value);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentPdfFilename.value || 'documento.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+}
+
+function getDocsPayload() {
+    return docs.value.map(d => ({
+        id: d.id,
+        tipo_documento: d.tipo_documento,
+        tipo_documento_label: d.tipo_documento_label,
+        tiene_original: d.tiene_original || false,
+        tiene_copia: d.tiene_copia || false,
+        descripcion: d.descripcion || null,
+        archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
+        archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
+        archivo_tamano: d.nuevo_archivo ? d.archivo_tamano : undefined,
+        archivo_mimetype: d.nuevo_archivo ? d.archivo_mimetype : undefined,
+        eliminar_archivo: !!d.eliminar_archivo
+    }));
+}
+
+function markDocsSaved() {
+    docs.value.forEach(d => {
+        if (d.eliminar_archivo) {
+            d.archivo_base64 = null;
+            d.archivo_nombre = null;
+            d.archivo_tamano = null;
+            d.tiene_archivo = false;
+        } else if (d.nuevo_archivo) {
+            d.tiene_archivo = true;
+        }
+        d.nuevo_archivo = false;
+        d.eliminar_archivo = false;
+    });
+}
+
 async function saveDocumentos() {
     if (!fichaId.value) return warn();
     saving.value = true;
@@ -1605,7 +1874,8 @@ async function saveDocumentos() {
         }
 
         // ── Guardar documentos ──
-        await fichasService.saveDocumentos(fichaId.value, { documentos: docs.value });
+        await fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() });
+        markDocsSaved();
         savedTabs.value.documentos = true;
         Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente!' });
         router.push(`/admin/centros/${centroId.value}`);
@@ -1695,8 +1965,11 @@ async function saveAll() {
         // 7. Guardar Documentos si hay docs
         if (docs.value.length) {
             tareas.push(
-                fichasService.saveDocumentos(fichaId.value, { documentos: docs.value })
-                    .then(() => { savedTabs.value.documentos = true; })
+                fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() })
+                    .then(() => {
+                        markDocsSaved();
+                        savedTabs.value.documentos = true;
+                    })
             );
         }
 

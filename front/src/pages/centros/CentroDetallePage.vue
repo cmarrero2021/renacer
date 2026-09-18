@@ -546,13 +546,34 @@
                             class="q-mb-sm">
                             <q-card flat bordered>
                                 <q-card-section>
-                                    <div v-for="d in ficha.documentos" :key="d.id" class="row q-mb-xs">
-                                        <div class="col text-body2">{{ d.tipo_documento.replace(/_/g, ' ') }}</div>
+                                    <div v-for="d in ficha.documentos" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
+                                        <div class="col-12 col-md-5 text-body2 text-weight-medium">
+                                            {{ labelTipoDoc(d.tipo_documento) }}
+                                        </div>
                                         <div class="col-auto">
                                             <q-chip dense :color="d.tiene_original ? 'positive' : 'grey-4'"
                                                 :text-color="d.tiene_original ? 'white' : 'grey-7'">Original</q-chip>
                                             <q-chip dense :color="d.tiene_copia ? 'positive' : 'grey-4'"
                                                 :text-color="d.tiene_copia ? 'white' : 'grey-7'">Copia</q-chip>
+                                        </div>
+                                        <div class="col-12 col-md-5">
+                                            <div v-if="d.tiene_archivo || d.archivo_nombre || d.archivo_base64" class="row items-center q-gutter-xs">
+                                                <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf">
+                                                    <span class="ellipsis" style="max-width: 150px" :title="d.archivo_nombre || 'Documento PDF'">
+                                                        {{ d.archivo_nombre || 'Documento PDF' }}
+                                                    </span>
+                                                    <span v-if="d.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
+                                                        ({{ formatFileSize(d.archivo_tamano) }})
+                                                    </span>
+                                                </q-chip>
+                                                <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                                    @click="verDocumentoPdf(d)" title="Visualizar PDF" />
+                                                <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                                    @click="descargarDocumentoPdf(d)" title="Descargar PDF" />
+                                            </div>
+                                            <div v-else class="text-caption text-grey-5 italic">
+                                                Sin archivo digital adjunto
+                                            </div>
                                         </div>
                                     </div>
                                 </q-card-section>
@@ -633,6 +654,23 @@
 
             </q-tab-panels>
         </div>
+
+        <!-- Modal Visor de PDF en Detalle -->
+        <q-dialog v-model="pdfViewerOpen" maximized>
+            <q-card class="column full-height">
+                <q-bar class="bg-primary text-white">
+                    <q-icon name="picture_as_pdf" />
+                    <div>{{ pdfViewerTitle }}</div>
+                    <q-space />
+                    <q-btn dense flat icon="open_in_new" label="Abrir en pestaña" @click="openPdfInNewTab" class="q-mr-sm" />
+                    <q-btn dense flat icon="download" label="Descargar" @click="downloadCurrentPdf" class="q-mr-sm" />
+                    <q-btn dense flat icon="close" v-close-popup />
+                </q-bar>
+                <q-card-section class="col q-pa-none">
+                    <iframe :src="pdfViewerUrl" class="fit" style="border: none;"></iframe>
+                </q-card-section>
+            </q-card>
+        </q-dialog>
     </q-page>
 </template>
 
@@ -642,11 +680,99 @@ import { useRoute, useRouter } from 'vue-router';
 import { LocalStorage, useQuasar } from 'quasar';
 
 import { useCentrosStore } from 'src/stores/centros.store';
-
+import { useCatalogosStore } from 'src/stores/catalogos.store';
+import { fichasService } from 'src/services/centros.service';
 
 const route = useRoute();
 const router = useRouter();
 const centrosStore = useCentrosStore();
+const catalogosStore = useCatalogosStore();
+
+// ── PDF Viewer y Gestión de Archivos ──
+const pdfViewerOpen = ref(false);
+const pdfViewerUrl = ref('');
+const pdfViewerTitle = ref('');
+const currentPdfBlob = ref(null);
+const currentPdfFilename = ref('');
+
+function labelTipoDoc(tipo) {
+    if (!tipo) return '—';
+    const found = catalogosStore.opcionesDocumentos.find(d => d.tipo_documento === tipo);
+    if (found && found.tipo_documento_label) return found.tipo_documento_label;
+    return tipo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
+
+function formatFileSize(bytes) {
+    if (!bytes && bytes !== 0) return '';
+    if (bytes < 1024) return bytes + ' B';
+    const kb = bytes / 1024;
+    if (kb < 1024) return kb.toFixed(1) + ' KB';
+    const mb = kb / 1024;
+    return mb.toFixed(1) + ' MB';
+}
+
+async function verDocumentoPdf(d) {
+    if (!ficha.value?.id) return;
+    try {
+        const identifier = d.id || d.tipo_documento;
+        const res = await fichasService.getDocumentoArchivo(ficha.value.id, identifier);
+        currentPdfBlob.value = res.data;
+        currentPdfFilename.value = d.archivo_nombre || `${d.tipo_documento}.pdf`;
+        if (pdfViewerUrl.value) {
+            URL.revokeObjectURL(pdfViewerUrl.value);
+        }
+        pdfViewerUrl.value = URL.createObjectURL(res.data);
+        pdfViewerTitle.value = d.archivo_nombre || labelTipoDoc(d.tipo_documento);
+        pdfViewerOpen.value = true;
+    } catch (err) {
+        console.error(err);
+        $q.notify({
+            type: 'negative',
+            message: 'Error al abrir el documento PDF.'
+        });
+    }
+}
+
+async function descargarDocumentoPdf(d) {
+    if (!ficha.value?.id) return;
+    try {
+        const identifier = d.id || d.tipo_documento;
+        const res = await fichasService.getDocumentoArchivo(ficha.value.id, identifier, true);
+        const url = URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = d.archivo_nombre || `${d.tipo_documento}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+        console.error(err);
+        $q.notify({
+            type: 'negative',
+            message: 'Error al descargar el documento PDF.'
+        });
+    }
+}
+
+function openPdfInNewTab() {
+    if (pdfViewerUrl.value) {
+        window.open(pdfViewerUrl.value, '_blank');
+    }
+}
+
+function downloadCurrentPdf() {
+    if (currentPdfBlob.value) {
+        const url = URL.createObjectURL(currentPdfBlob.value);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = currentPdfFilename.value || 'documento.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+}
 
 const centroId = computed(() => route.params.id);
 
@@ -808,6 +934,7 @@ watch(tab, (newTab) => {
 });
 
 onMounted(async () => {
+    catalogosStore.fetchAll(true);
     await centrosStore.fetchCentro(centroId.value);
     await centrosStore.fetchFichaActual(centroId.value);
     if (tab.value === 'acceso') {

@@ -7,6 +7,7 @@ const {
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveAccesibilidad, saveDocumentos,
+    descargarArchivoDocumento,
     purgeDeletedRecords, listMaintenanceLogs,
     proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
     uploadFoto, deleteFoto
@@ -55,6 +56,7 @@ router.put('/fichas/:fichaId/personal', savePersonal);
 router.put('/fichas/:fichaId/infraestructura', saveInfraestructura);
 router.put('/fichas/:fichaId/accesibilidad', saveAccesibilidad);
 router.put('/fichas/:fichaId/documentos', saveDocumentos);
+router.get('/fichas/:fichaId/documentos/:docId/archivo', descargarArchivoDocumento);
 
 
 // ─── Población (histórico) ─────────────────────────────────────────────────

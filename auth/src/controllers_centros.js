@@ -609,7 +609,7 @@ exports.deleteCentro = async (req, res) => {
         if (fichaIds.length > 0) {
             const fichaTables = [
                 'ficha_poblacion', 'ficha_capacidad', 'ficha_infraestructura',
-                'ficha_personal', 'ficha_servicios', 'ficha_documentos'
+                'ficha_accesibilidad', 'ficha_personal', 'ficha_servicios', 'ficha_documentos'
             ];
             for (const table of fichaTables) {
                 await client.query(`UPDATE public.${table} SET deleted_at = $1 WHERE ficha_id = ANY($2) AND deleted_at IS NULL`, [now, fichaIds]);
@@ -693,7 +693,15 @@ exports.getFichaActual = async (req, res) => {
 
         // Cargar tablas dependientes
         const [documentos, servicios, personal, infraestructura, accesibilidad, capacidad, poblacion] = await Promise.all([
-            client.query('SELECT * FROM public.ficha_documentos WHERE ficha_id = $1', [ficha.id]),
+            client.query(`
+                SELECT id, ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion,
+                       archivo_nombre, archivo_tamano, archivo_mimetype,
+                       (archivo_base64 IS NOT NULL) AS tiene_archivo,
+                       created_at, updated_at
+                FROM public.ficha_documentos
+                WHERE ficha_id = $1
+                ORDER BY id ASC
+            `, [ficha.id]),
             client.query('SELECT * FROM public.ficha_servicios WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [ficha.id]),
             client.query(`
@@ -773,9 +781,20 @@ exports.createFicha = async (req, res) => {
         // Insertar documentos
         for (const doc of documentos) {
             await client.query(
-                `INSERT INTO public.ficha_documentos (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion)
-         VALUES ($1,$2,$3,$4,$5)`,
-                [ficha.id, doc.tipo_documento, doc.tiene_original || false, doc.tiene_copia || false, doc.descripcion]
+                `INSERT INTO public.ficha_documentos 
+                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+                [
+                    ficha.id,
+                    doc.tipo_documento,
+                    doc.tiene_original || false,
+                    doc.tiene_copia || false,
+                    doc.descripcion || null,
+                    doc.archivo_base64 || null,
+                    doc.archivo_nombre || null,
+                    doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null,
+                    doc.archivo_mimetype || (doc.archivo_base64 ? 'application/pdf' : null)
+                ]
             );
         }
 
@@ -1261,23 +1280,132 @@ exports.saveDocumentos = async (req, res) => {
             return res.status(403).json({ error: 'Sin acceso.' });
         }
 
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+        // Validaciones previas de formato y peso
+        for (const doc of documentos) {
+            if (doc.archivo_base64) {
+                // Verificar tipo MIME o cabecera base64
+                const isPdfMime = doc.archivo_mimetype === 'application/pdf';
+                const isPdfDataUrl = typeof doc.archivo_base64 === 'string' && doc.archivo_base64.startsWith('data:application/pdf');
+                const isPdfHeader = typeof doc.archivo_base64 === 'string' && doc.archivo_base64.slice(0, 40).includes('JVBERi0');
+                if (!isPdfMime && !isPdfDataUrl && !isPdfHeader) {
+                    return res.status(400).json({
+                        error: `El documento "${doc.tipo_documento_label || doc.tipo_documento}" debe ser un archivo en formato PDF.`
+                    });
+                }
+
+                // Verificar límite de peso
+                const tamano = doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null;
+                if (tamano && tamano > MAX_FILE_SIZE) {
+                    return res.status(400).json({
+                        error: `El archivo "${doc.archivo_nombre || doc.tipo_documento}" supera el límite máximo permitido de 10 MB.`
+                    });
+                }
+            }
+        }
+
         await client.query('BEGIN');
 
         for (const doc of documentos) {
+            const eliminar = !!doc.eliminar_archivo;
+            const tieneNuevo = Boolean(doc.archivo_base64);
+
             await client.query(
-                `INSERT INTO public.ficha_documentos (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion)
-                 VALUES ($1,$2,$3,$4,$5)
+                `INSERT INTO public.ficha_documentos 
+                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                  ON CONFLICT (ficha_id, tipo_documento) DO UPDATE SET
-                   tiene_original=$3, tiene_copia=$4, descripcion=$5, updated_at=NOW()`,
-                [fichaId, doc.tipo_documento, doc.tiene_original || false, doc.tiene_copia || false, doc.descripcion || null]
+                   tiene_original = EXCLUDED.tiene_original,
+                   tiene_copia = EXCLUDED.tiene_copia,
+                   descripcion = EXCLUDED.descripcion,
+                   archivo_base64 = CASE 
+                       WHEN $10::boolean = TRUE THEN NULL 
+                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_base64 
+                       ELSE public.ficha_documentos.archivo_base64 
+                   END,
+                   archivo_nombre = CASE 
+                       WHEN $10::boolean = TRUE THEN NULL 
+                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_nombre 
+                       ELSE public.ficha_documentos.archivo_nombre 
+                   END,
+                   archivo_tamano = CASE 
+                       WHEN $10::boolean = TRUE THEN NULL 
+                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_tamano 
+                       ELSE public.ficha_documentos.archivo_tamano 
+                   END,
+                   archivo_mimetype = CASE 
+                       WHEN $10::boolean = TRUE THEN 'application/pdf' 
+                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_mimetype 
+                       ELSE public.ficha_documentos.archivo_mimetype 
+                   END,
+                   updated_at = NOW()`,
+                [
+                    fichaId,
+                    doc.tipo_documento,
+                    doc.tiene_original || false,
+                    doc.tiene_copia || false,
+                    doc.descripcion || null,
+                    doc.archivo_base64 || null,
+                    doc.archivo_nombre || null,
+                    doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null,
+                    doc.archivo_mimetype || 'application/pdf',
+                    eliminar,
+                    tieneNuevo
+                ]
             );
         }
         await client.query('COMMIT');
-        res.json({ message: 'Documentos guardados.' });
+        res.json({ message: 'Documentos guardados exitosamente.' });
     } catch (err) {
         await client.query('ROLLBACK');
         res.status(500).json({ error: 'Error al guardar documentos', detail: err.message });
     } finally { client.release(); }
+};
+
+exports.descargarArchivoDocumento = async (req, res) => {
+    const { fichaId, docId } = req.params;
+    const client = await pool.connect();
+    try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
+        let docQuery;
+        let queryParams;
+        if (/^\d+$/.test(docId)) {
+            docQuery = 'SELECT id, tipo_documento, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND id = $2';
+            queryParams = [fichaId, parseInt(docId, 10)];
+        } else {
+            docQuery = 'SELECT id, tipo_documento, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2';
+            queryParams = [fichaId, docId];
+        }
+
+        const r = await client.query(docQuery, queryParams);
+        if (!r.rows.length || !r.rows[0].archivo_base64) {
+            return res.status(404).json({ error: 'El documento no tiene un archivo adjunto.' });
+        }
+
+        const doc = r.rows[0];
+        let base64Data = doc.archivo_base64;
+        if (base64Data.includes(';base64,')) {
+            base64Data = base64Data.split(';base64,')[1];
+        }
+        const fileBuffer = Buffer.from(base64Data, 'base64');
+        const filename = doc.archivo_nombre || `${doc.tipo_documento}.pdf`;
+        const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+
+        res.setHeader('Content-Type', doc.archivo_mimetype || 'application/pdf');
+        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(filename)}"`);
+        res.setHeader('Content-Length', fileBuffer.length);
+        return res.send(fileBuffer);
+    } catch (err) {
+        res.status(500).json({ error: 'Error al obtener el archivo del documento', detail: err.message });
+    } finally {
+        client.release();
+    }
 };
 
 // Listar centros a los que un usuario tiene acceso (propio + delegados)

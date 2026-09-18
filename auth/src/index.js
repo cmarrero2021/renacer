@@ -34,8 +34,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Middleware para parsear JSON
-app.use(express.json());
+// Middleware para parsear JSON y URL-encoded (con límite de 50MB para PDFs)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Rutas principales
 app.use('/auth', routes);

@@ -184,6 +184,9 @@ const DocumentoType = new GraphQLObjectType({
         tiene_original: { type: GraphQLBoolean },
         tiene_copia: { type: GraphQLBoolean },
         descripcion: { type: GraphQLString },
+        archivo_nombre: { type: GraphQLString },
+        archivo_tamano: { type: GraphQLInt },
+        archivo_mimetype: { type: GraphQLString },
     }
 });
 

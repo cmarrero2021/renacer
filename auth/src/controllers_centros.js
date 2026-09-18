@@ -3,6 +3,60 @@
 const pool = require('./db');
 const { withAuditContext } = require('./audit');
 const crypto = require('crypto');
+const fs = require('fs');
+const pathModule = require('path');
+
+// ============================================================
+// HELPERS: Almacenamiento de archivos en disco
+// ============================================================
+const UPLOADS_BASE = pathModule.resolve(process.cwd(), process.env.UPLOADS_PATH || './uploads');
+
+/**
+ * Escribe un archivo base64 (o data URL) al disco.
+ * @returns {string} Ruta relativa del archivo (para guardar en BD)
+ */
+function writeFileToDisk(fichaId, tipoDocumento, base64Data, extension = '.pdf') {
+    // Extraer datos puros si es data URL
+    let cleanBase64 = base64Data;
+    if (cleanBase64.includes(';base64,')) {
+        cleanBase64 = cleanBase64.split(';base64,')[1];
+    }
+    const buffer = Buffer.from(cleanBase64, 'base64');
+
+    // Crear directorio: uploads/documentos/{fichaId}/
+    const dirRelative = pathModule.join('documentos', String(fichaId));
+    const dirAbsolute = pathModule.join(UPLOADS_BASE, dirRelative);
+    if (!fs.existsSync(dirAbsolute)) {
+        fs.mkdirSync(dirAbsolute, { recursive: true });
+    }
+
+    // Nombre del archivo: {tipo_documento}.pdf
+    const filename = `${tipoDocumento}${extension}`;
+    const fileAbsolute = pathModule.join(dirAbsolute, filename);
+    const fileRelative = pathModule.join(dirRelative, filename);
+
+    fs.writeFileSync(fileAbsolute, buffer);
+    // Retornar ruta relativa con forward slashes (portable)
+    return fileRelative.replace(/\\/g, '/');
+}
+
+/**
+ * Elimina un archivo del disco por su ruta relativa.
+ */
+function deleteFileFromDisk(archivoRuta) {
+    if (!archivoRuta) return;
+    const absolute = pathModule.join(UPLOADS_BASE, archivoRuta);
+    if (fs.existsSync(absolute)) {
+        fs.unlinkSync(absolute);
+    }
+}
+
+/**
+ * Retorna la ruta absoluta de un archivo almacenado.
+ */
+function getAbsoluteFilePath(archivoRuta) {
+    return pathModule.join(UPLOADS_BASE, archivoRuta);
+}
 
 
 
@@ -695,8 +749,8 @@ exports.getFichaActual = async (req, res) => {
         const [documentos, servicios, personal, infraestructura, accesibilidad, capacidad, poblacion] = await Promise.all([
             client.query(`
                 SELECT id, ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion,
-                       archivo_nombre, archivo_tamano, archivo_mimetype,
-                       (archivo_base64 IS NOT NULL) AS tiene_archivo,
+                       archivo_nombre, archivo_tamano, archivo_mimetype, archivo_ruta,
+                       (archivo_ruta IS NOT NULL) AS tiene_archivo,
                        created_at, updated_at
                 FROM public.ficha_documentos
                 WHERE ficha_id = $1
@@ -780,9 +834,13 @@ exports.createFicha = async (req, res) => {
 
         // Insertar documentos
         for (const doc of documentos) {
+            let archivoRuta = null;
+            if (doc.archivo_base64) {
+                archivoRuta = writeFileToDisk(ficha.id, doc.tipo_documento, doc.archivo_base64);
+            }
             await client.query(
                 `INSERT INTO public.ficha_documentos 
-                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype)
+                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_ruta, archivo_nombre, archivo_tamano, archivo_mimetype)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
                 [
                     ficha.id,
@@ -790,7 +848,7 @@ exports.createFicha = async (req, res) => {
                     doc.tiene_original || false,
                     doc.tiene_copia || false,
                     doc.descripcion || null,
-                    doc.archivo_base64 || null,
+                    archivoRuta,
                     doc.archivo_nombre || null,
                     doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null,
                     doc.archivo_mimetype || (doc.archivo_base64 ? 'application/pdf' : null)
@@ -1311,18 +1369,46 @@ exports.saveDocumentos = async (req, res) => {
             const eliminar = !!doc.eliminar_archivo;
             const tieneNuevo = Boolean(doc.archivo_base64);
 
+            // Escribir archivo a disco si es nuevo
+            let archivoRuta = null;
+            if (tieneNuevo) {
+                archivoRuta = writeFileToDisk(fichaId, doc.tipo_documento, doc.archivo_base64);
+            }
+
+            // Si se elimina, borrar archivo previo del disco
+            if (eliminar) {
+                const prevDoc = await client.query(
+                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2',
+                    [fichaId, doc.tipo_documento]
+                );
+                if (prevDoc.rows.length && prevDoc.rows[0].archivo_ruta) {
+                    deleteFileFromDisk(prevDoc.rows[0].archivo_ruta);
+                }
+            }
+
+            // Si se sube un nuevo archivo, borrar el anterior del disco
+            if (tieneNuevo) {
+                const prevDoc = await client.query(
+                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2',
+                    [fichaId, doc.tipo_documento]
+                );
+                if (prevDoc.rows.length && prevDoc.rows[0].archivo_ruta) {
+                    deleteFileFromDisk(prevDoc.rows[0].archivo_ruta);
+                }
+            }
+
             await client.query(
                 `INSERT INTO public.ficha_documentos 
-                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype)
+                 (ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion, archivo_ruta, archivo_nombre, archivo_tamano, archivo_mimetype)
                  VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
                  ON CONFLICT (ficha_id, tipo_documento) DO UPDATE SET
                    tiene_original = EXCLUDED.tiene_original,
                    tiene_copia = EXCLUDED.tiene_copia,
                    descripcion = EXCLUDED.descripcion,
-                   archivo_base64 = CASE 
+                   archivo_ruta = CASE 
                        WHEN $10::boolean = TRUE THEN NULL 
-                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_base64 
-                       ELSE public.ficha_documentos.archivo_base64 
+                       WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_ruta 
+                       ELSE public.ficha_documentos.archivo_ruta 
                    END,
                    archivo_nombre = CASE 
                        WHEN $10::boolean = TRUE THEN NULL 
@@ -1346,7 +1432,7 @@ exports.saveDocumentos = async (req, res) => {
                     doc.tiene_original || false,
                     doc.tiene_copia || false,
                     doc.descripcion || null,
-                    doc.archivo_base64 || null,
+                    archivoRuta,
                     doc.archivo_nombre || null,
                     doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null,
                     doc.archivo_mimetype || 'application/pdf',
@@ -1376,31 +1462,31 @@ exports.descargarArchivoDocumento = async (req, res) => {
         let docQuery;
         let queryParams;
         if (/^\d+$/.test(docId)) {
-            docQuery = 'SELECT id, tipo_documento, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND id = $2';
+            docQuery = 'SELECT id, tipo_documento, archivo_ruta, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND id = $2';
             queryParams = [fichaId, parseInt(docId, 10)];
         } else {
-            docQuery = 'SELECT id, tipo_documento, archivo_base64, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2';
+            docQuery = 'SELECT id, tipo_documento, archivo_ruta, archivo_nombre, archivo_tamano, archivo_mimetype FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2';
             queryParams = [fichaId, docId];
         }
 
         const r = await client.query(docQuery, queryParams);
-        if (!r.rows.length || !r.rows[0].archivo_base64) {
+        if (!r.rows.length || !r.rows[0].archivo_ruta) {
             return res.status(404).json({ error: 'El documento no tiene un archivo adjunto.' });
         }
 
         const doc = r.rows[0];
-        let base64Data = doc.archivo_base64;
-        if (base64Data.includes(';base64,')) {
-            base64Data = base64Data.split(';base64,')[1];
+        const absolutePath = getAbsoluteFilePath(doc.archivo_ruta);
+
+        if (!fs.existsSync(absolutePath)) {
+            return res.status(404).json({ error: 'El archivo no se encuentra en el servidor.' });
         }
-        const fileBuffer = Buffer.from(base64Data, 'base64');
+
         const filename = doc.archivo_nombre || `${doc.tipo_documento}.pdf`;
         const disposition = req.query.download === '1' ? 'attachment' : 'inline';
 
         res.setHeader('Content-Type', doc.archivo_mimetype || 'application/pdf');
         res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(filename)}"`);
-        res.setHeader('Content-Length', fileBuffer.length);
-        return res.send(fileBuffer);
+        return res.sendFile(absolutePath);
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener el archivo del documento', detail: err.message });
     } finally {

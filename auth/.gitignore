@@ -54,3 +54,6 @@ logs/
 src/hash.js
 ,env
 src/ambiente.js
+
+# Ignorar archivos subidos (documentos PDF de fichas)
+uploads/

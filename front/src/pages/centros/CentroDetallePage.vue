@@ -557,7 +557,7 @@
                                                 :text-color="d.tiene_copia ? 'white' : 'grey-7'">Copia</q-chip>
                                         </div>
                                         <div class="col-12 col-md-5">
-                                            <div v-if="d.tiene_archivo || d.archivo_nombre || d.archivo_base64" class="row items-center q-gutter-xs">
+                                            <div v-if="d.tiene_archivo || d.archivo_nombre" class="row items-center q-gutter-xs">
                                                 <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf">
                                                     <span class="ellipsis" style="max-width: 150px" :title="d.archivo_nombre || 'Documento PDF'">
                                                         {{ d.archivo_nombre || 'Documento PDF' }}

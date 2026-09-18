@@ -804,7 +804,7 @@
                                 </td>
                                 <td style="min-width: 250px">
                                     <!-- Si tiene archivo (cargado en sesión o guardado previamente) -->
-                                    <div v-if="row.tiene_archivo || row.archivo_base64 || row.archivo_nombre" class="row items-center q-gutter-xs">
+                                    <div v-if="row.tiene_archivo || row.archivo_nombre" class="row items-center q-gutter-xs">
                                         <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf" removable
                                             @remove="removeDocFile(row)" :title="row.archivo_nombre || 'Archivo PDF'">
                                             <span class="ellipsis" style="max-width: 130px">
@@ -1121,7 +1121,7 @@ function syncDocsFromCatalog() {
             archivo_nombre: prev ? prev.archivo_nombre : null,
             archivo_tamano: prev ? prev.archivo_tamano : null,
             archivo_mimetype: prev ? prev.archivo_mimetype : 'application/pdf',
-            tiene_archivo: prev ? (prev.tiene_archivo || !!prev.archivo_base64 || !!prev.archivo_nombre) : false,
+            tiene_archivo: prev ? (prev.tiene_archivo || !!prev.archivo_nombre) : false,
             nuevo_archivo: prev ? prev.nuevo_archivo : false,
             eliminar_archivo: prev ? prev.eliminar_archivo : false,
         };

@@ -34,9 +34,18 @@ app.use(cors({
     credentials: true
 }));
 
-// Middleware para parsear JSON y URL-encoded (con límite de 50MB para PDFs)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Middleware para parsear JSON y URL-encoded (15MB suficiente para metadata + base64 de transferencia)
+app.use(express.json({ limit: '15mb' }));
+app.use(express.urlencoded({ limit: '15mb', extended: true }));
+
+// Crear directorio de uploads si no existe
+const fs = require('fs');
+const uploadsPath = path.resolve(process.cwd(), process.env.UPLOADS_PATH || './uploads');
+const uploadsDocsPath = path.join(uploadsPath, 'documentos');
+if (!fs.existsSync(uploadsDocsPath)) {
+    fs.mkdirSync(uploadsDocsPath, { recursive: true });
+    console.log(`Directorio de uploads creado: ${uploadsDocsPath}`);
+}
 
 // Rutas principales
 app.use('/auth', routes);

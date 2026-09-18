@@ -567,7 +567,7 @@
                                                     </span>
                                                 </q-chip>
                                                 <q-btn flat round dense size="sm" icon="visibility" color="primary"
-                                                    @click="verDocumentoPdf(d)" title="Visualizar PDF" />
+                                                    @click="verDocumentoPdf(d)" title="Abrir en nueva pestaña" />
                                                 <q-btn flat round dense size="sm" icon="download" color="grey-8"
                                                     @click="descargarDocumentoPdf(d)" title="Descargar PDF" />
                                             </div>
@@ -677,7 +677,7 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { LocalStorage, useQuasar } from 'quasar';
+import { LocalStorage, Notify } from 'quasar';
 
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
@@ -713,20 +713,30 @@ function formatFileSize(bytes) {
 
 async function verDocumentoPdf(d) {
     if (!ficha.value?.id) return;
+    // Abrir ventana de inmediato para evitar que el navegador bloquee el popup
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+        newWindow.document.title = d.archivo_nombre || labelTipoDoc(d.tipo_documento);
+        newWindow.document.body.innerHTML = `
+            <div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#555;">
+                <p>Cargando documento PDF...</p>
+            </div>
+        `;
+    }
     try {
         const identifier = d.id || d.tipo_documento;
         const res = await fichasService.getDocumentoArchivo(ficha.value.id, identifier);
-        currentPdfBlob.value = res.data;
-        currentPdfFilename.value = d.archivo_nombre || `${d.tipo_documento}.pdf`;
-        if (pdfViewerUrl.value) {
-            URL.revokeObjectURL(pdfViewerUrl.value);
+        const blob = new Blob([res.data], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        if (newWindow) {
+            newWindow.location.href = url;
+        } else {
+            window.open(url, '_blank');
         }
-        pdfViewerUrl.value = URL.createObjectURL(res.data);
-        pdfViewerTitle.value = d.archivo_nombre || labelTipoDoc(d.tipo_documento);
-        pdfViewerOpen.value = true;
     } catch (err) {
+        if (newWindow) newWindow.close();
         console.error(err);
-        $q.notify({
+        Notify.create({
             type: 'negative',
             message: 'Error al abrir el documento PDF.'
         });

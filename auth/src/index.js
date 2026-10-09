@@ -8,6 +8,7 @@ const cors = require('cors');
 const routes = require('./routes');
 const routesCentros = require('./routes_centros');
 const routesCatalogos = require('./routes_catalogos');
+const routesRegistro = require('./routes_registro');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
 const { setupWebSocket } = require('./websocket');
@@ -46,6 +47,10 @@ if (!fs.existsSync(uploadsDocsPath)) {
     fs.mkdirSync(uploadsDocsPath, { recursive: true });
     console.log(`Directorio de uploads creado: ${uploadsDocsPath}`);
 }
+
+// Rutas de autorregistro (públicas, sin middleware de autenticación)
+// Importante: montar ANTES de routesCentros (que aplica authenticate globalmente)
+app.use('/auth', routesRegistro);
 
 // Rutas principales
 app.use('/auth', routes);

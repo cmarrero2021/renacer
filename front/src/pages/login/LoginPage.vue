@@ -23,6 +23,8 @@
           </q-input>
           <q-btn label="Ingresar" class="q-mt-md" color="primary" @click="handleLogin" :loading="loginLoading" />
           <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
+          <q-btn flat label="¿No tienes cuenta? Regístrate" color="primary" class="full-width q-mt-xs"
+            icon="person_add" @click="$router.push('/registro')" />
         </template>
 
         <!-- Fase 2: Código 2FA -->
@@ -428,6 +430,8 @@ const handleResetPassword = async () => {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -464,7 +468,7 @@ const handleResetPassword = async () => {
   justify-content: center;
   width: 100%;
   min-height: 100vh;
-  padding: 20px;
+  padding: 120px 20px 40px;
 }
 
 .login-box {
@@ -510,6 +514,11 @@ const handleResetPassword = async () => {
     width: 100%;
     max-width: 320px;
     padding: 24px 20px;
+  }
+
+  .content-container {
+    padding: 90px 16px 32px;
+    align-items: flex-start;
   }
 }
 </style>

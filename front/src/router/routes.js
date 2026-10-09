@@ -12,6 +12,11 @@ const routes = [
         component: () => import("pages/login/LoginPage.vue"),
         meta: { requiresGuest: true },
       },
+      {
+        path: "/registro",
+        component: () => import("pages/login/RegisterPage.vue"),
+        meta: { requiresGuest: true },
+      },
     ],
   },
   {

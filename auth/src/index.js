@@ -10,6 +10,7 @@ const routesCentros = require('./routes_centros');
 const routesCatalogos = require('./routes_catalogos');
 const routesRegistro = require('./routes_registro');
 const routesRif = require('./routes_rif');
+const routesCedula = require('./routes_cedula');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
 const { setupWebSocket } = require('./websocket');
@@ -53,6 +54,7 @@ if (!fs.existsSync(uploadsDocsPath)) {
 // Importante: montar ANTES de routesCentros (que aplica authenticate globalmente)
 app.use('/auth', routesRegistro);
 app.use('/auth', routesRif);
+app.use('/auth', routesCedula);
 
 // Rutas principales
 app.use('/auth', routes);

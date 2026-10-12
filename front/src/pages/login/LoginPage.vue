@@ -26,7 +26,11 @@
           <q-btn flat label="¿No tienes cuenta? Regístrate" color="primary" class="full-width q-mt-xs"
             icon="person_add" @click="$router.push('/registro')" />
           <q-separator class="q-my-md" />
-          <q-btn flat label="LEER RIF" color="secondary" icon="badge" @click="leerRIF" :loading="rifLoading" />
+          <div class="row q-gutter-sm justify-center">
+            <q-btn flat label="LEER RIF" color="secondary" icon="badge" @click="leerRIF" :loading="rifLoading" />
+            <q-btn flat label="LEER CEDULA" color="primary" icon="credit_card" @click="leerCedula"
+              :loading="cedulaLoading" />
+          </div>
         </template>
 
         <!-- Fase 2: Código 2FA -->
@@ -206,6 +210,105 @@
             <q-spinner-dots size="50px" color="primary" />
             <p class="q-mt-md">Leyendo RIF...</p>
           </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cerrar" color="grey" v-close-popup />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Diálogo Cédula -->
+    <q-dialog v-model="showCedulaDialog" persistent>
+      <q-card style="min-width: 500px; max-width: 650px;">
+        <q-card-section class="bg-primary text-white row items-center">
+          <div class="text-h6">
+            <q-icon name="credit_card" class="q-mr-sm" />
+            Información de la Cédula
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section v-if="cedulaLoading">
+          <div class="text-center q-pa-md">
+            <q-spinner-dots size="50px" color="primary" />
+            <p class="q-mt-md">Analizando imagen y extrayendo datos (puede tardar unos segundos)...</p>
+          </div>
+        </q-card-section>
+
+        <q-card-section v-else-if="cedulaData">
+          <!-- Veredicto anti-copia -->
+          <q-banner :class="cedulaBannerClass" rounded class="q-mb-md">
+            <template v-slot:avatar>
+              <q-icon :name="cedulaVerdictIcon" />
+            </template>
+            <strong>{{ cedulaData.antiCopy.verdict.label }}</strong>
+            <div v-for="(r, i) in cedulaData.antiCopy.reasons" :key="i" class="text-caption q-ml-sm">• {{ r }}</div>
+          </q-banner>
+
+          <!-- Métricas -->
+          <div class="row q-col-gutter-sm q-mb-md">
+            <div class="col-3 text-center">
+              <div class="text-caption text-grey">Color</div>
+              <div class="text-weight-bold">{{ cedulaData.antiCopy.colorfulness }}</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-caption text-grey">Contraste</div>
+              <div class="text-weight-bold">{{ cedulaData.antiCopy.contrast }}</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-caption text-grey">Nitidez</div>
+              <div class="text-weight-bold">{{ cedulaData.antiCopy.sharpness }}</div>
+            </div>
+            <div class="col-3 text-center">
+              <div class="text-caption text-grey">% Grises</div>
+              <div class="text-weight-bold">{{ cedulaData.antiCopy.grayscalePercent }}%</div>
+            </div>
+          </div>
+          <q-separator class="q-mb-md" />
+
+          <div class="q-mb-sm">
+            <strong>Cédula:</strong>
+            <span class="q-ml-sm">{{ cedulaData.cedula || 'No encontrada' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Apellidos:</strong>
+            <span class="q-ml-sm">{{ cedulaData.apellidos || 'No encontrados' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Nombres:</strong>
+            <span class="q-ml-sm">{{ cedulaData.nombres || 'No encontrados' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Fecha de Nacimiento:</strong>
+            <span class="q-ml-sm">{{ cedulaData.fechaNacimiento || 'No encontrada' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Lugar de Emisión:</strong>
+            <span class="q-ml-sm">{{ cedulaData.lugarEmision || 'No encontrado' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Fecha de Emisión:</strong>
+            <span class="q-ml-sm">{{ cedulaData.fechaEmision || 'No encontrada' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Fecha de Vencimiento:</strong>
+            <span class="q-ml-sm">{{ cedulaData.fechaVencimiento || 'No encontrada' }}</span>
+          </div>
+
+          <q-expansion-item label="Texto OCR completo" icon="notes" dense>
+            <div class="raw-ocr">{{ cedulaData.rawText }}</div>
+          </q-expansion-item>
+        </q-card-section>
+
+        <q-card-section v-else>
+          <q-banner class="bg-negative text-white" rounded>
+            <template v-slot:avatar>
+              <q-icon name="error" />
+            </template>
+            {{ cedulaError }}
+          </q-banner>
         </q-card-section>
 
         <q-card-actions align="right" class="q-px-md q-pb-md">
@@ -517,6 +620,51 @@ const leerRIF = async () => {
     rifLoading.value = false;
   }
 };
+
+// ==========================================
+// LEER CEDULA
+// ==========================================
+const showCedulaDialog = ref(false);
+const cedulaLoading = ref(false);
+const cedulaData = ref(null);
+const cedulaError = ref("");
+
+const cedulaBannerClass = computed(() => {
+  const label = cedulaData.value?.antiCopy?.verdict?.label || '';
+  if (label.startsWith('ORIGINAL')) return 'bg-positive text-white';
+  if (label.startsWith('POSIBLE COPIA')) return 'bg-negative text-white';
+  return 'bg-warning text-black';
+});
+
+const cedulaVerdictIcon = computed(() => {
+  const label = cedulaData.value?.antiCopy?.verdict?.label || '';
+  if (label.startsWith('ORIGINAL')) return 'verified';
+  if (label.startsWith('POSIBLE COPIA')) return 'content_copy';
+  return 'help_outline';
+});
+
+const leerCedula = async () => {
+  showCedulaDialog.value = true;
+  cedulaLoading.value = true;
+  cedulaError.value = "";
+  cedulaData.value = null;
+
+  try {
+    const response = await axios.get(`${authApiUrl}/read-cedula`, { timeout: 120000 });
+    if (response.data.success) {
+      cedulaData.value = {
+        ...response.data.data,
+        antiCopy: response.data.antiCopy
+      };
+    } else {
+      cedulaError.value = response.data.error || "Error al leer la cédula";
+    }
+  } catch (error) {
+    cedulaError.value = error.response?.data?.error || "Error de conexión al leer cédula";
+  } finally {
+    cedulaLoading.value = false;
+  }
+};
 </script>
 
 <style lang="scss" scoped>
@@ -586,6 +734,17 @@ const leerRIF = async () => {
   display: flex;
   align-items: center;
   margin-bottom: 2px;
+}
+
+.raw-ocr {
+  font-family: monospace;
+  font-size: 12px;
+  white-space: pre-wrap;
+  background: #f5f5f5;
+  padding: 8px;
+  border-radius: 4px;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 @media (max-width: 768px) {

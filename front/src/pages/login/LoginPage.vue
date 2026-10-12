@@ -25,6 +25,8 @@
           <q-btn flat label="¿Olvidaste tu contraseña?" @click="showRecoveryDialog = true" />
           <q-btn flat label="¿No tienes cuenta? Regístrate" color="primary" class="full-width q-mt-xs"
             icon="person_add" @click="$router.push('/registro')" />
+          <q-separator class="q-my-md" />
+          <q-btn flat label="LEER RIF" color="secondary" icon="badge" @click="leerRIF" :loading="rifLoading" />
         </template>
 
         <!-- Fase 2: Código 2FA -->
@@ -146,6 +148,68 @@
             @click="handleVerifyCode" />
           <q-btn v-if="recoveryStep === 3" label="Cambiar Contraseña" color="primary" :loading="recoveryLoading"
             @click="handleResetPassword" />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- Diálogo RIF -->
+    <q-dialog v-model="showRifDialog" persistent>
+      <q-card style="min-width: 500px; max-width: 600px;">
+        <q-card-section class="bg-secondary text-white row items-center">
+          <div class="text-h6">
+            <q-icon name="badge" class="q-mr-sm" />
+            Información del RIF
+          </div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section v-if="rifData">
+          <div class="q-pa-md">
+            <div class="q-mb-sm">
+              <strong>RIF:</strong>
+              <span class="q-ml-sm">{{ rifData.rif || 'No encontrado' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Nombre:</strong>
+              <span class="q-ml-sm">{{ rifData.nombre || 'No encontrado' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Domicilio Fiscal:</strong>
+              <span class="q-ml-sm">{{ rifData.domicilioFiscal || 'No encontrado' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Fecha de Inscripción:</strong>
+              <span class="q-ml-sm">{{ rifData.fechaInscripcion || 'No encontrada' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Última Actualización:</strong>
+              <span class="q-ml-sm">{{ rifData.fechaUltimaActualizacion || 'No encontrada' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Fecha de Vencimiento:</strong>
+              <span class="q-ml-sm">{{ rifData.fechaVencimiento || 'No encontrada' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>N° Comprobante:</strong>
+              <span class="q-ml-sm">{{ rifData.comprobante || 'No encontrado' }}</span>
+            </div>
+            <div class="q-mb-sm">
+              <strong>Serial:</strong>
+              <span class="q-ml-sm">{{ rifData.serial || 'No encontrado' }}</span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-section v-else-if="rifLoading">
+          <div class="text-center q-pa-md">
+            <q-spinner-dots size="50px" color="primary" />
+            <p class="q-mt-md">Leyendo RIF...</p>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cerrar" color="grey" v-close-popup />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -423,6 +487,34 @@ const handleResetPassword = async () => {
     Notify.create({ message, color: "negative", position: "top", timeout: 5000 });
   } finally {
     recoveryLoading.value = false;
+  }
+};
+
+// ==========================================
+// LEER RIF
+// ==========================================
+const showRifDialog = ref(false);
+const rifLoading = ref(false);
+const rifData = ref(null);
+const rifError = ref("");
+
+const leerRIF = async () => {
+  showRifDialog.value = true;
+  rifLoading.value = true;
+  rifError.value = "";
+  rifData.value = null;
+
+  try {
+    const response = await axios.get(`${authApiUrl}/read-rif`);
+    if (response.data.success) {
+      rifData.value = response.data.data;
+    } else {
+      rifError.value = response.data.error || "Error al leer el RIF";
+    }
+  } catch (error) {
+    rifError.value = error.response?.data?.error || "Error de conexión al leer RIF";
+  } finally {
+    rifLoading.value = false;
   }
 };
 </script>

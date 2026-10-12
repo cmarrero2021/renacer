@@ -8,41 +8,62 @@ const readRIF = async (req, res) => {
   try {
     const rifPath = path.join(__dirname, '..', '..', 'rif');
 
-    const files = fs.readdirSync(rifPath).filter(f => f.toLowerCase().endsWith('.pdf'));
+    const files = fs.readdirSync(rifPath).filter(f => /\.(pdf|png|jpe?g)$/i.test(f));
     if (files.length === 0) {
-      return res.status(404).json({ error: 'No se encontró archivo RIF en la carpeta rif/' });
+      return res.status(404).json({ error: 'No se encontró archivo RIF (.pdf/.png/.jpg/.jpeg) en la carpeta rif/' });
     }
 
-    const pdfPath = path.join(rifPath, files[0]);
-    const dataBuffer = fs.readFileSync(pdfPath);
+    const filePath = path.join(rifPath, files[0]);
+    const dataBuffer = fs.readFileSync(filePath);
+    const isPdf = /\.pdf$/i.test(files[0]);
 
-    // ─── Intento 1: extracción de texto directo (PDF digital) ───
-    let text = '';
-    try {
-      const parsed = await pdf(dataBuffer);
-      text = parsed.text || '';
-    } catch (e) {
-      text = '';
+    let rifData = {
+      comprobante: '',
+      rif: '',
+      nombre: '',
+      domicilioFiscal: '',
+      fechaInscripcion: '',
+      fechaUltimaActualizacion: '',
+      fechaVencimiento: '',
+      serial: ''
+    };
+    let metodo = '';
+
+    // ─── Intento 1: extracción de texto directo (solo PDF digital) ───
+    if (isPdf) {
+      let text = '';
+      try {
+        const parsed = await pdf(dataBuffer);
+        text = parsed.text || '';
+      } catch (e) {
+        text = '';
+      }
+      rifData = parseRifText(text);
+      metodo = 'texto';
     }
 
-    let rifData = parseRifText(text);
-    let metodo = 'texto';
-
-    // ─── Intento 2: OCR página completa (PDF escaneado/imagen) ───
+    // ─── Intento 2: OCR (imágenes directo preprocesadas; PDFs renderizados a escala 2) ───
     if (!rifData.rif || !rifData.nombre) {
-      const ocrText = await ocrPdfPage(dataBuffer, 2);
+      const source = isPdf ? await renderPdfPage(dataBuffer, 1, 2) : dataBuffer;
+      // Para imágenes, activar preprocesamiento (escala, grises, contraste)
+      const ocrText = await ocrBuffer(source, !isPdf);
       if (ocrText) {
         const ocrData = parseRifText(ocrText);
         for (const k of Object.keys(rifData)) {
           if (!rifData[k] && ocrData[k]) rifData[k] = ocrData[k];
         }
-        metodo = 'ocr';
+        metodo = isPdf ? 'ocr' : 'ocr-imagen';
       }
     }
 
     // ─── Intento 3: franjas a alta resolución para RIF + nombre multilínea ───
     if (!rifData.rif) {
-      const band = await ocrRifBand(dataBuffer);
+      // Para imágenes, preprocesar antes del scan por franjas
+      const imgSource = isPdf
+        ? await renderPdfPage(dataBuffer, 1, 3)
+        : await preprocesarImagen(dataBuffer);
+      const image = await Jimp.read(imgSource);
+      const band = await scanBandsForRif(image);
       if (band) {
         if (band.rif) rifData.rif = band.rif;
         if (band.nombre && !rifData.nombre) rifData.nombre = band.nombre;
@@ -86,18 +107,33 @@ const renderPdfPage = async (pdfBuffer, pageNumber = 1, scale = 2) => {
   return pngBuffer;
 };
 
-const ocrPdfPage = async (pdfBuffer, scale = 2) => {
-  const pngBuffer = await renderPdfPage(pdfBuffer, 1, scale);
+// ─── Preprocesa imagen para mejorar OCR: escala, grises y contraste ───
+const preprocesarImagen = async (imageBuffer) => {
+  try {
+    const img = await Jimp.read(imageBuffer);
+    const { width } = img.bitmap;
+    // Escalar a mínimo 2000px de ancho si es más pequeña
+    if (width < 2000) {
+      img.scale(2000 / width);
+    }
+    img.greyscale().normalize().contrast(0.2);
+    return await img.getBufferAsync(Jimp.MIME_PNG);
+  } catch {
+    // Si falla el preprocesado, devolver el buffer original
+    return imageBuffer;
+  }
+};
+
+const ocrBuffer = async (imageBuffer, preprocesar = false) => {
+  const source = preprocesar ? await preprocesarImagen(imageBuffer) : imageBuffer;
   const worker = await createWorker('spa', 1, { logger: () => {} });
-  const { data: { text } } = await worker.recognize(pngBuffer);
+  const { data: { text } } = await worker.recognize(source);
   await worker.terminate();
   return text;
 };
 
-// ─── Busca la línea RIF + nombre recorriendo franjas a alta resolución ───
-const ocrRifBand = async (pdfBuffer) => {
-  const pngBuffer = await renderPdfPage(pdfBuffer, 1, 3);
-  const image = await Jimp.read(pngBuffer);
+// ─── Busca la línea RIF + nombre recorriendo franjas de una imagen Jimp ───
+const scanBandsForRif = async (image) => {
   const { width, height } = image.bitmap;
 
   const worker = await createWorker('spa', 1, { logger: () => {} });
@@ -164,18 +200,29 @@ const isNameContinuation = (line) => {
   return /[A-ZÁÉÍÓÚÑ&]/.test(up);
 };
 
+// Mapea primer dígito al prefijo RIF más probable cuando el OCR confunde letra con número
+// G→6, J→1/7, V→1/7, E→3, P→9 (solo aproximados, priorizamos G)
+const digitoAPrefijo = (d) => ({ '6': 'G', '3': 'E', '9': 'P', '1': 'J', '7': 'J' }[d] || 'G');
+
 // Busca patrón RIF en una línea y devuelve {rif, rest}
 // Exige que tras el número haya un nombre (letras) para no confundirlo
 // con el N° de comprobante ni con el serial.
 const extractRifFromLine = (line) => {
+  // Caso normal: prefijo explícito [JVGEP] + 9 dígitos + nombre
   let m = line.match(/\b([JVGEP])\s*[-.]?\s*(\d{9})\s+([A-Z][A-Z&.\s]{2,})/);
-  if (m) {
-    return { rif: `${m[1]}-${m[2]}`, rest: m[3] };
-  }
+  if (m) return { rif: `${m[1]}-${m[2]}`, rest: m[3] };
+
+  // Caso normal: prefijo + 7-8 dígitos + separador + 1 dígito + nombre
   m = line.match(/\b([JVGEP])\s*[-.]?\s*(\d{7,8})\s*[-.]?\s*(\d)\s+([A-Z][A-Z&.\s]{2,})/);
+  if (m) return { rif: `${m[1]}-${m[2]}${m[3]}`, rest: m[4] };
+
+  // Caso OCR: 10 dígitos seguidos + nombre (primer dígito = letra de prefijo mal leída)
+  m = line.match(/\b(\d)(\d{9})\s+([A-Z][A-Z&.\s]{2,})/);
   if (m) {
-    return { rif: `${m[1]}-${m[2]}${m[3]}`, rest: m[4] };
+    const prefijo = digitoAPrefijo(m[1]);
+    return { rif: `${prefijo}-${m[2]}`, rest: m[3] };
   }
+
   return null;
 };
 
@@ -198,21 +245,33 @@ const parseRifText = (text) => {
   if (mComp) rifData.comprobante = mComp[1];
 
   // RIF + nombre multilínea
-  const rifLineIdx = text.search(/^\s*[JVGEP]\s?-?\d{9}/m);
+  // Primero busca prefijo explícito [JVGEP], luego intenta 10 dígitos (OCR confunde letra)
+  let rifLineIdx = text.search(/^\s*[JVGEP]\s?-?\d{9}/m);
+  let mRif = null;
   if (rifLineIdx !== -1) {
-    const mRif = text.slice(rifLineIdx).match(/^\s*([JVGEP])\s?-?(\d{9})\s+(.+)/m);
-    if (mRif) {
-      rifData.rif = `${mRif[1]}-${mRif[2]}`;
-      const afterRif = mRif[3];
-      const restText = text.slice(rifLineIdx + mRif[0].length);
-      const allLines = [afterRif, ...restText.split('\n')];
-      const nameParts = [afterRif];
-      for (const ln of allLines.slice(1)) {
-        if (isNameContinuation(ln)) nameParts.push(ln.trim());
-        else break;
+    mRif = text.slice(rifLineIdx).match(/^\s*([JVGEP])\s?-?(\d{9})\s+(.+)/m);
+    if (mRif) rifData.rif = `${mRif[1]}-${mRif[2]}`;
+  }
+  // Fallback: 10 dígitos seguidos (OCR omitió o confundió el prefijo)
+  if (!rifData.rif) {
+    rifLineIdx = text.search(/^\s*\d{10}\s+[A-Z]/m);
+    if (rifLineIdx !== -1) {
+      mRif = text.slice(rifLineIdx).match(/^\s*(\d)(\d{9})\s+(.+)/m);
+      if (mRif) {
+        rifData.rif = `${digitoAPrefijo(mRif[1])}-${mRif[2]}`;
       }
-      rifData.nombre = cleanNombre(nameParts.join(' '));
     }
+  }
+  if (mRif) {
+    const afterRif = mRif[3];
+    const restText = text.slice(rifLineIdx + mRif[0].length);
+    const allLines = [afterRif, ...restText.split('\n')];
+    const nameParts = [afterRif];
+    for (const ln of allLines.slice(1)) {
+      if (isNameContinuation(ln)) nameParts.push(ln.trim());
+      else break;
+    }
+    rifData.nombre = cleanNombre(nameParts.join(' '));
   }
 
   // Domicilio fiscal: desde "DOMICILIO FISCAL" hasta "(Este contribuyente..." o "FECHA"
@@ -230,8 +289,13 @@ const parseRifText = (text) => {
   const mVen = text.match(/VENCIMIENTO:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if (mVen) rifData.fechaVencimiento = mVen[1];
 
-  // Código de verificación: "1079205660-OUY"
-  const mSerial = text.match(/\b(\d{9,12})-([A-Z0-9]{2,6})\b/);
+  // Código de verificación: "1079205660-OUY"  (no confundir con el número del RIF)
+  // El serial ocurre después del RIF en el texto y lleva guion + letras
+  const serialStartIdx = rifData.rif
+    ? text.search(new RegExp(rifData.rif.replace('-', '[-]?')))
+    : 0;
+  const searchZone = serialStartIdx > 0 ? text.slice(serialStartIdx) : text;
+  const mSerial = searchZone.match(/\b(\d{9,12})-([A-Z][A-Z0-9]{1,5})\b/);
   if (mSerial) rifData.serial = `${mSerial[1]}-${mSerial[2]}`;
 
   return rifData;

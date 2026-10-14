@@ -14,6 +14,13 @@ export const registroService = {
             { nacionalidad, cedula: parseInt(cedula, 10) },
             { headers: { Authorization: `Bearer ${registroToken}` } }
         ),
+    // Extrae datos del RIF a partir de un archivo (base64) — para CARGAR RIF
+    readRif: (registroToken, archivoBase64, nombreArchivo) =>
+        authApi.post(
+            '/registro/read-rif',
+            { archivoBase64, nombreArchivo },
+            { headers: { Authorization: `Bearer ${registroToken}` } }
+        ),
     // Paso 5: completar registro (usuario + centro)
     completar: (registroToken, payload) =>
         authApi.post('/registro/completar', payload, {

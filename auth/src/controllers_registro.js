@@ -10,6 +10,7 @@ const {
   sendEmail,
 } = require('./utils');
 const moment = require('moment-timezone');
+const { guardarArchivoRif } = require('./controllers_rif');
 
 // ============================================================
 // Constantes
@@ -432,6 +433,7 @@ exports.completarRegistro = async (req, res) => {
     celular,
     password,
     centro,
+    archivoRif,
   } = req.body || {};
 
   const client = await pool.connect();
@@ -549,6 +551,19 @@ exports.completarRegistro = async (req, res) => {
       [String(nombre).trim().toUpperCase(), rifCompleto]
     );
     const centroId = centroResult.rows[0].id;
+
+    // Guardar archivo RIF si fue cargado por el usuario (base64)
+    let rifArchivoPath = null;
+    if (archivoRif && archivoRif.base64 && archivoRif.nombre) {
+      rifArchivoPath = await guardarArchivoRif(centroId, archivoRif.base64, archivoRif.nombre);
+      if (rifArchivoPath) {
+        await client.query(
+          `UPDATE public.centros SET rif_archivo = $1, updated_at = NOW() WHERE id = $2`,
+          [rifArchivoPath, centroId]
+        );
+        console.log(`  → Archivo RIF guardado en: ${rifArchivoPath}`);
+      }
+    }
 
     // Teléfono del centro
     await client.query(

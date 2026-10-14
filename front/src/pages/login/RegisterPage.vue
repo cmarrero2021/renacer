@@ -130,14 +130,30 @@
           <q-separator class="q-my-md" />
           <p class="text-caption text-weight-medium q-mb-sm">Datos del centro (sólo puede registrar un centro)</p>
 
+          <!-- Carga del comprobante RIF: extrae los datos automáticamente -->
+          <div class="rif-upload-box q-mb-sm">
+            <input ref="rifFileInput" type="file" accept=".pdf,.png,.jpg,.jpeg" style="display: none"
+              @change="onRifFileSelected" />
+            <q-btn outline color="primary" icon="upload_file" label="CARGAR RIF" class="full-width"
+              :loading="cargandoRif" @click="$refs.rifFileInput.click()" />
+            <div v-if="rifCargado" class="text-caption text-positive q-mt-xs">
+              <q-icon name="check_circle" size="14px" class="q-mr-xs" />
+              RIF cargado: {{ rifNombreArchivo }}
+            </div>
+            <div class="text-caption text-grey q-mt-xs">
+              Cargue el comprobante de registro del RIF (PDF o imagen) y los datos del centro se completarán
+              automáticamente en modo de sólo lectura.
+            </div>
+          </div>
+
           <div class="row q-col-gutter-sm">
             <div class="col-5 col-sm-4">
               <q-select filled v-model="tipoRif" :options="opcionesTipoRif" label="Tipo de RIF" emit-value map-options
-                :rules="[val => !!val || 'Requerido']" />
+                :rules="[val => !!val || 'Requerido']" :disable="rifCargado" />
             </div>
             <div class="col-7 col-sm-8">
               <q-input filled v-model="numeroRif" label="N° del RIF" mask="########-#" unmasked-value
-                :rules="rifRules">
+                :rules="rifRules" :disable="rifCargado">
                 <template v-slot:prepend>
                   <span class="text-weight-bold">{{ tipoRif || '?' }}</span>
                 </template>
@@ -146,10 +162,10 @@
           </div>
 
           <q-input filled v-model="nombreCentro" label="Nombre del Centro" counter maxlength="150"
-            :rules="[val => !!val || 'Requerido']" class="q-mt-sm" />
+            :rules="[val => !!val || 'Requerido']" class="q-mt-sm" :disable="rifCargado" />
 
           <q-input filled v-model="direccionCentro" label="Dirección del Centro" type="textarea" counter
-            maxlength="500" :rules="[val => !!val || 'Requerido']" class="q-mt-sm" autogrow />
+            maxlength="500" :rules="[val => !!val || 'Requerido']" class="q-mt-sm" autogrow :disable="rifCargado" />
 
           <q-input filled v-model="telefonoCentro" label="N° de Teléfono del Centro" mask="(####) ###-####"
             unmasked-value :rules="[val => !!val || 'Requerido']" class="q-mt-sm">
@@ -391,6 +407,13 @@ const direccionCentro = ref("");
 const telefonoCentro = ref("");
 const correoCentro = ref("");
 
+// Carga del archivo RIF
+const rifFileInput = ref(null);
+const cargandoRif = ref(false);
+const rifCargado = ref(false);
+const rifArchivo = ref(null);        // { base64, nombre } para enviar al completar registro
+const rifNombreArchivo = ref("");
+
 // Tipos de RIF permitidos (se excluyen V - Natural, E - Extranjero y P - Pasaporte)
 const opcionesTipoRif = [
   { label: "J - Jurídico", value: "J" },
@@ -402,6 +425,82 @@ const rifRules = [
   (val) => !!val || "Requerido",
   (val) => val.replace(/\D/g, "").length === 9 || "Debe contener 9 dígitos (8 + verificador)",
 ];
+
+// Lee un File como base64 puro (sin el prefijo data:)
+const leerArchivoComoBase64 = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const resultado = String(reader.result || "");
+      const base64 = resultado.includes(",") ? resultado.split(",")[1] : resultado;
+      resolve(base64);
+    };
+    reader.onerror = () => reject(new Error("No se pudo leer el archivo"));
+    reader.readAsDataURL(file);
+  });
+
+// CARGAR RIF: recibe el archivo, extrae la data y llena los campos (sólo lectura)
+const onRifFileSelected = async (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  // Validar tipo
+  if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) {
+    Notify.create({ message: "El archivo debe ser PDF o imagen (PNG/JPG).", color: "negative", position: "top", timeout: 4000 });
+    event.target.value = "";
+    return;
+  }
+  // Máximo 10 MB
+  if (file.size > 10 * 1024 * 1024) {
+    Notify.create({ message: "El archivo no puede superar los 10 MB.", color: "negative", position: "top", timeout: 4000 });
+    event.target.value = "";
+    return;
+  }
+
+  cargandoRif.value = true;
+  try {
+    const base64 = await leerArchivoComoBase64(file);
+    const response = await registroService.readRif(registroToken.value, base64, file.name);
+    const data = response.data?.data || {};
+
+    // RIF: "J-12345678-9" -> tipo "J" + número "123456789"
+    const rifMatch = String(data.rif || "").match(/^([JGCEP])[- ]?(\d{8})[- ]?(\d)$/i);
+    if (!rifMatch) {
+      Notify.create({ message: "Sólo se admiten RIf (J)urídicos, de (G)obierno o de (C)omuna.", color: "negative", position: "top", timeout: 6000 });
+      return;
+    }
+
+    // Sólo se permiten RIF jurídicos, de gobierno o comuna (no personales V/E/P)
+    const tipoRifExtraido = rifMatch[1].toUpperCase();
+    if (!opcionesTipoRif.some((o) => o.value === tipoRifExtraido)) {
+      Notify.create({
+        message: `El documento corresponde a un RIF tipo ${tipoRifExtraido} (persona). Sólo se permiten RIF jurídicos (J), de gobierno (G) o de comuna (C); no se aceptan RIF personales.`,
+        color: "negative", position: "top", timeout: 7000, icon: "block",
+      });
+      return;
+    }
+
+    tipoRif.value = tipoRifExtraido;
+    numeroRif.value = `${rifMatch[2]}${rifMatch[3]}`;
+    if (data.nombre) nombreCentro.value = data.nombre;
+    if (data.domicilioFiscal) direccionCentro.value = data.domicilioFiscal;
+
+    rifArchivo.value = { base64, nombre: file.name };
+    rifNombreArchivo.value = file.name;
+    rifCargado.value = true;
+
+    Notify.create({
+      message: "Datos del RIF extraídos correctamente. Revise los campos antes de continuar.",
+      color: "positive", position: "top", timeout: 4500, icon: "check_circle",
+    });
+  } catch (error) {
+    const data = error.response?.data;
+    Notify.create({ message: data?.error || "Error al procesar el archivo RIF.", color: "negative", position: "top", timeout: 6000 });
+  } finally {
+    cargandoRif.value = false;
+    event.target.value = "";
+  }
+};
 
 const validarDatosYContinuar = () => {
   if (!telefono.value || !celular.value) {
@@ -481,6 +580,8 @@ const handleCompletarRegistro = async () => {
         telefono: telefonoCentro.value,
         correo: correoCentro.value,
       },
+      // Archivo RIF cargado en el paso 4 (queda vinculado al centro del usuario)
+      ...(rifArchivo.value ? { archivoRif: rifArchivo.value } : {}),
     };
     await registroService.completar(registroToken.value, payload);
     registroExitoso.value = true;
@@ -565,6 +666,13 @@ const handleCompletarRegistro = async () => {
   align-items: center;
   margin-bottom: 2px;
   text-align: left;
+}
+
+.rif-upload-box {
+  border: 1.5px dashed #1976d2;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(25, 118, 210, 0.04);
 }
 
 @media (max-width: 768px) {

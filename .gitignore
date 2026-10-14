@@ -12,6 +12,9 @@ TODO_FILTROS.md
 bd/*.*
 *.sql
 recursos/
+# Documentos personales de prueba (datos personales reales, no commitear)
+rif/
+cedula/
 *.rar
 *.bak
 # front/src/pages/MarcoLegagal.bak

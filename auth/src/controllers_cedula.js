@@ -3,7 +3,7 @@ const path = require('path');
 const Jimp = require('jimp');
 const { createWorker } = require('tesseract.js');
 
-// Análisis anti-copia: color, contraste, nitidez y proporción de grises
+// ─── Análisis anti-copia: color, contraste, nitidez y proporcion de grises ───
 const analyzeImage = (image) => {
   const { width, height, data } = image.bitmap;
   const n = width * height;
@@ -37,7 +37,6 @@ const analyzeImage = (image) => {
   const contrast = Math.sqrt(Math.max(lumSq / n - lumMean * lumMean, 0));
   const grayscaleRatio = grayPixels / n;
 
-  // Nitidez: varianza del Laplaciano (fotocopias salen borrosas)
   const gray = new Float32Array(n);
   for (let p = 0, i = 0; p < n; p++, i += 4) {
     gray[p] = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
@@ -57,31 +56,19 @@ const analyzeImage = (image) => {
   const lapMean = lapSum / lapCount;
   const sharpness = Math.sqrt(Math.max(lapSq / lapCount - lapMean * lapMean, 0));
 
-  // Veredicto
   const reasons = [];
-
   if (grayscaleRatio > 0.97) {
-    reasons.push('La imagen está en escala de grises (típico de fotocopia)');
+    reasons.push('La imagen esta en escala de grises (tipico de fotocopia)');
   } else if (colorfulness < 8) {
-    reasons.push('Color muy débil, posible fotocopia o escaneo B/N');
+    reasons.push('Color muy debil, posible fotocopia o escaneo B/N');
   }
-
-  if (sharpness < 35) {
-    reasons.push('Imagen borrosa (posible copia o fotografía de pantalla)');
-  }
-
-  if (contrast < 25) {
-    reasons.push('Contraste bajo (típico de fotocopia)');
-  }
+  if (sharpness < 35) reasons.push('Imagen borrosa (posible copia o fotografia de pantalla)');
+  if (contrast < 25) reasons.push('Contraste bajo (tipico de fotocopia)');
 
   let label;
-  if (reasons.length === 0) {
-    label = 'ORIGINAL (a color)';
-  } else if (grayscaleRatio > 0.98) {
-    label = 'POSIBLE COPIA (sin color)';
-  } else {
-    label = 'NO DETERMINADO (revisar manualmente)';
-  }
+  if (reasons.length === 0) label = 'ORIGINAL (a color)';
+  else if (grayscaleRatio > 0.98) label = 'POSIBLE COPIA (sin color)';
+  else label = 'NO DETERMINADO (revisar manualmente)';
 
   return {
     colorfulness: Number(colorfulness.toFixed(2)),
@@ -92,55 +79,215 @@ const analyzeImage = (image) => {
   };
 };
 
-const parseCedulaText = (text) => {
+// ─── Preprocesa imagen para mejorar OCR ───
+const preprocesarImagen = async (imageBuffer) => {
+  try {
+    const img = await Jimp.read(imageBuffer);
+    const { width } = img.bitmap;
+    if (width < 3000) img.scale(3000 / width);
+    img.greyscale().normalize().contrast(0.25);
+    return await img.getBufferAsync(Jimp.MIME_PNG);
+  } catch {
+    return imageBuffer;
+  }
+};
+
+// ─── Distancia de Levenshtein (para tolerar etiquetas mal leidas por el OCR) ───
+const levenshtein = (a, b) => {
+  const m = a.length, n = b.length;
+  if (!m) return n;
+  if (!n) return m;
+  let prev = Array.from({ length: n + 1 }, (_, i) => i);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+};
+
+// Normaliza un token: mayusculas, sin acentos, solo A-Z
+const normalizeToken = (t) =>
+  t.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Z]/g, '');
+
+// Umbral de distancia segun longitud de la etiqueta
+const fuzzyThreshold = (len) => (len <= 5 ? 1 : len <= 8 ? 2 : 3);
+
+// ¿El token se parece a la etiqueta? (etiqueta con ruido OCR: "APELUIDOS" ≈ "APELLIDOS")
+const fuzzyEq = (token, label) => {
+  const t = normalizeToken(token);
+  if (!t || Math.abs(t.length - label.length) > 3) return false;
+  return levenshtein(t, label) <= fuzzyThreshold(label.length);
+};
+
+// ─── Extrae datos de la cedula venezolana del texto OCR ───
+const parseCedulaText = (rawText) => {
   const parsed = {
-    cedula: '',
-    apellidos: '',
-    nombres: '',
-    fechaNacimiento: '',
-    lugarEmision: '',
-    fechaEmision: '',
-    fechaVencimiento: ''
+    cedula: '', apellidos: '', nombres: '',
+    fechaNacimiento: '', estadoCivil: '', fechaExpedicion: '',
+    fechaVencimiento: '', nacionalidad: ''
   };
 
-  const clean = text.replace(/\r/g, '');
-  const lines = clean.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  if (!rawText) return parsed;
 
-  // Número de cédula: V-12345678 / V12345678
-  const mCed = clean.match(/\b[VJE]\s*[-.]?\s*(\d{5,8})\b/);
-  if (mCed) parsed.cedula = mCed[0].replace(/[\s.]/g, '');
+  const text = rawText.replace(/\r/g, '');
+  const upper = text.toUpperCase();
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const upper = line.toUpperCase();
+  // Numero de cedula
+  const mCed = upper.match(/\b([VJE])\s*[-.,|]?\s*(\d[\d.]{4,11})/);
+  if (mCed) parsed.cedula = `${mCed[1]}-${mCed[2].replace(/[.]/g, '')}`;
 
-    if (!parsed.apellidos && /APELLIDOS/.test(upper)) {
-      const after = line.replace(/^.*?APELLIDOS\s*:?\s*/i, '').trim();
-      parsed.apellidos = after || (lines[i + 1] || '').trim();
+  // Solo tokens en MAYUSCULAS son valores validos (descarta "Gustavo Vizcaino" del firmante)
+  const NOISE = new Set(['FIRMA', 'TITULAR', 'REPUBLICA', 'BOLIVARIANA', 'VENEZUELA',
+    'CEDULA', 'IDENTIDAD', 'DIRECTOR', 'SOLTERO', 'SOLTERA', 'CASADO', 'CASADA',
+    'VENEZOLANO', 'VENEZOLANA', 'EXTRANJERO', 'EXTRANJERA', 'FECHA', 'NUMERO', 'NUM']);
+  const isCapsValue = (tok) => {
+    const stripped = tok.replace(/[.,;:|"'!¿?]/g, '').trim();
+    if (stripped.length < 3) return false;
+    if (NOISE.has(normalizeToken(stripped))) return false;
+    return /^[A-ZÁÉÍÓÚÑÜ][A-ZÁÉÍÓÚÑÜ\s]*$/.test(stripped);
+  };
+
+  // Extrae valor de un campo con etiqueta fuzzy (busca etiqueta + valor en mayusculas)
+  const extractNameField = (label) => {
+    for (let i = 0; i < lines.length; i++) {
+      const tokens = lines[i].split(/\s+/);
+      for (let j = 0; j < tokens.length; j++) {
+        if (!fuzzyEq(tokens[j], label)) continue;
+        const rest = tokens.slice(j + 1)
+          .filter(t => isCapsValue(t))
+          .join(' ').replace(/\s+/g, ' ').trim();
+        if (rest) return rest;
+        if (lines[i + 1]) {
+          const next = lines[i + 1].replace(/[^A-ZÁÉÍÓÚÑÜ\s]/gi, ' ').replace(/\s+/g, ' ').trim();
+          if (next.length >= 4) return next;
+        }
+      }
     }
-    if (!parsed.nombres && /NOMBRES/.test(upper) && !/APELLIDOS/.test(upper)) {
-      const after = line.replace(/^.*?NOMBRES\s*:?\s*/i, '').trim();
-      parsed.nombres = after || (lines[i + 1] || '').trim();
+    return '';
+  };
+
+  parsed.apellidos = extractNameField('APELLIDOS');
+  parsed.nombres = extractNameField('NOMBRES');
+
+  // Fechas: en la cedula la fecha aparece ENCIMA de la etiqueta
+  const reFecha = /\b(\d{1,2}\/\d{1,2}\/\d{2,4})\b/g;
+  const reMesAnio = /\b(\d{2}\/\d{4})\b/g;
+  const foundDates = [];
+  let fm;
+  while ((fm = reFecha.exec(upper)) !== null) {
+    foundDates.push({ valor: fm[1], pos: fm.index, len: fm[1].length, soloMesAnio: false });
+  }
+  while ((fm = reMesAnio.exec(upper)) !== null) {
+    const solapa = foundDates.some(d => fm.index >= d.pos - 1 && fm.index <= d.pos + d.len);
+    if (!solapa) foundDates.push({ valor: fm[1], pos: fm.index, len: fm[1].length, soloMesAnio: true });
+  }
+  foundDates.sort((a, b) => a.pos - b.pos);
+
+  // Posiciones de etiquetas de fecha (fuzzy)
+  const labelsFecha = [
+    { key: 'fechaNacimiento', word: 'NACIMIENTO' },
+    { key: 'fechaExpedicion', word: 'EXPEDICION' },
+    { key: 'fechaVencimiento', word: 'VENCIMIENTO' }
+  ];
+  const labelPositions = [];
+  let searchFrom = 0;
+  for (const tok of upper.split(/\s+/)) {
+    const tokPos = upper.indexOf(tok, searchFrom);
+    if (tokPos < 0) continue;
+    searchFrom = tokPos + tok.length;
+    const clean = normalizeToken(tok);
+    if (clean.length < 4) continue;
+    // Solo gana la etiqueta con MENOR distancia: evita que "NACIMIENTO"
+    // coincida tambien con "VENCIMIENTO" (distancia 2 <= umbral 3)
+    let bestLb = null, bestDist = Infinity;
+    for (const lb of labelsFecha) {
+      if (Math.abs(clean.length - lb.word.length) > 3) continue;
+      const d = levenshtein(clean, lb.word);
+      if (d <= fuzzyThreshold(lb.word.length) && d < bestDist) {
+        bestLb = lb; bestDist = d;
+      }
     }
-    if (!parsed.fechaNacimiento && /NACIMIENTO/.test(upper)) {
-      const m = line.match(/(\d{1,2}\/\d{1,2}\/\d{2,4})/);
-      if (m) parsed.fechaNacimiento = m[1];
+    if (bestLb) labelPositions.push({ key: bestLb.key, pos: tokPos });
+  }
+  labelPositions.sort((a, b) => a.pos - b.pos);
+
+  const usedDates = new Set();
+  let lastUsedPos = -1;
+  for (const lp of labelPositions) {
+    if (parsed[lp.key]) continue; // ya asignado: no sobrescribir
+    let best = null;
+    for (const d of foundDates) {
+      if (usedDates.has(d)) continue;
+      if (d.pos < lp.pos && lp.pos - (d.pos + d.len) <= 120) {
+        // monotonia: la fecha de cada etiqueta va DESPUES de la de la etiqueta anterior
+        if (lastUsedPos >= 0 && d.pos <= lastUsedPos) continue;
+        // la mas ANTIGUA no usada: en la linea "10/02/2023 — 02/2033" sobre las
+        // etiquetas "F. EXPEDICION  F. VENCIMIENTO", la primera fecha es la expedicion
+        if (!best || d.pos < best.pos) best = d;
+      }
     }
-    if (!parsed.fechaEmision && /FECHA\s+DE\s+EMISI/i.test(upper)) {
-      const m = line.match(/(\d{2}\/\d{2}\/\d{4})/);
-      if (m) parsed.fechaEmision = m[1];
-    }
-    if (!parsed.fechaVencimiento && /VENCIMIENTO/i.test(upper)) {
-      const m = line.match(/(\d{2}\/\d{2}\/\d{4})/);
-      if (m) parsed.fechaVencimiento = m[1];
-    }
-    if (!parsed.lugarEmision && /LUGAR\s+DE\s+EMISI/i.test(upper)) {
-      const after = line.replace(/^.*?EMISI[OÓ]N\s*:?\s*/i, '').trim();
-      if (after) parsed.lugarEmision = after;
+    if (best) { parsed[lp.key] = best.valor; usedDates.add(best); lastUsedPos = best.pos; }
+  }
+
+  // Fallback: fechas en orden de aparicion. Solo si hay 3 fechas completas
+  // (d/m/a) hay evidencia de que siguen el orden nacimiento/expedicion/vencimiento;
+  // con menos fechas, asignar la primera podria poner la expedicion como nacimiento
+  const fechasCompletas = foundDates.filter(d => !d.soloMesAnio);
+  if (!parsed.fechaNacimiento && fechasCompletas.length >= 3) parsed.fechaNacimiento = fechasCompletas[0].valor;
+  if (!parsed.fechaExpedicion && fechasCompletas.length >= 3) parsed.fechaExpedicion = fechasCompletas[1].valor;
+  if (!parsed.fechaVencimiento) {
+    const mv = foundDates.find(d => d.soloMesAnio);
+    if (mv) parsed.fechaVencimiento = mv.valor;
+    else if (foundDates[2]) parsed.fechaVencimiento = foundDates[2].valor;
+  }
+
+  // Estado civil
+  const estadosCiviles = [
+    ['SOLTER', 'Soltero', 'Soltera'], ['CASAD', 'Casado', 'Casada'],
+    ['DIVORCI', 'Divorciado', 'Divorciada'], ['VIUD', 'Viudo', 'Viuda']
+  ];
+  for (const [key, masc, fem] of estadosCiviles) {
+    if (upper.includes(key)) {
+      parsed.estadoCivil = upper.includes(fem) ? fem : masc;
+      break;
     }
   }
 
+  // Nacionalidad
+  if (/VENEZOLAN[OA]/.test(upper)) {
+    parsed.nacionalidad = upper.includes('VENEZOLANA') ? 'VENEZOLANA' : 'VENEZOLANO';
+  } else if (/EXTRANJER[OA]/.test(upper)) {
+    parsed.nacionalidad = upper.includes('EXTRANJERA') ? 'EXTRANJERA' : 'EXTRANJERO';
+  }
+
   return parsed;
+};
+
+// ─── Merge de resultados de multiples pasadas de OCR ───
+const mergeResults = (results) => {
+  const merged = { cedula: '', apellidos: '', nombres: '', fechaNacimiento: '',
+    estadoCivil: '', fechaExpedicion: '', fechaVencimiento: '', nacionalidad: '' };
+
+  for (const r of results) {
+    for (const k of Object.keys(merged)) {
+      if (!merged[k] && r[k]) merged[k] = r[k];
+    }
+  }
+  return merged;
+};
+
+// ─── Ejecuta una pasada de OCR ───
+const runOcr = async (imageBuffer, preproc, psm) => {
+  const data = preproc ? await preprocesarImagen(imageBuffer) : imageBuffer;
+  const worker = await createWorker('spa', 1, { logger: () => {} });
+  if (psm) await worker.setParameters({ tessedit_pageseg_mode: String(psm) });
+  const { data: { text } } = await worker.recognize(data);
+  await worker.terminate();
+  return text;
 };
 
 const readCedula = async (req, res) => {
@@ -149,32 +296,38 @@ const readCedula = async (req, res) => {
 
     const files = fs.readdirSync(cedulaPath).filter(f => /\.(png|jpe?g)$/i.test(f));
     if (files.length === 0) {
-      return res.status(404).json({ error: 'No se encontró imagen de cédula (.png/.jpg/.jpeg) en la carpeta cedula/' });
+      return res.status(404).json({ error: 'No se encontro imagen de cedula (.png/.jpg/.jpeg) en la carpeta cedula/' });
     }
 
     const imgPath = path.join(cedulaPath, files[0]);
     const imageBuffer = fs.readFileSync(imgPath);
 
-    // ─── Análisis anti-copia ───
+    // Analisis anti-copia
     const image = await Jimp.read(imageBuffer);
     const metrics = analyzeImage(image);
 
-    // ─── OCR (datos de idioma cacheados en la carpeta temporal del sistema) ───
-    const worker = await createWorker('spa', 1, { logger: () => {} });
-    const { data: { text } } = await worker.recognize(imageBuffer);
-    await worker.terminate();
+    // OCR multi-pasada: combina resultados de diferentes configuraciones para
+    // maximizar la extraction de datos (en pruebas, ninguna configuracion sola
+    // extrae todos los campos correctamente; el merge cubre los huecos)
+    const rawTexts = await Promise.all([
+      runOcr(imageBuffer, true,  4),   // preprocesada + PSM 4 (lineas de texto)
+      runOcr(imageBuffer, true,  3),   // preprocesada + PSM 3 (auto-deteccion)
+      runOcr(imageBuffer, false, 3),   // original + PSM 3
+      runOcr(imageBuffer, false, 6),   // original + PSM 6 (orientacion uniforme)
+    ]);
 
-    const fields = parseCedulaText(text);
+    const results = rawTexts.map(t => parseCedulaText(t));
+    const fields  = mergeResults(results);
 
     res.json({
       success: true,
       filename: files[0],
-      data: { ...fields, rawText: text.trim() },
+      data: { ...fields, rawText: rawTexts[0].trim() },
       antiCopy: metrics
     });
   } catch (error) {
-    console.error('Error al leer cédula:', error);
-    res.status(500).json({ error: 'Error al procesar la imagen de la cédula' });
+    console.error('Error al leer cedula:', error);
+    res.status(500).json({ error: 'Error al procesar la imagen de la cedula' });
   }
 };
 

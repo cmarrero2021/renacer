@@ -285,16 +285,20 @@
             <span class="q-ml-sm">{{ cedulaData.fechaNacimiento || 'No encontrada' }}</span>
           </div>
           <div class="q-mb-sm">
-            <strong>Lugar de Emisión:</strong>
-            <span class="q-ml-sm">{{ cedulaData.lugarEmision || 'No encontrado' }}</span>
+            <strong>Estado Civil:</strong>
+            <span class="q-ml-sm">{{ cedulaData.estadoCivil || 'No encontrado' }}</span>
           </div>
           <div class="q-mb-sm">
-            <strong>Fecha de Emisión:</strong>
-            <span class="q-ml-sm">{{ cedulaData.fechaEmision || 'No encontrada' }}</span>
+            <strong>Fecha de Expedición:</strong>
+            <span class="q-ml-sm">{{ cedulaData.fechaExpedicion || 'No encontrada' }}</span>
           </div>
           <div class="q-mb-sm">
             <strong>Fecha de Vencimiento:</strong>
             <span class="q-ml-sm">{{ cedulaData.fechaVencimiento || 'No encontrada' }}</span>
+          </div>
+          <div class="q-mb-sm">
+            <strong>Nacionalidad:</strong>
+            <span class="q-ml-sm">{{ cedulaData.nacionalidad || 'No encontrada' }}</span>
           </div>
 
           <q-expansion-item label="Texto OCR completo" icon="notes" dense>

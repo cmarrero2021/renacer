@@ -21,7 +21,7 @@ async function processInBatches(items, batchSize, fn) {
   return results;
 }
 
-function sendToUser(userId, permissions, role, reason) {
+function sendToUser(userId, permissions, role, roleId, reason) {
   const connections = userConnections.get(userId);
   if (!connections || connections.size === 0) return;
 
@@ -29,6 +29,7 @@ function sendToUser(userId, permissions, role, reason) {
     type: "permissions_updated",
     permissions,
     role,
+    roleId,
     reason,
   });
 
@@ -70,8 +71,13 @@ function processUser(userId) {
     getUserRole(userId),
   ]).then(([permResult, roleResult]) => {
     const permissions = permResult.status === "fulfilled" ? permResult.value : [];
-    const role = roleResult.status === "fulfilled" ? roleResult.value : null;
-    return { userId, permissions, role };
+    const roleInfo = roleResult.status === "fulfilled" ? roleResult.value : null;
+    return {
+      userId,
+      permissions,
+      role: roleInfo?.name ?? null,
+      roleId: roleInfo?.id ?? null,
+    };
   });
 }
 
@@ -94,8 +100,8 @@ function flushBatch(wss) {
   processInBatches(userIds, BATCH_SIZE, processUser).then((results) => {
     for (const result of results) {
       if (result.status !== "fulfilled" || !result.value) continue;
-      const { userId, permissions, role } = result.value;
-      sendToUser(userId, permissions, role, reason || "Tus permisos han sido actualizados");
+      const { userId, permissions, role, roleId } = result.value;
+      sendToUser(userId, permissions, role, roleId, reason || "Tus permisos han sido actualizados");
     }
   });
 }
@@ -120,8 +126,8 @@ function syncAllUsers() {
     let synced = 0;
     for (const result of results) {
       if (result.status !== "fulfilled" || !result.value) continue;
-      const { userId, permissions, role } = result.value;
-      sendToUser(userId, permissions, role, "Sincronización tras reconexión");
+      const { userId, permissions, role, roleId } = result.value;
+      sendToUser(userId, permissions, role, roleId, "Sincronización tras reconexión");
       synced++;
     }
     console.log(`  ✅ ${synced}/${userIds.length} usuario(s) sincronizado(s)`);
@@ -164,10 +170,10 @@ const getUserRole = async (userId) => {
   const client = await pool.connect();
   try {
     const result = await client.query(
-      `SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1`,
+      `SELECT r.id, r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1`,
       [userId]
     );
-    return result.rows[0]?.name || null;
+    return result.rows[0] || null;
   } finally {
     client.release();
   }

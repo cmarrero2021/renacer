@@ -818,6 +818,8 @@ const colsPob = [
 const permisos = LocalStorage.getItem('permissions') || [];
 const role = (LocalStorage.getItem('role') || '').toLowerCase();
 const adminUser = ['admin', 'administrador', 'administrator'].includes(role);
+// El rol "Usuario" se maneja por ID (roles.id = 2), no por nombre
+const isUsuario = Number(LocalStorage.getItem('roleId')) === 2;
 function hasPerm(p) { return adminUser || permisos.some(x => x.name === p); }
 
 const canEdit = computed(() => {
@@ -827,6 +829,7 @@ const canEdit = computed(() => {
 });
 
 const canDelete = computed(() => {
+    if (isUsuario) return false;
     if (adminUser) return true;
     if (!centro.value) return false;
     return centro.value.access_level === 'admin';

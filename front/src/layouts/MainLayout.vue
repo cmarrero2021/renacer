@@ -31,11 +31,20 @@
         <q-list>
           <q-item-label header>Menú Principal</q-item-label>
 
-          <q-item clickable v-ripple to="/admin">
+          <q-item clickable v-ripple to="/admin" v-if="!isUsuario()">
             <q-item-section avatar>
               <q-icon name="home" />
             </q-item-section>
             <q-item-section>Inicio</q-item-section>
+          </q-item>
+
+          <!-- Para el rol Usuario: Centros de Atención encima de Marco Legal -->
+          <q-item clickable v-ripple to="/admin/centros"
+            v-if="isUsuario() && (isAdmin() || hasPermission('list_centros'))">
+            <q-item-section avatar>
+              <q-icon name="business" />
+            </q-item-section>
+            <q-item-section>Centros de Atención</q-item-section>
           </q-item>
 
           <q-item clickable v-ripple to="/admin/marco-legal">
@@ -45,7 +54,8 @@
             <q-item-section>Marco Legal</q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple to="/admin/centros" v-if="isAdmin() || hasPermission('list_centros')">
+          <q-item clickable v-ripple to="/admin/centros"
+            v-if="!isUsuario() && (isAdmin() || hasPermission('list_centros'))">
             <q-item-section avatar>
               <q-icon name="business" />
             </q-item-section>
@@ -145,7 +155,7 @@ const logoutUrl = import.meta.env.VITE_LOGOUT_URL
 const catalogosStore = useCatalogosStore()
 
 // Composable de permisos en tiempo real
-const { hasPermission, isAdmin, connect, disconnect, syncFromStorage } = usePermissionsSocket()
+const { hasPermission, isAdmin, isUsuario, connect, disconnect, syncFromStorage } = usePermissionsSocket()
 
 const userEmail = computed(() => LocalStorage.getItem('userEmail') || '')
 const userFirstName = computed(() => LocalStorage.getItem('firstName') || '')
@@ -191,6 +201,7 @@ const logout = async () => {
     LocalStorage.remove('token')
     LocalStorage.remove('permissions')
     LocalStorage.remove('role')
+    LocalStorage.remove('roleId')
     LocalStorage.remove('firstName')
     LocalStorage.remove('lastName')
     LocalStorage.remove('userEmail')

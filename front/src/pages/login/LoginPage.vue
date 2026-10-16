@@ -448,12 +448,14 @@ const completeLogin = (data) => {
   LocalStorage.set('token', data.token);
   LocalStorage.set('permissions', data.permissions);
   LocalStorage.set('role', data.role);
+  LocalStorage.set('roleId', data.roleId ?? null);
   LocalStorage.set('firstName', data.firstName || '');
   LocalStorage.set('lastName', data.lastName || '');
   LocalStorage.set('userEmail', data.email || email.value);
 
   Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000, icon: "check_circle" });
-  router.push("/admin");
+  // El rol Usuario (id 2) aterriza directo en Centros de Atención
+  router.push(Number(data.roleId) === 2 ? "/admin/centros" : "/admin");
 };
 
 // ==========================================

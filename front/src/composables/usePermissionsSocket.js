@@ -5,8 +5,12 @@ const WS_URL = import.meta.env.VITE_WS_URL;
 
 const permissions = shallowRef(LocalStorage.getItem("permissions") || []);
 const role = shallowRef(LocalStorage.getItem("role") || "");
+const roleId = shallowRef(LocalStorage.getItem("roleId") ?? null);
 const isConnected = shallowRef(false);
 const lastUpdated = shallowRef(null);
+
+// El rol "Usuario" se identifica por su ID en la tabla roles (no por nombre)
+export const USUARIO_ROLE_ID = 2;
 
 let ws = null;
 let reconnectTimer = null;
@@ -25,20 +29,24 @@ const NOTIFY_THROTTLE_MS = 5000;
 function applyPendingUpdate() {
   if (!pendingUpdate) return;
 
-  const { newPermissions, newRole, reason } = pendingUpdate;
+  const { newPermissions, newRole, newRoleId, reason } = pendingUpdate;
   pendingUpdate = null;
 
   // Dedup: si el JSON es idéntico, saltar
-  const currentKey = JSON.stringify([permissions.value, role.value]);
-  const newKey = JSON.stringify([newPermissions, newRole]);
+  const currentKey = JSON.stringify([permissions.value, role.value, roleId.value]);
+  const newKey = JSON.stringify([newPermissions, newRole, newRoleId]);
   if (currentKey === newKey) return;
 
   permissions.value = newPermissions;
   role.value = newRole;
+  roleId.value = newRoleId;
   lastUpdated.value = Date.now();
 
   LocalStorage.set("permissions", newPermissions);
   LocalStorage.set("role", newRole);
+  if (newRoleId !== undefined && newRoleId !== null) {
+    LocalStorage.set("roleId", newRoleId);
+  }
 
   // Notify trottled: máximo 1 cada 5s
   const now = Date.now();
@@ -98,6 +106,7 @@ export function usePermissionsSocket() {
             pendingUpdate = {
               newPermissions: data.permissions || [],
               newRole: data.role ?? role.value,
+              newRoleId: data.roleId ?? roleId.value,
               reason: data.reason || "",
             };
             scheduleApply();
@@ -158,6 +167,7 @@ export function usePermissionsSocket() {
   const syncFromStorage = () => {
     permissions.value = LocalStorage.getItem("permissions") || [];
     role.value = LocalStorage.getItem("role") || "";
+    roleId.value = LocalStorage.getItem("roleId") ?? null;
   };
 
   const hasPermission = (permissionName) => {
@@ -171,17 +181,24 @@ export function usePermissionsSocket() {
     );
   };
 
+  const isUsuario = () => {
+    const id = roleId.value ?? LocalStorage.getItem("roleId");
+    return Number(id) === USUARIO_ROLE_ID;
+  };
+
   onUnmounted(() => {});
 
   return {
     permissions,
     role,
+    roleId,
     isConnected,
     lastUpdated,
     connect,
     disconnect,
     hasPermission,
     isAdmin,
+    isUsuario,
     syncFromStorage,
   };
 }

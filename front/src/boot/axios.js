@@ -38,6 +38,7 @@ const handleSessionExpired = (router) => {
   LocalStorage.remove('token');
   LocalStorage.remove('permissions');
   LocalStorage.remove('role');
+  LocalStorage.remove('roleId');
   LocalStorage.remove('user');
 
   // Mostrar notificación

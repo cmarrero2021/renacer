@@ -12,9 +12,12 @@
                     <span v-if="fichaId"> · Ficha: {{ fichaId }}</span>
                 </div>
             </div>
-            <div class="col-auto" v-if="isEdit && fichaId">
-                <q-btn unelevated color="primary" icon="save" label="Guardar Todo" :loading="saving"
-                    @click="saveAll" />
+            <div class="col-auto">
+                <!-- Rol Usuario: "Ver ficha" en el lugar visual del antiguo botón Nuevo Centro -->
+                <q-btn v-if="isUsuario && isEdit" unelevated color="primary" icon="visibility" label="Ver ficha"
+                    class="q-mr-sm" @click="verFichaCentro" />
+                <q-btn v-if="isEdit && fichaId" unelevated color="primary" icon="save" label="Guardar Todo"
+                    :loading="saving" @click="saveAll" />
             </div>
         </div>
 
@@ -878,7 +881,7 @@
 <script setup>
 import { ref, computed, onMounted, watch, defineComponent, h } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
-import { Notify, useQuasar } from 'quasar';
+import { LocalStorage, Notify, useQuasar } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
 import { miCentroService, fichasService, geoService, centrosService } from 'src/services/centros.service';
@@ -919,6 +922,13 @@ const route = useRoute();
 const centrosStore = useCentrosStore();
 const catalogosStore = useCatalogosStore();
 const isEdit = computed(() => !!route.params.id);
+
+// El rol "Usuario" se maneja por ID (roles.id = 2), no por nombre
+const isUsuario = Number(LocalStorage.getItem('roleId')) === 2;
+
+function verFichaCentro() {
+    if (centroId.value) router.push(`/admin/centros/${centroId.value}`);
+}
 
 // ── IDs persistentes ──────────────────────────────────────────────────────────
 const centroId = ref(route.params.id || null);

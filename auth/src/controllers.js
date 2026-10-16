@@ -696,10 +696,11 @@ exports.login = async (req, res) => {
 
       // Rol del usuario
       const roleQuery = `
-        SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
+        SELECT r.id, r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
       `;
       const roleResult = await client.query(roleQuery, [user.id]);
       const role = roleResult.rows[0]?.name || null;
+      const roleId = roleResult.rows[0]?.id || null;
 
       // Auditoría
       await client.query(
@@ -715,6 +716,7 @@ exports.login = async (req, res) => {
         lastName: user.last_name,
         sessionDuration: expiresInSeconds / 60,
         role,
+        roleId,
         permissions,
       });
 
@@ -951,10 +953,11 @@ exports.verify2FA = async (req, res) => {
 
     // Rol del usuario
     const roleQuery = `
-      SELECT r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
+      SELECT r.id, r.name FROM roles r JOIN user_roles ur ON ur.role_id = r.id WHERE ur.user_id = $1 LIMIT 1
     `;
     const roleResult = await client.query(roleQuery, [userId]);
     const role = roleResult.rows[0]?.name || null;
+    const roleId = roleResult.rows[0]?.id || null;
 
     // Auditoría
     await client.query(
@@ -970,6 +973,7 @@ exports.verify2FA = async (req, res) => {
       lastName: userCheck.rows[0].last_name,
       sessionDuration: expiresInSeconds / 60,
       role,
+      roleId,
       permissions,
     });
 

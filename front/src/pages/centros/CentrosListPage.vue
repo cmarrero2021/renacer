@@ -12,7 +12,10 @@
                 </div>
             </div>
             <div class="col-auto">
-                <q-btn v-if="canCreate" icon="add" label="Nuevo Centro" color="primary" unelevated
+                <!-- Rol Usuario: "Ver ficha" ocupa el lugar del botón Nuevo Centro (eliminado) -->
+                <q-btn v-if="isUsuario && tieneUnCentro" icon="visibility" label="Ver ficha" color="primary"
+                    unelevated @click="verFichaCentro" />
+                <q-btn v-if="canCreate && !isUsuario" icon="add" label="Nuevo Centro" color="primary" unelevated
                     @click="$router.push('/admin/centros/nuevo')" />
             </div>
         </div>
@@ -53,12 +56,12 @@
             <!-- Acciones -->
             <template #body-cell-acciones="{ row }">
                 <q-td class="q-gutter-xs">
-                    <q-btn icon="visibility" color="primary" flat round dense title="Ver ficha"
+                    <q-btn v-if="!isUsuario" icon="visibility" color="primary" flat round dense title="Ver ficha"
                         @click="$router.push(`/admin/centros/${row.id}`)" />
                     <q-btn v-if="canEditRow(row)" icon="edit" color="secondary" flat round dense title="Editar"
                         @click="$router.push(`/admin/centros/${row.id}/editar`)" />
-                    <q-btn v-if="canDeleteRow(row)" icon="delete" color="negative" flat round dense title="Eliminar"
-                        @click="confirmarEliminar(row)" />
+                    <q-btn v-if="canDeleteRow(row) && !isUsuario" icon="delete" color="negative" flat round dense
+                        title="Eliminar" @click="confirmarEliminar(row)" />
                 </q-td>
             </template>
 
@@ -87,10 +90,12 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
 import { LocalStorage } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
 
+const router = useRouter();
 const centrosStore = useCentrosStore();
 const catalogosStore = useCatalogosStore();
 
@@ -106,6 +111,17 @@ const permisos = LocalStorage.getItem('permissions') || [];
 const role = (LocalStorage.getItem('role') || '').toLowerCase();
 const isAdmin = computed(() => ['admin', 'administrador', 'administrator'].includes(role));
 
+// El rol "Usuario" se maneja por ID (roles.id = 2), no por nombre
+const isUsuario = Number(LocalStorage.getItem('roleId')) === 2;
+
+// Botón "Ver ficha" del encabezado: solo si el usuario tiene exactamente un centro
+const tieneUnCentro = computed(() => (centrosStore.centros || []).length === 1);
+
+function verFichaCentro() {
+    const centro = centrosStore.centros[0];
+    if (centro) router.push(`/admin/centros/${centro.id}`);
+}
+
 function hasPerm(p) { return isAdmin.value || permisos.some(x => x.name === p); }
 
 const canCreate = computed(() => hasPerm('create_centro'));
@@ -116,6 +132,7 @@ function canEditRow(row) {
     return ['write', 'admin'].includes(row.access_level);
 }
 function canDeleteRow(row) {
+    if (isUsuario) return false;
     if (isAdmin.value) return true;
     return row.access_level === 'admin';
 }
@@ -179,8 +196,14 @@ async function eliminarCentro() {
     showDeleteDialog.value = false;
 }
 
-onMounted(() => {
-    centrosStore.fetchCentros();
+onMounted(async () => {
+    await centrosStore.fetchCentros();
     catalogosStore.fetchAll();
+
+    // El rol Usuario entra directo a la ficha de su centro en modo Edición
+    if (isUsuario) {
+        const centro = (centrosStore.centros || [])[0];
+        if (centro) router.replace(`/admin/centros/${centro.id}/editar`);
+    }
 });
 </script>

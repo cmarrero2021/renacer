@@ -219,18 +219,36 @@
                         <section-header icon="person" label="Responsable(s)/Encargado(s)">
                             <q-btn flat dense round icon="add_circle" @click="addProp" title="Agregar" />
                         </section-header>
+                        <div class="text-caption text-grey-6 q-mb-sm">
+                            <q-icon name="info" size="xs" />
+                            Ingrese la nacionalidad y la cédula, luego presione el botón de búsqueda para consultar la
+                            identidad: los Nombres se completan automáticamente y no pueden ser editados.
+                        </div>
                         <div v-for="(p, i) in datos.propietarios" :key="i"
                             class="row q-col-gutter-sm q-mb-sm items-center">
-                            <div class="col-5">
-                                <q-input v-model="p.nombre" :label="`Nombre y Apellido ${i + 1}`" outlined dense
+                            <div class="col-12 col-md-2">
+                                <q-select v-model="p.cedula_tipo" :options="opcionesNacionalidadPersona"
+                                    option-value="value" option-label="label" emit-value map-options outlined dense
+                                    label="Nacionalidad *" :rules="[v => !!v || 'Requerido']"
+                                    @update:model-value="resetNombresPersona(p)" />
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <q-input v-model="p.cedula_nro" label="Cédula *" outlined dense type="number" min="1"
+                                    :rules="[v => !!v || 'Requerido']"
+                                    @update:model-value="resetNombresPersona(p)"
+                                    @keyup.enter="consultarIdentidadPersona('propietarios', i)">
+                                    <template #append>
+                                        <q-btn round dense flat icon="search" size="sm" color="primary"
+                                            title="Consultar identidad"
+                                            :loading="identidadCargando('propietarios', i)"
+                                            @click="consultarIdentidadPersona('propietarios', i)" />
+                                    </template>
+                                </q-input>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <q-input v-model="p.nombre" :label="`Nombres ${i + 1} *`" outlined dense disable
+                                    readonly hint="Se completa automáticamente al consultar la cédula"
                                     :rules="[v => !!v || 'Requerido']" />
-                            </div>
-                            <div class="col-2">
-                                <q-select v-model="p.cedula_tipo" :options="['V', 'E', 'J', 'G']" outlined dense
-                                    label="Tipo" />
-                            </div>
-                            <div class="col-3">
-                                <q-input v-model="p.cedula_nro" label="Cédula / RIF" outlined dense />
                             </div>
                             <div class="col-auto">
                                 <q-btn flat round dense icon="delete" color="negative"
@@ -246,17 +264,31 @@
                         </section-header>
                         <div v-for="(r, i) in datos.representantes" :key="i"
                             class="row q-col-gutter-sm q-mb-sm items-center">
-                            <div class="col-4">
-                                <q-input v-model="r.nombre" :label="`Nombre ${i + 1}`" outlined dense
+                            <div class="col-12 col-md-2">
+                                <q-select v-model="r.cedula_tipo" :options="opcionesNacionalidadPersona"
+                                    option-value="value" option-label="label" emit-value map-options outlined dense
+                                    label="Nacionalidad *" :rules="[v => !!v || 'Requerido']"
+                                    @update:model-value="resetNombresPersona(r)" />
+                            </div>
+                            <div class="col-12 col-md-2">
+                                <q-input v-model="r.cedula_nro" label="Cédula *" outlined dense type="number" min="1"
+                                    :rules="[v => !!v || 'Requerido']"
+                                    @update:model-value="resetNombresPersona(r)"
+                                    @keyup.enter="consultarIdentidadPersona('representantes', i)">
+                                    <template #append>
+                                        <q-btn round dense flat icon="search" size="sm" color="primary"
+                                            title="Consultar identidad"
+                                            :loading="identidadCargando('representantes', i)"
+                                            @click="consultarIdentidadPersona('representantes', i)" />
+                                    </template>
+                                </q-input>
+                            </div>
+                            <div class="col-12 col-md-3">
+                                <q-input v-model="r.nombre" :label="`Nombres ${i + 1} *`" outlined dense disable
+                                    readonly hint="Se completa automáticamente al consultar la cédula"
                                     :rules="[v => !!v || 'Requerido']" />
                             </div>
-                            <div class="col-2">
-                                <q-select v-model="r.cedula_tipo" :options="['V', 'E']" outlined dense label="Tipo" />
-                            </div>
-                            <div class="col-2">
-                                <q-input v-model="r.cedula_nro" label="Cédula" outlined dense />
-                            </div>
-                            <div class="col-3">
+                            <div class="col-12 col-md-2">
                                 <q-input v-model="r.cargo" label="Cargo" outlined dense />
                             </div>
                             <div class="col-auto">
@@ -1227,6 +1259,66 @@ function addTel() { datos.value.telefonos.push({ telefono: '', tipo: 'general' }
 function addCorreo() { datos.value.correos.push({ correo: '', tipo: 'general' }); }
 function addPobRow() { pob.value.registros.push({ modalidad: 'residente', categoria: 'adultos', femenino: 0, masculino: 0 }); }
 
+// ── Consulta de identidad (nacionalidad + cédula → API de identificación) ────
+const opcionesNacionalidadPersona = [
+    { value: 'V', label: 'V - Venezolano' },
+    { value: 'E', label: 'E - Extranjero' },
+];
+const identidadLoading = ref({});
+
+function identidadCargando(lista, i) {
+    return !!identidadLoading.value[`${lista}-${i}`];
+}
+
+// Si el usuario modifica nacionalidad o cédula, los Nombres dejan de ser válidos
+function resetNombresPersona(persona) {
+    persona.nombre = '';
+}
+
+function armarNombreIdentidad(identidad) {
+    return [identidad.primer_nombre, identidad.segundo_nombre, identidad.primer_apellido, identidad.segundo_apellido]
+        .map(s => String(s || '').trim())
+        .filter(Boolean)
+        .join(' ');
+}
+
+async function consultarIdentidadPersona(lista, i) {
+    const persona = lista === 'propietarios'
+        ? datos.value.propietarios[i]
+        : datos.value.representantes[i];
+    if (!persona) return;
+
+    if (!persona.cedula_tipo) {
+        return Notify.create({ type: 'warning', message: 'Seleccione la nacionalidad antes de consultar.' });
+    }
+    const cedulaNum = parseInt(persona.cedula_nro, 10);
+    if (!persona.cedula_nro || !Number.isInteger(cedulaNum) || cedulaNum <= 0) {
+        return Notify.create({ type: 'warning', message: 'El número de cédula debe ser un número entero.' });
+    }
+
+    const key = `${lista}-${i}`;
+    identidadLoading.value[key] = true;
+    try {
+        const { data } = await centrosService.consultarIdentidad(persona.cedula_tipo, persona.cedula_nro);
+        if (data.encontrado) {
+            persona.nombre = armarNombreIdentidad(data.identidad);
+            Notify.create({ type: 'positive', message: 'Datos de identidad obtenidos correctamente.', timeout: 4000 });
+        } else {
+            persona.nombre = '';
+            Notify.create({ type: 'warning', message: data.message || 'No se encontraron datos de identidad.', timeout: 5000 });
+        }
+    } catch (err) {
+        persona.nombre = '';
+        Notify.create({
+            type: 'negative',
+            message: err?.response?.data?.error || 'Error al consultar la identidad.',
+            timeout: 5000
+        });
+    } finally {
+        identidadLoading.value[key] = false;
+    }
+}
+
 // ── Geolocalización ──────────────────────────────────────────────────────────
 const geoLoading = ref(false);
 const geocodeLoading = ref(false);
@@ -1411,6 +1503,18 @@ async function saveDatos() {
     if (formDatosRef.value) {
         const valid = await formDatosRef.value.validate();
         if (!valid) return Notify.create({ type: 'warning', message: 'Complete los campos obligatorios.' });
+    }
+    // Los Nombres de responsables y representantes sólo provienen de la consulta de identidad
+    const sinNombres = [
+        ...datos.value.propietarios.map((p, i) => ({ persona: p, etiqueta: `Responsable/Encargado ${i + 1}` })),
+        ...datos.value.representantes.map((r, i) => ({ persona: r, etiqueta: `Representante Legal ${i + 1}` })),
+    ].filter(x => !String(x.persona.nombre || '').trim());
+    if (sinNombres.length) {
+        return Notify.create({
+            type: 'warning',
+            timeout: 5000,
+            message: `Consulte la identidad (nacionalidad y cédula) para completar los Nombres de: ${sinNombres.map(x => x.etiqueta).join(', ')}.`
+        });
     }
     saving.value = true;
     try {

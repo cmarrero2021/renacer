@@ -5,6 +5,13 @@ const { withAuditContext } = require('./audit');
 const crypto = require('crypto');
 const fs = require('fs');
 const pathModule = require('path');
+const axios = require('axios');
+
+// API de identificación (misma usada en el autorregistro)
+const IDENTIFICACION_API_URL =
+  process.env.IDENTIFICACION_API_URL || 'https://166-0-112-41.sslip.io/api/identificacion/identificacion';
+const IDENTIFICACION_API_TOKEN = process.env.IDENTIFICACION_API_TOKEN || '';
+const IDENTIFICACION_API_TIMEOUT = parseInt(process.env.IDENTIFICACION_API_TIMEOUT, 10) || 15000;
 
 // ============================================================
 // HELPERS: Almacenamiento de archivos en disco
@@ -1777,7 +1784,7 @@ exports.proxyReverseGeocode = async (req, res) => {
         const response = await fetch(url);
         if (!response.ok) throw new Error(`External API Error: ${response.status}`);
         const data = await response.json();
-        
+
         if (data.features && data.features.length > 0) {
             const f = data.features[0];
             const p = f.properties;
@@ -1800,5 +1807,87 @@ exports.proxyReverseGeocode = async (req, res) => {
     } catch (err) {
         console.error('Error in proxyReverseGeocode (Photon):', err);
         res.status(502).json({ error: 'Error al consultar el servicio de geocodificación inversa', details: err.message });
+    }
+};
+
+/**
+ * Consulta de identidad (nacionalidad + cédula) contra la API de identificación.
+ * Igual que el paso 3 del autorregistro, pero para usuarios autenticados.
+ * POST /identidad/consultar  Body: { nacionalidad: 'V'|'E', cedula: 12345678 }
+ */
+exports.consultarIdentidad = async (req, res) => {
+    const { nacionalidad, cedula } = req.body;
+
+    if (!nacionalidad || !['V', 'E'].includes(String(nacionalidad).toUpperCase())) {
+        return res.status(400).json({ error: 'La nacionalidad es requerida y sólo puede ser V o E.' });
+    }
+    const cedulaNum = Number(cedula);
+    if (cedula === undefined || cedula === null || cedula === '' || !Number.isInteger(cedulaNum) || cedulaNum <= 0) {
+        return res.status(400).json({ error: 'El número de cédula debe ser un número entero.' });
+    }
+
+    if (!IDENTIFICACION_API_TOKEN) {
+        console.error('IDENTIFICACION_API_TOKEN no está configurado en el archivo .env');
+        return res.status(500).json({ error: 'Servicio de identificación no configurado.' });
+    }
+
+    try {
+        let respuesta;
+        try {
+            respuesta = await axios.post(
+                IDENTIFICACION_API_URL,
+                {
+                    nacionalidad: String(nacionalidad).toUpperCase(),
+                    cedula: cedulaNum,
+                },
+                {
+                    headers: {
+                        Authorization: `Bearer ${IDENTIFICACION_API_TOKEN}`,
+                        'Content-Type': 'application/json',
+                    },
+                    timeout: IDENTIFICACION_API_TIMEOUT,
+                }
+            );
+        } catch (apiErr) {
+            const status = apiErr.response?.status;
+            if (status === 400) {
+                return res.status(400).json({ error: 'Datos de identidad inválidos. Verifique la nacionalidad y el número de cédula.' });
+            }
+            if (status === 401 || status === 403) {
+                console.error('Token de la API de identificación inválido o suspendido.');
+                return res.status(502).json({ error: 'El servicio de identificación no está disponible en este momento. Intente más tarde.' });
+            }
+            if (status === 429) {
+                return res.status(429).json({ error: 'Se ha superado el límite de consultas de identidad. Intente en unos minutos.' });
+            }
+            console.error('Error al consultar API de identificación:', apiErr.message);
+            return res.status(502).json({ error: 'No se pudo consultar el servicio de identificación. Intente nuevamente.' });
+        }
+
+        const { success, data } = respuesta.data || {};
+
+        if (!success || !data) {
+            return res.status(404).json({
+                encontrado: false,
+                message: 'No se encontraron datos de identidad para la cédula y nacionalidad indicadas. Verifique los datos e intente nuevamente.',
+            });
+        }
+
+        res.status(200).json({
+            encontrado: true,
+            identidad: {
+                cedula: data.cedula,
+                primer_nombre: data.primer_nombre || '',
+                segundo_nombre: data.segundo_nombre || '',
+                primer_apellido: data.primer_apellido || '',
+                segundo_apellido: data.segundo_apellido || '',
+                sexo: data.sexo || null,
+                nacionalidad: data.nacionalidad || String(nacionalidad).toUpperCase(),
+                fecha_nacimiento: data.fecha_nacimiento || null,
+            },
+        });
+    } catch (err) {
+        console.error('Error en consultarIdentidad (centros):', err.message);
+        res.status(500).json({ error: 'Error al consultar la identidad.' });
     }
 };

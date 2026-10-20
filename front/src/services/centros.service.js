@@ -27,6 +27,9 @@ export const centrosService = {
     delete: (id) => authApi.delete(`/centros/${id}`),
     uploadFoto: (id, fotoBase64) => authApi.post(`/centros/${id}/foto`, { foto_base64: fotoBase64 }),
     deleteFoto: (id) => authApi.delete(`/centros/${id}/foto`),
+    // Consulta de identidad (nacionalidad + cédula → API de identificación)
+    consultarIdentidad: (nacionalidad, cedula) =>
+        authApi.post('/identidad/consultar', { nacionalidad, cedula: parseInt(cedula, 10) }),
 };
 
 // ─── Fichas ───────────────────────────────────────────────────────────────────

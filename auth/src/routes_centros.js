@@ -10,7 +10,7 @@ const {
     descargarArchivoDocumento,
     purgeDeletedRecords, listMaintenanceLogs,
     proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
-    uploadFoto, deleteFoto
+    uploadFoto, deleteFoto, consultarIdentidad
 } = require('./controllers_centros');
 
 
@@ -31,6 +31,9 @@ router.post('/geo/resolve', resolveGeoEntities);
 // ─── Mi centro (verificar ficha única) ────────────────────────────────────
 
 router.get('/mi-centro', getMiCentro);
+
+// ─── Identidad (nacionalidad + cédula → API de identificación) ────────────
+router.post('/identidad/consultar', consultarIdentidad);
 
 // ─── Centros CRUD ─────────────────────────────────────────────────────────
 router.get('/centros', authorize('list_centros'), listCentros);

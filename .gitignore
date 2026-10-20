@@ -19,3 +19,4 @@ cedula/
 *.bak
 # front/src/pages/MarcoLegagal.bak
 "rencam.rar" 
+analytics/.env.development

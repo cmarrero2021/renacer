@@ -27,10 +27,6 @@
                             <q-input v-model="form.fechaAno" label="Año" outlined dense mask="####" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-4">
-                            <q-input v-model="form.nroRegistroNacional" label="1.2. Nro de Registro Nacional" outlined
-                                dense />
-                        </div>
-                        <div class="col-12 col-sm-6 col-md-4">
                             <div class="text-caption q-mb-xs text-weight-bold">1.3. Tipo de Solicitud</div>
                             <div class="row q-gutter-sm">
                                 <q-toggle v-for="opt in opcionesTipoSolicitud" :key="opt.value"
@@ -94,8 +90,6 @@
                             </div>
                             <q-input v-if="form.tipoEstablecimiento === 'otra'" v-model="form.tipoEstablecimientoOtra"
                                 label="Explique" outlined dense class="q-mt-sm" />
-                            <q-input v-model="form.costoMensual" label="Costo Mensual" outlined dense class="q-mt-sm"
-                                prefix="Bs." />
                         </div>
 
                         <!-- Tipo de Clasificación -->
@@ -627,7 +621,6 @@ const form = reactive({
     fechaDia: '',
     fechaMes: '',
     fechaAno: '',
-    nroRegistroNacional: '',
     tipoSolicitud: '',
 
     // 2. Identificación del Establecimiento
@@ -642,7 +635,6 @@ const form = reactive({
     correo: '',
     tipoEstablecimiento: '',
     tipoEstablecimientoOtra: '',
-    costoMensual: '',
     tipoClasificacion: '',
     tipoClasificacionOtra: '',
     nombrePropietario: '',

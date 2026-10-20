@@ -306,7 +306,7 @@ exports.listCentros = async (req, res) => {
              c.tipo_clasificacion, c.estado_centro, c.rif, c.nro_registro_mercantil,
              c.latitud, c.longitud,
              g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado,
-             f.id AS ficha_id, f.nro_registro_nacional, f.tipo_solicitud,
+             f.id AS ficha_id, f.tipo_solicitud,
              f.fecha_solicitud, f.version,
              CASE 
                 WHEN (
@@ -706,8 +706,8 @@ exports.listFichas = async (req, res) => {
         }
 
         const result = await client.query(
-            `SELECT id, version, fecha_solicitud, nro_registro_nacional,
-              tipo_solicitud, fecha_fundacion, costo_mensual, is_current, created_at
+            `SELECT id, version, fecha_solicitud,
+              tipo_solicitud, fecha_fundacion, is_current, created_at
        FROM public.fichas_establecimiento
        WHERE centro_id = $1 AND deleted_at IS NULL
        ORDER BY version DESC`,
@@ -790,8 +790,8 @@ exports.getFichaActual = async (req, res) => {
 exports.createFicha = async (req, res) => {
     const { centroId } = req.params;
     const {
-        fecha_solicitud, nro_registro_nacional, tipo_solicitud,
-        fecha_fundacion, costo_mensual, direccion,
+        fecha_solicitud, tipo_solicitud,
+        fecha_fundacion, direccion,
         documentos = [], servicios = null, personal = null,
         infraestructura = null, accesibilidad = null, capacidad = null
     } = req.body;
@@ -824,11 +824,11 @@ exports.createFicha = async (req, res) => {
         // Insertar nueva ficha
         const fichaResult = await client.query(
             `INSERT INTO public.fichas_establecimiento
-       (centro_id, version, fecha_solicitud, nro_registro_nacional, tipo_solicitud,
-        fecha_fundacion, costo_mensual, direccion, is_current)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,TRUE) RETURNING *`,
-            [centroId, nextVersion, fecha_solicitud || null, nro_registro_nacional || null, (tipo_solicitud && tipo_solicitud.trim()) || null,
-                fecha_fundacion || null, costo_mensual || null, direccion || null]
+       (centro_id, version, fecha_solicitud, tipo_solicitud,
+        fecha_fundacion, direccion, is_current)
+       VALUES ($1,$2,COALESCE($3, CURRENT_DATE),$4,$5,$6,TRUE) RETURNING *`,
+            [centroId, nextVersion, fecha_solicitud || null, (tipo_solicitud && tipo_solicitud.trim()) || null,
+                fecha_fundacion || null, direccion || null]
         );
         const ficha = fichaResult.rows[0];
 
@@ -965,16 +965,14 @@ exports.updateFicha = async (req, res) => {
 
         const result = await client.query(
             `UPDATE public.fichas_establecimiento SET
-         fecha_solicitud = COALESCE($1, fecha_solicitud),
-         nro_registro_nacional = COALESCE($2, nro_registro_nacional),
-         tipo_solicitud = COALESCE(NULLIF($3, ''), tipo_solicitud),
-         fecha_fundacion = COALESCE($4, fecha_fundacion),
-         costo_mensual = COALESCE($5, costo_mensual),
-         direccion = COALESCE($6, direccion),
+         fecha_solicitud = COALESCE($1, CURRENT_DATE),
+         tipo_solicitud = COALESCE(NULLIF($2, ''), tipo_solicitud),
+         fecha_fundacion = COALESCE($3, fecha_fundacion),
+         direccion = COALESCE($4, direccion),
          updated_at = NOW()
-       WHERE id = $7 AND deleted_at IS NULL RETURNING *`,
-            [fields.fecha_solicitud || null, fields.nro_registro_nacional || null, fields.tipo_solicitud || null,
-            fields.fecha_fundacion || null, fields.costo_mensual || null, fields.direccion || null, fichaId]
+       WHERE id = $5 AND deleted_at IS NULL RETURNING *`,
+            [fields.fecha_solicitud || null, fields.tipo_solicitud || null,
+            fields.fecha_fundacion || null, fields.direccion || null, fichaId]
         );
         if (!result.rows.length) {
             return res.status(404).json({ error: 'Ficha no encontrada.' });

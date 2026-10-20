@@ -23,7 +23,6 @@ const FIELD_MAP = {
     'ficha.fecha_solicitud': { sql: 'f.fecha_solicitud', table: 'ficha', label: 'Fecha de Solicitud', category: 'Ficha', date: true },
     'ficha.tipo_solicitud': { sql: 'f.tipo_solicitud', table: 'ficha', label: 'Tipo de Solicitud', category: 'Ficha' },
     'ficha.fecha_fundacion': { sql: 'f.fecha_fundacion', table: 'ficha', label: 'Fecha de Fundación', category: 'Ficha', date: true },
-    'ficha.costo_mensual': { sql: 'f.costo_mensual', table: 'ficha', label: 'Costo Mensual', category: 'Ficha', numeric: true },
     'ficha.direccion': { sql: 'f.direccion', table: 'ficha', label: 'Dirección', category: 'Ficha' },
 
     // Capacidad

@@ -38,8 +38,17 @@ export default configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
+      // port: 9110,
+      // open: true,
+      //ELIMINAR ESTO ES SÓLO PARA PRUEBAS CON ZAPROXY
+      host: '0.0.0.0', // Permite conexiones desde el contenedor de Docker
       port: 9110,
-      open: true,
+      open: false,
+      allowedHosts: true, // En Vite, 'true' desactiva el bloqueo 403 por Host header
+      cors: true
+
+
+
     },
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#framework

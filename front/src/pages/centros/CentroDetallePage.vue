@@ -173,12 +173,6 @@
                                             Datos de la Ficha</p>
                                         <table style="width:100%; border-collapse:collapse">
                                             <tr>
-                                                <td class="text-caption text-grey" style="width:50%;padding:2px 4px">
-                                                    Nro. Registro Nal.</td>
-                                                <td class="text-body2" style="padding:2px 4px">{{
-                                                    ficha.nro_registro_nacional || '—' }}</td>
-                                            </tr>
-                                            <tr>
                                                 <td class="text-caption text-grey" style="padding:2px 4px">Tipo de
                                                     Solicitud</td>
                                                 <td class="text-body2" style="padding:2px 4px">{{
@@ -195,12 +189,6 @@
                                                     Fundación</td>
                                                 <td class="text-body2" style="padding:2px 4px">{{
                                                     formatDate(ficha.fecha_fundacion) }}</td>
-                                            </tr>
-                                            <tr>
-                                                <td class="text-caption text-grey" style="padding:2px 4px">Costo Mensual
-                                                </td>
-                                                <td class="text-body2" style="padding:2px 4px">{{ ficha.costo_mensual ?
-                                                    'Bs. ' + ficha.costo_mensual : '—' }}</td>
                                             </tr>
                                             <tr>
                                                 <td class="text-caption text-grey" style="padding:2px 4px">Dirección

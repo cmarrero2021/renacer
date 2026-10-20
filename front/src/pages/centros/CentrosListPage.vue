@@ -149,7 +149,6 @@ const opcionesTipo = computed(() => catalogosStore.opcionesTipoEstab);
 // Columnas
 const columns = [
     { name: 'nombre_establecimiento', label: 'Nombre', field: 'nombre_establecimiento', align: 'left', sortable: true },
-    { name: 'nro_registro_nacional', label: 'Nro. Registro', field: 'nro_registro_nacional', align: 'center' },
     { name: 'tipo_establecimiento', label: 'Tipo', field: 'tipo_establecimiento', align: 'center', sortable: true },
     { name: 'municipio', label: 'Municipio', field: 'municipio', align: 'left', sortable: true },
     { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
@@ -165,7 +164,6 @@ const centrosFiltrados = computed(() => {
         const q = search.value.toLowerCase();
         rows = rows.filter(c =>
             c.nombre_establecimiento?.toLowerCase().includes(q) ||
-            c.nro_registro_nacional?.toLowerCase().includes(q) ||
             c.municipio?.toLowerCase().includes(q) ||
             c.rif?.toLowerCase().includes(q)
         );

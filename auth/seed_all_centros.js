@@ -74,9 +74,9 @@ async function runSeeder() {
             // Insert Fichas Establecimiento
             const solOptions = ['registro_autorizacion', 'renovacion_autorizacion'];
             const fichaRes = await client.query(`
-                INSERT INTO fichas_establecimiento (centro_id, version, fecha_solicitud, nro_registro_nacional, tipo_solicitud, fecha_fundacion, costo_mensual, direccion, is_current, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING id
-            `, [centroId, 1, faker.date.recent(), faker.string.numeric(6), faker.helpers.arrayElement(solOptions), faker.date.past(), faker.finance.amount(), faker.location.streetAddress(), true]);
+                INSERT INTO fichas_establecimiento (centro_id, version, fecha_solicitud, tipo_solicitud, fecha_fundacion, direccion, is_current, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id
+            `, [centroId, 1, faker.date.recent(), faker.helpers.arrayElement(solOptions), faker.date.past(), faker.location.streetAddress(), true]);
             
             const fichaId = fichaRes.rows[0].id;
             

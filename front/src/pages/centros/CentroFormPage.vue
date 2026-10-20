@@ -74,28 +74,7 @@
                         <!-- Datos de la solicitud -->
                         <section-header icon="event_note" label="Datos de la Solicitud" />
                         <div class="row q-col-gutter-md q-mb-md">
-                            <div class="col-12 col-md-4">
-                                <q-input v-model="datos.fecha_solicitud" label="Fecha de Solicitud *" outlined dense
-                                    readonly :rules="[v => !!v || 'Requerido']">
-                                    <template #prepend>
-                                        <q-icon name="event" class="cursor-pointer">
-                                            <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                                                <q-date v-model="datos.fecha_solicitud" mask="DD/MM/YYYY" minimal
-                                                    today-btn>
-                                                    <div class="row items-center justify-end">
-                                                        <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                                    </div>
-                                                </q-date>
-                                            </q-popup-proxy>
-                                        </q-icon>
-                                    </template>
-                                </q-input>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <q-input v-model="datos.nro_registro_nacional" label="Nro. de Registro Nacional"
-                                    outlined dense />
-                            </div>
-                            <div class="col-12 col-md-4">
+                            <div class="col-12 col-md-6">
                                 <div class="text-caption text-weight-bold q-mb-xs">Tipo de Solicitud *</div>
                                 <div class="row q-gutter-sm">
                                     <q-radio v-model="datos.tipo_solicitud" val="registro_autorizacion"
@@ -144,10 +123,6 @@
                                         </q-icon>
                                     </template>
                                 </q-input>
-                            </div>
-                            <div class="col-12 col-md-4">
-                                <q-input v-model="datos.costo_mensual" label="Costo Mensual (Bs.)" outlined dense
-                                    type="number" min="0" />
                             </div>
                             <div class="col-12 col-md-6">
                                 <q-select v-model="datos.tipo_establecimiento" :options="opcionesTipoEstab"
@@ -240,7 +215,8 @@
 
 
                         <!-- Propietarios -->
-                        <section-header icon="person" label="Propietario(s)">
+                        <!-- <section-header icon="person" label="Propietario(s)"> -->
+                        <section-header icon="person" label="Responsable(s)/Encargado(s)">
                             <q-btn flat dense round icon="add_circle" @click="addProp" title="Agregar" />
                         </section-header>
                         <div v-for="(p, i) in datos.propietarios" :key="i"
@@ -1063,10 +1039,15 @@ function toISO(disp) {
 const estadoSel = ref(null);
 const municipioSel = ref(null);
 
+const hoyDisplay = (() => {
+    const d = new Date();
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+})();
+
 const datos = ref({
     nombre_establecimiento: '', rif_tipo: 'J', rif_numero: '', nro_registro_mercantil: '',
-    fecha_solicitud: '', nro_registro_nacional: '', tipo_solicitud: null,
-    fecha_fundacion: '', costo_mensual: null, direccion: '',
+    fecha_solicitud: hoyDisplay, tipo_solicitud: null,
+    fecha_fundacion: '', direccion: '',
     parroquia_id: null, tipo_establecimiento: null,
     tipo_establecimiento_descripcion: '', tipo_clasificacion: null,
     latitud: null, longitud: null,
@@ -1475,10 +1456,8 @@ async function saveDatos() {
         // Crear o actualizar ficha base (fechas a ISO)
         const fichaPayload = {
             fecha_solicitud: toISO(datos.value.fecha_solicitud),
-            nro_registro_nacional: datos.value.nro_registro_nacional || null,
             tipo_solicitud: datos.value.tipo_solicitud || null,
             fecha_fundacion: toISO(datos.value.fecha_fundacion),
-            costo_mensual: datos.value.costo_mensual ? Number(datos.value.costo_mensual) : null,
             direccion: datos.value.direccion || null,
         };
 
@@ -1947,10 +1926,8 @@ async function saveAll() {
             tareas.push(
                 fichasService.update(fichaId.value, {
                     fecha_solicitud: toISO(datos.value.fecha_solicitud),
-                    nro_registro_nacional: datos.value.nro_registro_nacional || null,
                     tipo_solicitud: datos.value.tipo_solicitud || null,
                     fecha_fundacion: toISO(datos.value.fecha_fundacion),
-                    costo_mensual: datos.value.costo_mensual ? Number(datos.value.costo_mensual) : null,
                     direccion: datos.value.direccion || null,
                 })
             );
@@ -2115,11 +2092,8 @@ onMounted(async () => {
         if (ficha) {
             fichaId.value = ficha.id;
             Object.assign(datos.value, {
-                fecha_solicitud: toDisplay(ficha.fecha_solicitud),
-                nro_registro_nacional: ficha.nro_registro_nacional,
                 tipo_solicitud: ficha.tipo_solicitud,
                 fecha_fundacion: toDisplay(ficha.fecha_fundacion),
-                costo_mensual: ficha.costo_mensual,
                 direccion: ficha.direccion,
             });
             if (ficha.capacidad) { Object.assign(cap.value, ficha.capacidad); savedTabs.value.capacidad = true; }

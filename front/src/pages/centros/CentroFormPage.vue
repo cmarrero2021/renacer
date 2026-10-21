@@ -89,27 +89,27 @@
                         <section-header icon="business" label="Identificación del Establecimiento" />
                         <div class="row q-col-gutter-md q-mb-md">
                             <div class="col-12 col-md-8">
-                                <q-input v-model="datos.nombre_establecimiento" label="a) Nombre del Establecimiento *"
+                                <div class="text-caption q-mb-xs">a) Nombre del Establecimiento *</div>
+                                <q-input v-model="datos.nombre_establecimiento" readonly disabled
                                     outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
                             <!-- RIF con selector de tipo -->
                             <div class="col-12 col-md-4">
-                                <div class="text-caption text-weight-bold q-mb-xs">RIF</div>
+                                <div class="text-caption q-mb-xs">Número del RIF</div>
                                 <div class="row no-wrap items-start q-gutter-xs">
-                                    <q-select v-model="datos.rif_tipo" :options="opcionesRifTipo" option-value="value"
-                                        option-label="label" emit-value map-options outlined dense
-                                        style="width:150px" />
-                                    <q-input v-model="datos.rif_numero" placeholder="00000000-0" outlined dense
+                                    <q-select v-model="datos.rif_tipo" :options="opcionesRifTipo" readonly disabled option-value="value"
+                                        option-label="label" emit-value map-options outlined dense style="width:150px" />
+                                    <q-input v-model="datos.rif_numero" outlined dense readonly disabled
                                         class="col" mask="########-#" unmasked-value />
                                 </div>
                             </div>
                             <div class="col-12 col-md-4">
-                                <q-input v-model="datos.nro_registro_mercantil" label="Nro. Registro Mercantil" outlined
-                                    dense />
+                                <div class="text-caption q-mb-xs">Nro. Registro Mercantil</div>
+                                <q-input v-model="datos.nro_registro_mercantil" outlined dense />
                             </div>
                             <div class="col-12 col-md-4">
-                                <q-input v-model="datos.fecha_fundacion" label="Fecha de Fundación" outlined dense
-                                    readonly>
+                                <div class="text-caption q-mb-xs">Fecha de Fundación</div>
+                                <q-input v-model="datos.fecha_fundacion" outlined dense readonly>
                                     <template #prepend>
                                         <q-icon name="event" class="cursor-pointer">
                                             <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -125,20 +125,20 @@
                                 </q-input>
                             </div>
                             <div class="col-12 col-md-6">
+                                <div class="text-caption q-mb-xs">j) Tipo de Establecimiento *</div>
                                 <q-select v-model="datos.tipo_establecimiento" :options="opcionesTipoEstab"
                                     option-value="value" option-label="label" emit-value map-options
-                                    label="j) Tipo de Establecimiento *" outlined dense
-                                    :rules="[v => !!v || 'Requerido']" />
+                                    outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
                             <div class="col-12 col-md-6" v-if="datos.tipo_establecimiento === 'otra'">
-                                <q-input v-model="datos.tipo_establecimiento_descripcion" label="Explique el tipo"
-                                    outlined dense />
+                                <div class="text-caption q-mb-xs">Explique el tipo</div>
+                                <q-input v-model="datos.tipo_establecimiento_descripcion" outlined dense />
                             </div>
                             <div class="col-12 col-md-6">
+                                <div class="text-caption q-mb-xs">k) Tipo de Clasificación *</div>
                                 <q-select v-model="datos.tipo_clasificacion" :options="opcionesTipoClasif"
                                     option-value="value" option-label="label" emit-value map-options
-                                    label="k) Tipo de Clasificación *" outlined dense
-                                    :rules="[v => !!v || 'Requerido']" />
+                                    outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
                         </div>
 
@@ -146,25 +146,28 @@
                         <section-header icon="location_on" label="Ubicación Geográfica" />
                         <div class="row q-col-gutter-md q-mb-md">
                             <div class="col-12 col-md-4">
+                                <div class="text-caption q-mb-xs">e) Estado *</div>
                                 <q-select v-model="estadoSel" :options="centrosStore.estados" option-value="id"
-                                    option-label="nombre" emit-value map-options label="e) Estado *" outlined dense
+                                    option-label="nombre" emit-value map-options outlined dense
                                     :rules="[v => !!v || 'Requerido']" @update:model-value="onEstadoCambio" />
                             </div>
                             <div class="col-12 col-md-4">
+                                <div class="text-caption q-mb-xs">d) Municipio *</div>
                                 <q-select v-model="municipioSel" :options="centrosStore.municipios" option-value="id"
-                                    option-label="nombre" emit-value map-options label="d) Municipio *" outlined dense
+                                    option-label="nombre" emit-value map-options outlined dense
                                     :disable="!estadoSel" :rules="[v => !!v || 'Requerido']"
                                     @update:model-value="onMunicipioCambio" />
                             </div>
                             <div class="col-12 col-md-4">
+                                <div class="text-caption q-mb-xs">c) Parroquia *</div>
                                 <q-select v-model="datos.parroquia_id" :options="centrosStore.parroquias"
                                     option-value="id" option-label="nombre" emit-value map-options
-                                    label="c) Parroquia *" outlined dense :disable="!municipioSel"
+                                    outlined dense :disable="!municipioSel"
                                     :rules="[v => !!v || 'Requerido']" />
                             </div>
                             <div class="col-12">
-                                <q-input v-model="datos.direccion" label="b) Dirección completa (Av, Calle, Urb, N°) *"
-                                    outlined dense :rules="[v => !!v || 'Requerido']" />
+                                <div class="text-caption q-mb-xs">b) Dirección completa (Av, Calle, Urb, N°) *</div>
+                                <q-input v-model="datos.direccion" outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
 
                             <!-- Botones de geolocalización -->
@@ -190,8 +193,9 @@
                             </div>
 
                             <div class="col-12 col-md-4">
-                                <q-input v-model.number="datos.latitud" label="Latitud (decimal) *" outlined dense
-                                    type="number" step="0.0000001" hint="Ej: 10.4880000" :rules="[
+                                <div class="text-caption q-mb-xs">Latitud (decimal) *</div>
+                                <q-input v-model.number="datos.latitud" outlined dense
+                                    type="number" step="0.0000001" :rules="[
                                         v => v !== null && v !== '' && v !== undefined || 'Requerido',
                                         v => (v >= -90 && v <= 90) || 'Debe estar entre -90 y 90'
                                     ]">
@@ -201,8 +205,9 @@
                                 </q-input>
                             </div>
                             <div class="col-12 col-md-4">
-                                <q-input v-model.number="datos.longitud" label="Longitud (decimal) *" outlined dense
-                                    type="number" step="0.0000001" hint="Ej: -66.9030000" :rules="[
+                                <div class="text-caption q-mb-xs">Longitud (decimal) *</div>
+                                <q-input v-model.number="datos.longitud" outlined dense
+                                    type="number" step="0.0000001" :rules="[
                                         v => v !== null && v !== '' && v !== undefined || 'Requerido',
                                         v => (v >= -180 && v <= 180) || 'Debe estar entre -180 y 180'
                                     ]">
@@ -225,16 +230,18 @@
                             identidad: los Nombres se completan automáticamente y no pueden ser editados.
                         </div>
                         <div v-for="(p, i) in datos.propietarios" :key="i"
-                            class="row q-col-gutter-sm q-mb-sm items-center">
+                            class="row q-col-gutter-sm q-mb-sm items-end">
                             <div class="col-12 col-md-2">
+                                <div class="text-caption q-mb-xs">Nacionalidad *</div>
                                 <q-select v-model="p.cedula_tipo" :options="opcionesNacionalidadPersona"
                                     option-value="value" option-label="label" emit-value map-options outlined dense
-                                    label="Nacionalidad *" :rules="[v => !!v || 'Requerido']"
+                                    :rules="[v => !!v || 'Requerido']"
                                     @update:model-value="resetNombresPersona(p)" />
                             </div>
                             <div class="col-12 col-md-3">
-                                <q-input v-model="p.cedula_nro" label="Cédula *" outlined dense type="number" min="1"
-                                    :rules="[v => !!v || 'Requerido']"
+                                <div class="text-caption q-mb-xs">Cédula *</div>
+                                <q-input v-model="p.cedula_nro" outlined dense
+                                    type="number" min="1" :rules="[v => !!v || 'Requerido']"
                                     @update:model-value="resetNombresPersona(p)"
                                     @keyup.enter="consultarIdentidadPersona('propietarios', i)">
                                     <template #append>
@@ -246,9 +253,9 @@
                                 </q-input>
                             </div>
                             <div class="col-12 col-md-6">
-                                <q-input v-model="p.nombre" :label="`Nombres ${i + 1} *`" outlined dense disable
-                                    readonly hint="Se completa automáticamente al consultar la cédula"
-                                    :rules="[v => !!v || 'Requerido']" />
+                                <div class="text-caption q-mb-xs">Nombres {{ i + 1 }} *</div>
+                                <q-input v-model="p.nombre" outlined dense
+                                    disable readonly :rules="[v => !!v || 'Requerido']" />
                             </div>
                             <div class="col-auto">
                                 <q-btn flat round dense icon="delete" color="negative"
@@ -263,16 +270,18 @@
                             <q-btn flat dense round icon="add_circle" @click="addRep" title="Agregar" />
                         </section-header>
                         <div v-for="(r, i) in datos.representantes" :key="i"
-                            class="row q-col-gutter-sm q-mb-sm items-center">
+                            class="row q-col-gutter-sm q-mb-sm items-end">
                             <div class="col-12 col-md-2">
+                                <div class="text-caption q-mb-xs">Nacionalidad *</div>
                                 <q-select v-model="r.cedula_tipo" :options="opcionesNacionalidadPersona"
                                     option-value="value" option-label="label" emit-value map-options outlined dense
-                                    label="Nacionalidad *" :rules="[v => !!v || 'Requerido']"
+                                    :rules="[v => !!v || 'Requerido']"
                                     @update:model-value="resetNombresPersona(r)" />
                             </div>
                             <div class="col-12 col-md-2">
-                                <q-input v-model="r.cedula_nro" label="Cédula *" outlined dense type="number" min="1"
-                                    :rules="[v => !!v || 'Requerido']"
+                                <div class="text-caption q-mb-xs">Cédula *</div>
+                                <q-input v-model="r.cedula_nro" outlined dense
+                                    type="number" min="1" :rules="[v => !!v || 'Requerido']"
                                     @update:model-value="resetNombresPersona(r)"
                                     @keyup.enter="consultarIdentidadPersona('representantes', i)">
                                     <template #append>
@@ -282,15 +291,25 @@
                                             @click="consultarIdentidadPersona('representantes', i)" />
                                     </template>
                                 </q-input>
+
                             </div>
+
                             <div class="col-12 col-md-3">
-                                <q-input v-model="r.nombre" :label="`Nombres ${i + 1} *`" outlined dense disable
-                                    readonly hint="Se completa automáticamente al consultar la cédula"
-                                    :rules="[v => !!v || 'Requerido']" />
+                                <div class="text-caption q-mb-xs">Nombres {{ i + 1 }} *</div>
+                                <q-input v-model="r.nombre" outlined dense
+                                    disable readonly :rules="[v => !!v || 'Requerido']" />
                             </div>
+
+                            <div class="col-12 col-md-3">
+                                <div class="text-caption q-mb-xs">Cargo  {{ i + 1 }} *</div>
+                                <q-input v-model="r.cargo" outlined dense :rules="['Requerido']" />
+                            </div>
+                            <!--
                             <div class="col-12 col-md-2">
-                                <q-input v-model="r.cargo" label="Cargo" outlined dense />
+                                <div class="text-caption q-mb-xs">Cargo</div>
+                                <q-input v-model="r.cargo" outlined dense />
                             </div>
+                            -->
                             <div class="col-auto">
                                 <q-btn flat round dense icon="delete" color="negative"
                                     @click="datos.representantes.splice(i, 1)" />
@@ -307,12 +326,14 @@
                                     Teléfonos <q-btn flat dense icon="add" size="sm" @click="addTel" />
                                 </div>
                                 <div v-for="(t, i) in datos.telefonos" :key="i"
-                                    class="row q-gutter-sm items-center q-mb-xs">
+                                    class="row q-gutter-sm items-end q-mb-xs">
                                     <div class="col">
-                                        <q-input v-model="t.telefono" outlined dense :label="`Teléfono ${i + 1}`"
+                                        <div class="text-caption q-mb-xs">Teléfono {{ i + 1 }}</div>
+                                        <q-input v-model="t.telefono" outlined dense
                                             mask="(####) ###-####" />
                                     </div>
                                     <div class="col-auto">
+                                        <div class="text-caption q-mb-xs">Tipo</div>
                                         <q-select v-model="t.tipo" :options="['general', 'fijo', 'celular', 'fax']"
                                             outlined dense style="width:90px" />
                                     </div>
@@ -329,14 +350,16 @@
                                     Correos <q-btn flat dense icon="add" size="sm" @click="addCorreo" />
                                 </div>
                                 <div v-for="(c, i) in datos.correos" :key="i"
-                                    class="row q-gutter-sm items-center q-mb-xs">
+                                    class="row q-gutter-sm items-end q-mb-xs">
                                     <div class="col">
-                                        <q-input v-model="c.correo" outlined dense :label="`Correo ${i + 1}`"
-                                            type="email" />
+                                        <div class="text-caption q-mb-xs">Correo {{ i + 1 }}</div>
+                                        <q-input v-model="c.correo" outlined dense type="email" />
                                     </div>
                                     <div class="col-auto">
-                                        <q-select v-model="c.tipo" :options="['general', 'institucional', 'personal']"
-                                            outlined dense style="width:120px" />
+                                        <div class="text-caption q-mb-xs">Tipo</div>
+                                        <q-select v-model="c.tipo"
+                                            :options="['general', 'institucional', 'personal']" outlined dense
+                                            style="width:120px" />
                                     </div>
                                     <div class="col-auto">
                                         <q-btn flat round dense icon="close" size="sm"
@@ -427,12 +450,13 @@
                     <section-header icon="people" label="Capacidad Instalada y Uso" />
                     <div class="row q-col-gutter-md q-mb-lg">
                         <div class="col-12 col-md-3">
+                            <div class="text-caption q-mb-xs">Capacidad total de residentes *</div>
                             <q-input v-model.number="cap.capacidad_total_residente"
-                                label="Capacidad total de residentes *" outlined dense type="number" min="0"
-                                hint="Cupos totales disponibles" />
+                                outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-md-3">
-                            <q-input v-model.number="cap.capacidad_actual_residente" label="Residentes actuales"
+                            <div class="text-caption q-mb-xs">Residentes actuales</div>
+                            <q-input v-model.number="cap.capacidad_actual_residente"
                                 outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-md-3">
@@ -440,8 +464,8 @@
                             <q-toggle v-model="cap.atencion_ambulatoria" label="Presta este servicio" />
                         </div>
                         <div class="col-12 col-md-3" v-if="cap.atencion_ambulatoria">
-                            <q-input v-model.number="cap.num_atencion_ambulatoria" label="Cupos ambulatorios" outlined
-                                dense type="number" min="0" />
+                            <div class="text-caption q-mb-xs">Cupos ambulatorios</div>
+                            <q-input v-model.number="cap.num_atencion_ambulatoria" outlined dense type="number" min="0" />
                         </div>
                     </div>
                     <div class="row justify-end q-mt-md q-gutter-sm">
@@ -461,7 +485,8 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
-                            <q-input v-model="pob.fecha_corte" label="Fecha de corte *" outlined dense readonly>
+                            <div class="text-caption q-mb-xs">Fecha de corte *</div>
+                            <q-input v-model="pob.fecha_corte" outlined dense readonly>
                                 <template #prepend>
                                     <q-icon name="event" class="cursor-pointer">
                                         <q-popup-proxy cover transition-show="scale" transition-hide="scale">
@@ -491,24 +516,22 @@
                                     <q-select v-model="row.modalidad" :options="[
                                         { value: 'residente', label: 'Residente' },
                                         { value: 'ambulatoria', label: 'Ambulatoria' }
-                                    ]" option-value="value" option-label="label" emit-value map-options outlined dense
-                                        style="min-width:140px" />
+                                    ]" option-value="value" option-label="label" emit-value map-options  outlined style="min-width:140px" />
                                 </td>
                                 <td>
                                     <q-select v-model="row.categoria" :options="[
                                         { value: 'adultos', label: 'Adultos' },
                                         { value: 'con_discapacidad', label: 'Con Discapacidad' },
                                         { value: 'otras_categorias', label: 'Otras categorías' }
-                                    ]" option-value="value" option-label="label" emit-value map-options outlined dense
-                                        style="min-width:180px" />
+                                    ]" option-value="valu" option-label="label" emit-value map-options outlined style="min-width:180px" />
                                 </td>
                                 <td>
-                                    <q-input v-model.number="row.femenino" outlined dense type="number" min="0"
-                                        style="width:80px" />
+                                    <q-input v-model.number="row.femenino" outlined dense
+                                        type="number" min="0" style="width:80px" />
                                 </td>
                                 <td>
-                                    <q-input v-model.number="row.masculino" outlined dense type="number" min="0"
-                                        style="width:80px" />
+                                    <q-input v-model.number="row.masculino" outlined dense
+                                        type="number" min="0" style="width:80px" />
                                 </td>
                                 <td>{{ (row.femenino || 0) + (row.masculino || 0) }}</td>
                                 <td>
@@ -536,6 +559,7 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
+                            <div class="text-caption q-mb-xs">Estado del inmueble</div>
                             <q-select
                                 v-model="infra.estado_inmueble_id"
                                 :options="opcionesEstadoInmueble"
@@ -545,20 +569,19 @@
                                 map-options
                                 outlined
                                 dense
-                                label="Estado del inmueble"
                             />
                         </div>
                         <div class="col-12 col-md-4">
-                            <q-input v-model.number="infra.num_dormitorios" label="Nro. de dormitorios" outlined dense
-                                type="number" min="0" />
+                            <div class="text-caption q-mb-xs">Nro. de dormitorios</div>
+                            <q-input v-model.number="infra.num_dormitorios" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Dormitorios adecuados</div>
                             <q-toggle v-model="infra.dormitorios_adecuados" label="Sí" />
                         </div>
                         <div class="col-12 col-md-4">
-                            <q-input v-model.number="infra.num_sanitarios" label="Nro. de sanitarios" outlined dense
-                                type="number" min="0" />
+                            <div class="text-caption q-mb-xs">Nro. de sanitarios</div>
+                            <q-input v-model.number="infra.num_sanitarios" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Sanitarios adecuados</div>
@@ -589,8 +612,8 @@
                             <q-toggle v-model="infra.iluminacion_adecuada" label="Sí" />
                         </div>
                         <div class="col-12 col-md-4">
-                            <q-input v-model.number="infra.capacidad_comedor_pct" label="% Capacidad comedor" outlined
-                                dense type="number" min="0" max="100" suffix="%" />
+                            <div class="text-caption q-mb-xs">% Capacidad comedor</div>
+                            <q-input v-model.number="infra.capacidad_comedor_pct" outlined dense type="number" min="0" max="100" suffix="%" />
                         </div>
                     </div>
 
@@ -602,8 +625,8 @@
                         </div>
                     </div>
 
-                    <q-input v-model="infra.descripcion_otros" label="Observaciones adicionales" outlined dense
-                        type="textarea" rows="2" class="q-mb-md" />
+                    <div class="text-caption q-mb-xs">Observaciones adicionales</div>
+                    <q-input v-model="infra.descripcion_otros" outlined dense type="textarea" rows="2" class="q-mb-md" />
 
                     <div class="row justify-end q-mt-md q-gutter-sm">
                         <q-btn unelevated color="primary" icon="save" label="Guardar Infraestructura" :loading="saving"
@@ -652,9 +675,9 @@
                                 <div class="row items-center justify-between">
                                     <q-toggle v-model="acc.ascensores" :label="acc.ascensores ? 'Sí' : 'No'" color="primary" />
                                     <div v-if="acc.ascensores" style="max-width: 140px;">
+                                        <div class="text-caption q-mb-xs">¿Cuántos? *</div>
                                         <q-input
                                             v-model.number="acc.num_ascensores"
-                                            label="¿Cuántos? *"
                                             outlined
                                             dense
                                             type="number"
@@ -732,15 +755,15 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div v-for="f in camposPersonal" :key="f.field" class="col-12 col-md-4 col-sm-6">
-                            <q-input v-model.number="pers[f.field]" :label="f.label" outlined dense type="number"
-                                min="0" />
+                            <div class="text-caption q-mb-xs">{{ f.label }}</div>
+                            <q-input v-model.number="pers[f.field]" outlined dense type="number" min="0" />
                         </div>
                     </div>
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-6">
-                            <q-input v-model="pers.descripcion_no_adscrito" label="Descripción personal no adscrito"
-                                outlined dense />
+                            <div class="text-caption q-mb-xs">Descripción personal no adscrito</div>
+                            <q-input v-model="pers.descripcion_no_adscrito" outlined dense />
                         </div>
                         <div class="col-12 col-md-3">
                             <div class="text-caption q-mb-xs">Posee expediente curricular</div>
@@ -751,8 +774,8 @@
                             <q-toggle v-model="pers.otros_personal" label="Sí" />
                         </div>
                         <div class="col-12" v-if="pers.otros_personal">
-                            <q-input v-model="pers.descripcion_otros_personal" label="Descripción otros personal"
-                                outlined dense />
+                            <div class="text-caption q-mb-xs">Descripción otros personal</div>
+                            <q-input v-model="pers.descripcion_otros_personal" outlined dense />
                         </div>
                     </div>
 
@@ -777,8 +800,10 @@
                                 <div class="text-caption text-weight-bold q-mb-xs">{{ s.label }}</div>
                                 <q-toggle v-model="serv[s.field]"
                                     :label="serv[s.field] ? 'Disponible' : 'No disponible'" />
-                                <q-input v-if="s.desc && serv[s.field]" v-model="serv[s.desc]" label="Especifique"
-                                    outlined dense class="q-mt-xs" />
+                                <template v-if="s.desc && serv[s.field]">
+                                    <div class="text-caption q-mb-xs q-mt-xs">Especifique</div>
+                                    <q-input v-model="serv[s.desc]" outlined dense />
+                                </template>
                             </q-card>
                         </div>
                     </div>
@@ -852,7 +877,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <q-input v-model="row.descripcion" outlined dense placeholder="Nota adicional" />
+                                    <q-input v-model="row.descripcion" outlined dense />
                                 </td>
                             </tr>
                         </template>

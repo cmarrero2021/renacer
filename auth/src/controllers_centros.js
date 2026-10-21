@@ -1499,6 +1499,103 @@ exports.descargarArchivoDocumento = async (req, res) => {
     }
 };
 
+// ============================================================
+// ARCHIVO RIF DEL CENTRO (cargado en el autorregistro)
+// Vive en centros.rif_archivo (ruta relativa a UPLOADS_BASE),
+// NO en ficha_documentos, para no duplicar el archivo.
+// ============================================================
+
+// ============================================================
+
+function rifExtensionDesdeRuta(ruta) {
+    const m = String(ruta || '').match(/\.([a-z0-9]+)$/i);
+    return m ? m[1].toLowerCase() : 'pdf';
+}
+
+// GET /centros/:id/rif-archivo          → muestra el archivo (inline)
+// GET /centros/:id/rif-archivo?download=1 → descarga
+exports.getRifArchivo = async (req, res) => {
+    const { id } = req.params;
+    const client = await pool.connect();
+    try {
+        if (!(await verifyCentroAccess(req.userId, id, client, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+        const r = await client.query('SELECT rif_archivo FROM public.centros WHERE id = $1 AND deleted_at IS NULL', [id]);
+        if (!r.rows.length || !r.rows[0].rif_archivo) {
+            return res.status(404).json({ error: 'El centro no tiene un archivo RIF cargado.' });
+        }
+        // Normalizar rutas legacy (versiones anteriores guardaban con prefijo 'uploads/')
+        const ruta = String(r.rows[0].rif_archivo).replace(/\\/g, '/').replace(/^uploads\//, '');
+        const absolutePath = getAbsoluteFilePath(ruta);
+        if (!fs.existsSync(absolutePath)) {
+            return res.status(404).json({ error: 'El archivo RIF no se encuentra en el servidor.' });
+        }
+        // Detectar formato por el sufijo real del archivo (tolera nombres corruptos como rif.isteriopdf)
+        const esPdf = /\.pdf$/i.test(absolutePath);
+        const esPng = /\.png$/i.test(absolutePath);
+        const mimetype = esPdf ? 'application/pdf' : esPng ? 'image/png' : 'image/jpeg';
+        const filename = `RIF.${esPdf ? 'pdf' : esPng ? 'png' : 'jpg'}`;
+        res.setHeader('Content-Type', mimetype);
+        res.setHeader('Content-Disposition', `${req.query.download === '1' ? 'attachment' : 'inline'}; filename="${encodeURIComponent(filename)}"`);
+        return res.sendFile(absolutePath);
+    } catch (err) {
+        res.status(500).json({ error: 'Error al obtener el archivo RIF', detail: err.message });
+    } finally { client.release(); }
+};
+
+// PUT /centros/:id/rif-archivo  { archivo_base64, archivo_nombre }
+// Reemplaza el archivo RIF del centro (permite PDF o imagen PNG/JPG; máx. 10 MB)
+exports.reemplazarRifArchivo = async (req, res) => {
+    const { id } = req.params;
+    const { archivo_base64, archivo_nombre } = req.body || {};
+    const client = await pool.connect();
+    try {
+        if (!(await verifyCentroAccess(req.userId, id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+        if (!archivo_base64) {
+            return res.status(400).json({ error: 'El archivo RIF es requerido.' });
+        }
+        const nombre = String(archivo_nombre || 'rif.pdf');
+        if (!/\.(pdf|png|jpe?g)$/i.test(nombre)) {
+            return res.status(400).json({ error: 'El archivo RIF debe ser PDF o imagen (PNG/JPG).' });
+        }
+        const cleanBase64 = archivo_base64.includes(';base64,')
+            ? archivo_base64.split(';base64,')[1]
+            : archivo_base64;
+        const buf = Buffer.from(cleanBase64, 'base64');
+        if (!buf.length) return res.status(400).json({ error: 'Archivo vacío o inválido.' });
+        if (buf.length > 10 * 1024 * 1024) {
+            return res.status(400).json({ error: 'El archivo supera el límite máximo de 10 MB.' });
+        }
+
+        // Ruta anterior (para borrar del disco tras guardar la nueva)
+        const prev = await client.query('SELECT rif_archivo FROM public.centros WHERE id = $1 AND deleted_at IS NULL', [id]);
+        if (!prev.rows.length) return res.status(404).json({ error: 'Centro no encontrado.' });
+
+        const ext = (nombre.match(/\.([a-z0-9]+)$/i) || [, 'pdf'])[1].toLowerCase();
+        const dirRelative = pathModule.join('documentos', String(id));
+        const dirAbsolute = pathModule.join(UPLOADS_BASE, dirRelative);
+        if (!fs.existsSync(dirAbsolute)) fs.mkdirSync(dirAbsolute, { recursive: true });
+
+        // Nombre fijo rif.{ext}: elimina TODOS los archivos rif.* previos (incluidos nombres corruptos legacy)
+        if (fs.existsSync(dirAbsolute)) {
+            for (const f of fs.readdirSync(dirAbsolute)) {
+                if (/^rif\./i.test(f)) fs.unlinkSync(pathModule.join(dirAbsolute, f));
+            }
+        }
+        const fileRelative = pathModule.join(dirRelative, `rif.${ext}`).replace(/\\/g, '/');
+        fs.writeFileSync(pathModule.join(UPLOADS_BASE, fileRelative), buf);
+
+        await client.query('UPDATE public.centros SET rif_archivo = $1, updated_at = NOW() WHERE id = $2', [fileRelative, id]);
+
+        res.json({ message: 'Archivo RIF actualizado exitosamente.', rif_archivo: fileRelative });
+    } catch (err) {
+        res.status(500).json({ error: 'Error al reemplazar el archivo RIF', detail: err.message });
+    } finally { client.release(); }
+};
+
 // Listar centros a los que un usuario tiene acceso (propio + delegados)
 exports.listUserCentros = async (req, res) => {
     const { userId } = req.params;

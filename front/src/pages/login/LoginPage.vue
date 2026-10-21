@@ -320,6 +320,38 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Diálogo Sesión Activa -->
+    <q-dialog v-model="showActiveSessionDialog" persistent>
+      <q-card style="min-width: 360px; max-width: 480px;">
+        <q-card-section class="bg-warning text-white row items-center">
+          <div class="text-h6">
+            <q-icon name="warning" class="q-mr-sm" />
+            Sesión activa detectada
+          </div>
+        </q-card-section>
+        <q-card-section class="q-pt-md">
+          <p class="text-body2">
+            Este usuario ya tiene una sesión abierta en otro dispositivo o navegador y aún no ha expirado.
+          </p>
+          <p class="text-body2 text-grey-7">
+            ¿Desea cerrar esa sesión e iniciar una nueva?
+          </p>
+        </q-card-section>
+        <q-card-actions align="right" class="q-px-md q-pb-md">
+          <q-btn flat label="Cancelar" color="grey" @click="showActiveSessionDialog = false" />
+          <q-btn
+            unelevated
+            color="warning"
+            text-color="white"
+            icon="logout"
+            label="Cerrar sesión anterior e ingresar"
+            :loading="forceLoginLoading"
+            @click="handleForceLoginAndRetry"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -398,10 +430,17 @@ const handleLogin = async () => {
       completeLogin(response.data);
     }
   } catch (error) {
-    const mensaje = error.response?.data?.error || 'Error de conexión. Intente nuevamente.';
-    Notify.create({ message: mensaje, color: "negative", position: "top", timeout: 4000 });
-    if (error.response?.data?.suspended) {
-      resetToLogin();
+    const data = error.response?.data;
+    if (data?.activeSession) {
+      // Hay sesión activa: mostrar diálogo para ofrecer cierre forzado
+      activeSessionUserId.value = data.userId;
+      showActiveSessionDialog.value = true;
+    } else {
+      const mensaje = data?.error || 'Error de conexión. Intente nuevamente.';
+      Notify.create({ message: mensaje, color: "negative", position: "top", timeout: 4000 });
+      if (data?.suspended) {
+        resetToLogin();
+      }
     }
   } finally {
     loginLoading.value = false;
@@ -456,6 +495,29 @@ const completeLogin = (data) => {
   Notify.create({ message: "Ingresó correctamente", color: "positive", position: "top", timeout: 3000, icon: "check_circle" });
   // El rol Usuario (id 2) aterriza directo en Centros de Atención
   router.push(Number(data.roleId) === 2 ? "/admin/centros" : "/admin");
+};
+
+// ==========================================
+// SESIÓN ACTIVA – CIERRE FORZADO Y REINTENTO
+// ==========================================
+const showActiveSessionDialog = ref(false);
+const activeSessionUserId = ref(null);
+const forceLoginLoading = ref(false);
+
+const handleForceLoginAndRetry = async () => {
+  forceLoginLoading.value = true;
+  try {
+    // 1. Revocar la sesión activa del usuario
+    await axios.post(`${authApiUrl}/force-logout`, { userId: activeSessionUserId.value });
+    showActiveSessionDialog.value = false;
+    activeSessionUserId.value = null;
+    // 2. Reintentar el login con las mismas credenciales
+    await handleLogin();
+  } catch {
+    Notify.create({ message: 'No se pudo cerrar la sesión anterior. Intente nuevamente.', color: 'negative', position: 'top', timeout: 4000 });
+  } finally {
+    forceLoginLoading.value = false;
+  }
 };
 
 // ==========================================

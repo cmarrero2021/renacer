@@ -30,6 +30,16 @@ export const centrosService = {
     // Consulta de identidad (nacionalidad + cédula → API de identificación)
     consultarIdentidad: (nacionalidad, cedula) =>
         authApi.post('/identidad/consultar', { nacionalidad, cedula: parseInt(cedula, 10) }),
+    // Archivo RIF precargado del centro (registrado con carga de RIF)
+    getRifArchivo: (centroId, download = false) =>
+        authApi.get(`/centros/${centroId}/rif-archivo${download ? '?download=1' : ''}`, {
+            responseType: 'blob'
+        }),
+    reemplazarRifArchivo: (centroId, archivoBase64, archivoNombre) =>
+        authApi.put(`/centros/${centroId}/rif-archivo`, {
+            archivo_base64: archivoBase64,
+            archivo_nombre: archivoNombre
+        }),
 };
 
 // ─── Fichas ───────────────────────────────────────────────────────────────────
@@ -45,6 +55,10 @@ export const fichasService = {
     saveInfraestructura: (fichaId, data) => authApi.put(`/fichas/${fichaId}/infraestructura`, data),
     saveAccesibilidad: (fichaId, data) => authApi.put(`/fichas/${fichaId}/accesibilidad`, data),
     saveDocumentos: (fichaId, data) => authApi.put(`/fichas/${fichaId}/documentos`, data),
+    getDocumentoArchivo: (fichaId, docId, download = false) =>
+        authApi.get(`/fichas/${fichaId}/documentos/${docId}/archivo${download ? '?download=1' : ''}`, {
+            responseType: 'blob'
+        }),
     getDocumentoArchivo: (fichaId, docId, download = false) =>
         authApi.get(`/fichas/${fichaId}/documentos/${docId}/archivo${download ? '?download=1' : ''}`, {
             responseType: 'blob'

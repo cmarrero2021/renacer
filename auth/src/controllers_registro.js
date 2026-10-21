@@ -579,11 +579,11 @@ exports.completarRegistro = async (req, res) => {
       [centroId, centroCorreoNorm]
     );
 
-    // Ficha inicial del centro con la dirección (texto libre)
+    // Ficha inicial del centro con la dirección (texto libre) y tipo de solicitud inicial
     await client.query(
       `INSERT INTO public.fichas_establecimiento
-         (centro_id, version, direccion, is_current)
-       VALUES ($1, 1, $2, TRUE)`,
+         (centro_id, version, direccion, tipo_solicitud, is_current)
+       VALUES ($1, 1, $2, 'registro_autorizacion', TRUE)`,
       [centroId, String(direccion).trim()]
     );
 

@@ -328,12 +328,15 @@ const guardarArchivoRif = async (centroId, archivoBase64, nombreArchivo) => {
       fs.mkdirSync(centroDocsPath, { recursive: true });
     }
 
-    const ext = (nombreArchivo || 'rif.pdf').toLowerCase().replace(/[^a-z0-9]/g, '').slice(-10) || 'pdf';
+    const nombre = String(nombreArchivo || 'rif.pdf').toLowerCase();
+    const extMatch = nombre.match(/\.([a-z0-9]+)$/);
+    const ext = extMatch && ext.length === 2 ? extMatch[1] : 'pdf';
     const destPath = path.join(centroDocsPath, `rif.${ext}`);
     const buf = Buffer.from(archivoBase64, 'base64');
     fs.writeFileSync(destPath, buf);
 
-    const relativePath = path.relative(process.cwd(), destPath).replace(/\\/g, '/');
+    // Ruta relativa a UPLOADS_BASE (misma convención que writeFileToDisk en controllers_centros)
+    const relativePath = path.relative(uploadsPath, destPath).replace(/\\/g, '/');
     return relativePath;
   } catch (err) {
     console.error('Error al guardar archivo RIF:', err.message);

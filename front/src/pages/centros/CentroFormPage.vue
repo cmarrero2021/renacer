@@ -167,7 +167,7 @@
                             </div>
                             <div class="col-12">
                                 <div class="text-caption q-mb-xs">b) Dirección completa (Av, Calle, Urb, N°) *</div>
-                                <q-input v-model="datos.direccion" outlined dense :rules="[v => !!v || 'Requerido']" />
+                                <q-input v-model="datos.direccion" readonly disabled outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
 
                             <!-- Botones de geolocalización -->
@@ -176,9 +176,7 @@
                                     <q-btn unelevated color="primary" icon="my_location" size="sm"
                                         label="Usar mi ubicación actual" :loading="geoLoading"
                                         @click="obtenerUbicacionActual" />
-                                    <q-btn outline color="secondary" icon="search" size="sm"
-                                        label="Geocodificar dirección" :loading="geocodeLoading"
-                                        :disable="!datos.direccion" @click="geocodificarDireccion" />
+                                    <!-- <q-btn outline color="secondary" icon="search" size="sm" label="Geocodificar dirección" :loading="geocodeLoading" :disable="!datos.direccion" @click="geocodificarDireccion" /> -->
                                     <q-chip v-if="datos.latitud && datos.longitud" dense color="positive"
                                         text-color="white" icon="check_circle">
                                         Coordenadas cargadas
@@ -485,18 +483,10 @@
 
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Fecha de corte *</div>
-                            <q-input v-model="pob.fecha_corte" outlined dense readonly>
+                            <div class="text-caption q-mb-xs">Fecha de corte</div>
+                            <q-input v-model="pob.fecha_corte" outlined dense readonly disable>
                                 <template #prepend>
-                                    <q-icon name="event" class="cursor-pointer">
-                                        <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                                            <q-date v-model="pob.fecha_corte" mask="DD/MM/YYYY" minimal today-btn>
-                                                <div class="row items-center justify-end">
-                                                    <q-btn v-close-popup label="Cerrar" color="primary" flat />
-                                                </div>
-                                            </q-date>
-                                        </q-popup-proxy>
-                                    </q-icon>
+                                    <q-icon name="event" color="grey-6" />
                                 </template>
                             </q-input>
                         </div>
@@ -506,7 +496,7 @@
                     <q-table :rows="pob.registros" :columns="colsPob" flat bordered dense
                         no-data-label="Agregue filas con el botón +" hide-bottom>
                         <template #top>
-                            <span class="text-caption text-grey">Residentes y ambulatorios por categoría</span>
+                            <span class="text-caption text-grey">Residentes y ambulatorios por condición de autonomía</span>
                             <q-space />
                             <q-btn flat dense icon="add" label="Agregar fila" @click="addPobRow" size="sm" />
                         </template>
@@ -575,41 +565,43 @@
                             <div class="text-caption q-mb-xs">Nro. de dormitorios</div>
                             <q-input v-model.number="infra.num_dormitorios" outlined dense type="number" min="0" />
                         </div>
+                        <!--
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Dormitorios adecuados</div>
-                            <q-toggle v-model="infra.dormitorios_adecuados" label="Sí" />
+                            <q-toggle v-model="infra.dormitorios_adecuados" :label="infra.dormitorios_adecuados ? 'Sí' : 'No'" color="primary" />
                         </div>
+                    -->
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Nro. de sanitarios</div>
                             <q-input v-model.number="infra.num_sanitarios" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Sanitarios adecuados</div>
-                            <q-toggle v-model="infra.sanitarios_adecuados" label="Sí" />
+                            <q-toggle v-model="infra.sanitarios_adecuados" :label="infra.sanitarios_adecuados ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Área de cocina</div>
-                            <q-toggle v-model="infra.tiene_area_cocina" label="Tiene" />
+                            <q-toggle v-model="infra.tiene_area_cocina" :label="infra.tiene_area_cocina ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4" v-if="infra.tiene_area_cocina">
                             <div class="text-caption q-mb-xs">Cocina adecuada</div>
-                            <q-toggle v-model="infra.cocina_adecuada" label="Sí" />
+                            <q-toggle v-model="infra.cocina_adecuada" :label="infra.cocina_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Áreas de atención médica o enfermería</div>
-                            <q-toggle v-model="infra.areas_atencion_medica" label="Tiene" />
+                            <q-toggle v-model="infra.areas_atencion_medica" :label="infra.areas_atencion_medica ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Áreas verdes</div>
-                            <q-toggle v-model="infra.areas_verdes" label="Tiene" />
+                            <q-toggle v-model="infra.areas_verdes" :label="infra.areas_verdes ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Ventilación adecuada</div>
-                            <q-toggle v-model="infra.ventilacion_adecuada" label="Sí" />
+                            <q-toggle v-model="infra.ventilacion_adecuada" :label="infra.ventilacion_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Iluminación adecuada</div>
-                            <q-toggle v-model="infra.iluminacion_adecuada" label="Sí" />
+                            <q-toggle v-model="infra.iluminacion_adecuada" :label="infra.iluminacion_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">% Capacidad comedor</div>
@@ -621,7 +613,7 @@
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-6 col-md-3" v-for="s in serviciosBasicos" :key="s.field">
                             <div class="text-caption q-mb-xs">{{ s.label }}</div>
-                            <q-toggle v-model="infra[s.field]" label="Disponible" />
+                            <q-toggle v-model="infra[s.field]" :label="infra[s.field] ? 'Sí' : 'No'" color="primary" />
                         </div>
                     </div>
 
@@ -832,15 +824,43 @@
                         <template #body="{ row }">
                             <tr>
                                 <td class="text-weight-medium">{{ row.tipo_documento_label }}</td>
-                                <td class="text-center" style="width: 100px">
+                                <td v-if="!esRifPrecargado(row)" class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_original" dense color="positive" />
                                 </td>
-                                <td class="text-center" style="width: 100px">
+                                <td v-else class="text-center text-caption text-grey-5" style="width: 100px">—</td>
+                                <td v-if="!esRifPrecargado(row)" class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_copia" dense color="info" />
                                 </td>
+                                <td v-else class="text-center text-caption text-grey-5" style="width: 100px">—</td>
                                 <td style="min-width: 250px">
+                                    <!-- Fila RIF precargada desde el autorregistro: no eliminable, reemplazable -->
+                                    <div v-if="esRifPrecargado(row)" class="row items-center q-gutter-xs">
+                                        <input
+                                            type="file"
+                                            accept=".pdf,.png,.jpg,.jpeg"
+                                            id="file-upload-rif-reemplazo"
+                                            style="display: none"
+                                            @change="onRifReemplazoSelected"
+                                        />
+                                        <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf"
+                                            :title="rifNombrePrecargado">
+                                            <span class="ellipsis" style="max-width: 130px">
+                                                {{ rifNombrePrecargado }}
+                                            </span>
+                                        </q-chip>
+                                        <q-chip dense color="blue-1" text-color="primary" icon="verified" class="text-caption">
+                                            Cargado en el registro
+                                        </q-chip>
+                                        <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                            @click="previewDoc(row)" title="Ver archivo" />
+                                        <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                            @click="downloadDoc(row)" title="Descargar" />
+                                        <q-btn flat round dense size="sm" icon="sync" color="primary"
+                                            :loading="rifReemplazando"
+                                            @click="triggerRifReemplazo" title="Reemplazar archivo RIF" />
+                                    </div>
                                     <!-- Si tiene archivo (cargado en sesión o guardado previamente) -->
-                                    <div v-if="row.tiene_archivo || row.archivo_nombre" class="row items-center q-gutter-xs">
+                                    <div v-else-if="row.tiene_archivo || row.archivo_nombre" class="row items-center q-gutter-xs">
                                         <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf" removable
                                             @remove="removeDocFile(row)" :title="row.archivo_nombre || 'Archivo PDF'">
                                             <span class="ellipsis" style="max-width: 130px">
@@ -1115,15 +1135,19 @@ const cap = ref({
     capacidad_total_residente: null, atencion_ambulatoria: false,
     capacidad_actual_residente: null, num_atencion_ambulatoria: null
 });
-const pob = ref({ fecha_corte: '', registros: [] });
+const pob = ref({ fecha_corte: hoyDisplay, registros: [] });
 const infra = ref({
-    estado_inmueble_id: null, num_dormitorios: null, dormitorios_adecuados: null,
-    num_sanitarios: null, sanitarios_adecuados: null, tiene_area_cocina: null,
-    cocina_adecuada: null, areas_atencion_medica: false, areas_verdes: false,
-    ventilacion_adecuada: null, iluminacion_adecuada: null,
-    capacidad_comedor_pct: null, luz_electrica: null, agua_potable: null,
-    agua_servidas: null, deposito_basura: null, sistema_seguridad: null,
+    estado_inmueble_id: null, num_dormitorios: null, dormitorios_adecuados: false,
+    num_sanitarios: null, sanitarios_adecuados: false, tiene_area_cocina: false,
+    cocina_adecuada: false, areas_atencion_medica: false, areas_verdes: false,
+    ventilacion_adecuada: false, iluminacion_adecuada: false,
+    capacidad_comedor_pct: null, luz_electrica: false, agua_potable: false,
+    agua_servidas: false, deposito_basura: false, sistema_seguridad: false,
     descripcion_otros: ''
+});
+
+watch(() => infra.value.tiene_area_cocina, (val) => {
+    if (!val) infra.value.cocina_adecuada = false;
 });
 const acc = ref({
     rampas_fijas: false,
@@ -1154,6 +1178,60 @@ const serv = ref({
 });
 const docs = ref([]);
 
+// ── RIF precargado desde el autorregistro (centros.rif_archivo) ──────────────
+const rifPrecargado = ref(null);            // ruta relativa del archivo (ej: documentos/5/rif.pdf)
+const rifReemplazando = ref(false);
+
+const esFilaRif = (row) => String(row.tipo_documento || '').toLowerCase() === 'rif';
+const esRifPrecargado = (row) => esFilaRif(row) && !!rifPrecargado.value;
+const rifNombrePrecargado = computed(() => {
+    const ruta = String(rifPrecargado.value || '');
+    return ruta.split('/').pop() || 'RIF';
+});
+
+function triggerRifReemplazo() {
+    const el = document.getElementById('file-upload-rif-reemplazo');
+    if (el) { el.value = ''; el.click(); }
+}
+
+function onRifReemplazoSelected(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+
+    if (!/\.(pdf|png|jpe?g)$/i.test(file.name)) {
+        Notify.create({ type: 'negative', icon: 'warning', message: 'El archivo RIF debe ser PDF o imagen (PNG/JPG).' });
+        return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+        Notify.create({ type: 'negative', icon: 'warning', message: 'El archivo supera el límite máximo de 10 MB.' });
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        const base64 = String(e.target.result || '');
+        const base64Puro = base64PuroDesdeDataUrl(base64);
+        rifReemplazando.value = true;
+        try {
+            const res = await centrosService.reemplazarRifArchivo(centroId.value, base64Puro, file.name);
+            rifPrecargado.value = res.data?.rif_archivo || rifPrecargado.value;
+            Notify.create({ type: 'positive', message: 'Archivo RIF reemplazado exitosamente.' });
+        } catch (err) {
+            Notify.create({ type: 'negative', message: err.response?.data?.error || 'Error al reemplazar el archivo RIF.' });
+        } finally {
+            rifReemplazando.value = false;
+        }
+    };
+    reader.onerror = () => Notify.create({ type: 'negative', message: 'Error al leer el archivo seleccionado.' });
+    reader.readAsDataURL(file);
+}
+
+function base64PuroDesdeDataUrl(dataUrl) {
+    const s = String(dataUrl || '');
+    return s.includes(',') ? s.split(',')[1] : s;
+}
+
 function syncDocsFromCatalog() {
     const existing = new Map(docs.value.map(d => [d.tipo_documento, d]));
     docs.value = catalogosStore.opcionesDocumentos.map(catDoc => {
@@ -1183,7 +1261,7 @@ watch(() => catalogosStore.opcionesDocumentos, () => {
 // ── Columnas de tablas ────────────────────────────────────────────────────────
 const colsPob = [
     { name: 'modalidad', label: 'Modalidad', field: 'modalidad', align: 'left' },
-    { name: 'categoria', label: 'Categoría', field: 'categoria', align: 'left' },
+    { name: 'categoria', label: 'Condición de autonomía', field: 'categoria', align: 'left' },
     { name: 'femenino', label: 'Femenino', field: 'femenino', align: 'center' },
     { name: 'masculino', label: 'Masculino', field: 'masculino', align: 'center' },
     { name: 'total', label: 'Total', field: 'total', align: 'center' },
@@ -1233,8 +1311,10 @@ const tabSources = {
 
 function tabFieldCount(name) {
     if (name === 'documentos') {
-        const filled = docs.value.filter(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo).length;
-        return { filled, total: docs.value.length };
+        // El RIF precargado no interviene en el progreso ni en Guardar y Finalizar
+        const contables = docs.value.filter(d => !esRifPrecargado(d));
+        const filled = contables.filter(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo).length;
+        return { filled, total: contables.length };
     }
     const src = tabSources[name];
     return src ? countFields(src.value, tabFieldDefs[name] || []) : { filled: 0, total: 0 };
@@ -1245,8 +1325,10 @@ function tabProgress(name) {
 }
 
 const allDocsHaveFile = computed(() => {
-    if (!docs.value || !docs.value.length) return false;
-    return docs.value.every(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo);
+    // Fila RIF precargada excluida: no bloquea "Guardar y Finalizar"
+    const contables = docs.value.filter(d => !esRifPrecargado(d));
+    if (!contables.length) return false;
+    return contables.every(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo);
 });
 
 watch(allDocsHaveFile, (complete) => {
@@ -1847,12 +1929,29 @@ async function getDocBlob(row) {
     if (row.nuevo_archivo && row.archivo_base64) {
         return dataURLtoBlob(row.archivo_base64);
     }
+    // RIF precargado: el archivo vive en centros.rif_archivo, no en ficha_documentos
+    if (esRifPrecargado(row) && centroId.value) {
+        const res = await centrosService.getRifArchivo(centroId.value);
+        return res.data;
+    }
     if (fichaId.value && (row.id || row.tipo_documento)) {
         const identifier = row.id || row.tipo_documento;
         const res = await fichasService.getDocumentoArchivo(fichaId.value, identifier);
         return res.data;
     }
     throw new Error('No se puede obtener el archivo.');
+}
+
+// Extrae el mensaje de error del backend aunque la respuesta sea Blob (responseType: 'blob')
+async function mensajeErrorDoc(err, fallback) {
+    try {
+        const data = err?.response?.data;
+        if (data instanceof Blob) {
+            const txt = await data.text();
+            try { return JSON.parse(txt)?.error || fallback; } catch { return fallback; }
+        }
+        return data?.error || fallback;
+    } catch { return fallback; }
 }
 
 async function previewDoc(row) {
@@ -1870,7 +1969,7 @@ async function previewDoc(row) {
         console.error(err);
         Notify.create({
             type: 'negative',
-            message: 'No se pudo abrir el archivo PDF.'
+            message: await mensajeErrorDoc(err, 'No se pudo abrir el archivo.')
         });
     }
 }
@@ -1890,7 +1989,7 @@ async function downloadDoc(row) {
         console.error(err);
         Notify.create({
             type: 'negative',
-            message: 'No se pudo descargar el archivo PDF.'
+            message: await mensajeErrorDoc(err, 'No se pudo descargar el archivo.')
         });
     }
 }
@@ -1915,19 +2014,21 @@ function downloadCurrentPdf() {
 }
 
 function getDocsPayload() {
-    return docs.value.map(d => ({
-        id: d.id,
-        tipo_documento: d.tipo_documento,
-        tipo_documento_label: d.tipo_documento_label,
-        tiene_original: d.tiene_original || false,
-        tiene_copia: d.tiene_copia || false,
-        descripcion: d.descripcion || null,
-        archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
-        archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
-        archivo_tamano: d.nuevo_archivo ? d.archivo_tamano : undefined,
-        archivo_mimetype: d.nuevo_archivo ? d.archivo_mimetype : undefined,
-        eliminar_archivo: !!d.eliminar_archivo
-    }));
+    return docs.value
+        .filter(d => !esRifPrecargado(d) || !d.nuevo_archivo) // RIF precargado nunca lleva archivo aquí
+        .map(d => ({
+            id: d.id,
+            tipo_documento: d.tipo_documento,
+            tipo_documento_label: d.tipo_documento_label,
+            tiene_original: esRifPrecargado(d) ? false : (d.tiene_original || false),
+            tiene_copia: esRifPrecargado(d) ? false : (d.tiene_copia || false),
+            descripcion: d.descripcion || null,
+            archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
+            archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
+            archivo_tamano: d.nuevo_archivo ? d.archivo_tamano : undefined,
+            archivo_mimetype: d.nuevo_archivo ? d.archivo_mimetype : undefined,
+            eliminar_archivo: !!d.eliminar_archivo
+        }));
 }
 
 function markDocsSaved() {
@@ -2012,11 +2113,14 @@ async function saveDocumentos() {
             Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente! Todos los documentos PDF fueron adjuntados.' });
             router.push(`/admin/centros/${centroId.value}`);
         } else {
-            const faltantes = docs.value.filter(d => !d.tiene_archivo && !d.archivo_nombre).length;
+            const contables = docs.value.filter(d => !esRifPrecargado(d) && !d.tiene_archivo && !d.archivo_nombre && !d.nuevo_archivo);
+            const faltantes = contables.length;
             Notify.create({
                 type: 'warning',
                 icon: 'warning',
-                message: `Documentos guardados. Faltan ${faltantes} archivo(s) PDF por subir para completar el progreso de la ficha.`
+                message: faltantes
+                    ? `Documentos guardados. Faltan ${faltantes} archivo(s) PDF por subir para completar el progreso de la ficha.`
+                    : 'Documentos guardados.'
             });
         }
     } catch (err) {
@@ -2194,6 +2298,9 @@ onMounted(async () => {
                 correos: centro.correos || [],
             });
 
+            // RIF precargado en el autorregistro (documentos/<centro_id>/rif.<ext>)
+            rifPrecargado.value = centro.rif_archivo || null;
+
             // Extraer RIF si viene combinado (ej: J-12345678-9)
             if (centro.rif) {
                 const parts = String(centro.rif).split('-');
@@ -2233,8 +2340,17 @@ onMounted(async () => {
                 if (ficha.infraestructura.estado_inmueble_id != null) {
                     infra.value.estado_inmueble_id = Number(ficha.infraestructura.estado_inmueble_id);
                 }
+                infra.value.dormitorios_adecuados = !!ficha.infraestructura.dormitorios_adecuados;
+                infra.value.sanitarios_adecuados = !!ficha.infraestructura.sanitarios_adecuados;
+                infra.value.tiene_area_cocina = !!ficha.infraestructura.tiene_area_cocina;
+                infra.value.cocina_adecuada = !!ficha.infraestructura.cocina_adecuada;
                 infra.value.areas_atencion_medica = !!ficha.infraestructura.areas_atencion_medica;
                 infra.value.areas_verdes = !!ficha.infraestructura.areas_verdes;
+                infra.value.ventilacion_adecuada = !!ficha.infraestructura.ventilacion_adecuada;
+                infra.value.iluminacion_adecuada = !!ficha.infraestructura.iluminacion_adecuada;
+                serviciosBasicos.forEach(s => {
+                    infra.value[s.field] = !!ficha.infraestructura[s.field];
+                });
                 savedTabs.value.infraestructura = true;
             }
             if (ficha.accesibilidad) {

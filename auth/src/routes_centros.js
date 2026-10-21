@@ -8,6 +8,7 @@ const {
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveAccesibilidad, saveDocumentos,
     descargarArchivoDocumento,
+    getRifArchivo, reemplazarRifArchivo,
     purgeDeletedRecords, listMaintenanceLogs,
     proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
     uploadFoto, deleteFoto, consultarIdentidad
@@ -45,6 +46,10 @@ router.delete('/centros/:id', deleteCentro); // Protegido por verifyCentroAccess
 // ─── Foto del Centro ─────────────────────────────────────────────
 router.post('/centros/:id/foto', uploadFoto);   // Subir / reemplazar foto
 router.delete('/centros/:id/foto', deleteFoto); // Eliminar foto
+
+// ─── Archivo RIF del centro (cargado en autorregistro) ───────────
+router.get('/centros/:id/rif-archivo', getRifArchivo);            // ver / ?download=1
+router.put('/centros/:id/rif-archivo', reemplazarRifArchivo);     // reemplazar (no eliminar)
 
 // ─── Fichas (versionadas) ─────────────────────────────────────────────────
 router.get('/centros/:centroId/fichas', listFichas); // Protegido por verifyCentroAccess

@@ -541,6 +541,8 @@ exports.login = async (req, res) => {
       if (currentTime.isBefore(sessionExpiration)) {
         return res.status(403).json({
           error: "La sesión del usuario ya está abierta y no ha expirado.",
+          activeSession: true,
+          userId: session.user_id,
         });
       } else {
         await client.query("UPDATE sessions SET is_revoked = true WHERE id = $1", [

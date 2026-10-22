@@ -767,9 +767,12 @@ exports.getFichaActual = async (req, res) => {
             client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [ficha.id]),
             client.query(`
                 SELECT fi.*,
-                       ei.nombre AS estado_inmueble_nombre
+                       ei.nombre AS estado_inmueble_nombre,
+                       tp.nombre AS planta_electrica_tipo_nombre,
+                       tp.es_baterias AS planta_electrica_tipo_es_baterias
                 FROM public.ficha_infraestructura fi
                 LEFT JOIN public.estados_inmueble ei ON ei.id = fi.estado_inmueble_id
+                LEFT JOIN public.tipo_planta tp ON tp.id = fi.planta_electrica_tipo_id
                 WHERE fi.ficha_id = $1
             `, [ficha.id]),
             client.query('SELECT * FROM public.ficha_accesibilidad WHERE ficha_id = $1', [ficha.id]),
@@ -910,14 +913,13 @@ exports.createFicha = async (req, res) => {
           banos_por_habitacion, personas_por_habitacion,
           iluminacion_emergencia, senalizacion_clara, prevencion_incendios,
           sistemas_ventilacion, aire_acondicionado, normativa_visible,
-          planta_electrica, planta_electrica_gasolina, planta_electrica_gasoil,
-          planta_electrica_kerosen, planta_electrica_baterias_fijas, planta_electrica_baterias_portatiles,
+          planta_electrica, planta_electrica_tipo_id,
           planta_electrica_panel_solar,
           acepta_mascotas, tiene_comedor, tiene_farmacia_almacen_clinico,
           gerogranjas, residuos_separados)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
                  $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,
-                 $37,$38,$39,$40,$41,$42)`,
+                 $37,$38)`,
                 [ficha.id, infraestructura.estado_inmueble_id, infraestructura.num_dormitorios,
                 infraestructura.dormitorios_adecuados, infraestructura.num_sanitarios,
                 infraestructura.sanitarios_adecuados, infraestructura.tiene_area_cocina,
@@ -934,10 +936,7 @@ exports.createFicha = async (req, res) => {
                 infraestructura.iluminacion_emergencia ?? false, infraestructura.senalizacion_clara ?? false,
                 infraestructura.prevencion_incendios ?? false, infraestructura.sistemas_ventilacion ?? false,
                 infraestructura.aire_acondicionado ?? false, infraestructura.normativa_visible ?? false,
-                infraestructura.planta_electrica ?? false, infraestructura.planta_electrica_gasolina ?? false,
-                infraestructura.planta_electrica_gasoil ?? false, infraestructura.planta_electrica_kerosen ?? false,
-                infraestructura.planta_electrica_baterias_fijas ?? false,
-                infraestructura.planta_electrica_baterias_portatiles ?? false,
+                infraestructura.planta_electrica ?? false, infraestructura.planta_electrica_tipo_id ?? null,
                 infraestructura.planta_electrica_panel_solar ?? false,
                 infraestructura.acepta_mascotas ?? false, infraestructura.tiene_comedor ?? false,
                 infraestructura.tiene_farmacia_almacen_clinico ?? false,
@@ -1303,14 +1302,13 @@ exports.saveInfraestructura = async (req, res) => {
               banos_por_habitacion, personas_por_habitacion,
               iluminacion_emergencia, senalizacion_clara, prevencion_incendios,
               sistemas_ventilacion, aire_acondicionado, normativa_visible,
-              planta_electrica, planta_electrica_gasolina, planta_electrica_gasoil,
-              planta_electrica_kerosen, planta_electrica_baterias_fijas, planta_electrica_baterias_portatiles,
+              planta_electrica, planta_electrica_tipo_id,
               planta_electrica_panel_solar,
               acepta_mascotas, tiene_comedor, tiene_farmacia_almacen_clinico,
               gerogranjas, residuos_separados)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
                      $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,
-                     $37,$38,$39,$40,$41,$42)
+                     $37,$38)
              ON CONFLICT (ficha_id) DO UPDATE SET
                estado_inmueble_id=$2, num_dormitorios=$3, dormitorios_adecuados=$4,
                num_sanitarios=$5, sanitarios_adecuados=$6, tiene_area_cocina=$7,
@@ -1323,11 +1321,10 @@ exports.saveInfraestructura = async (req, res) => {
                banos_por_habitacion=$23, personas_por_habitacion=$24,
                iluminacion_emergencia=$25, senalizacion_clara=$26, prevencion_incendios=$27,
                sistemas_ventilacion=$28, aire_acondicionado=$29, normativa_visible=$30,
-               planta_electrica=$31, planta_electrica_gasolina=$32, planta_electrica_gasoil=$33,
-               planta_electrica_kerosen=$34, planta_electrica_baterias_fijas=$35,
-               planta_electrica_baterias_portatiles=$36, planta_electrica_panel_solar=$37,
-               acepta_mascotas=$38, tiene_comedor=$39, tiene_farmacia_almacen_clinico=$40,
-               gerogranjas=$41, residuos_separados=$42, updated_at=NOW()
+               planta_electrica=$31, planta_electrica_tipo_id=$32,
+               planta_electrica_panel_solar=$33,
+               acepta_mascotas=$34, tiene_comedor=$35, tiene_farmacia_almacen_clinico=$36,
+               gerogranjas=$37, residuos_separados=$38, updated_at=NOW()
              RETURNING *`,
             [fichaId, i.estado_inmueble_id, i.num_dormitorios, i.dormitorios_adecuados,
                 i.num_sanitarios, i.sanitarios_adecuados, i.tiene_area_cocina, i.cocina_adecuada,
@@ -1340,9 +1337,7 @@ exports.saveInfraestructura = async (req, res) => {
                 i.iluminacion_emergencia ?? false, i.senalizacion_clara ?? false,
                 i.prevencion_incendios ?? false, i.sistemas_ventilacion ?? false,
                 i.aire_acondicionado ?? false, i.normativa_visible ?? false,
-                i.planta_electrica ?? false, i.planta_electrica_gasolina ?? false,
-                i.planta_electrica_gasoil ?? false, i.planta_electrica_kerosen ?? false,
-                i.planta_electrica_baterias_fijas ?? false, i.planta_electrica_baterias_portatiles ?? false,
+                i.planta_electrica ?? false, i.planta_electrica_tipo_id ?? null,
                 i.planta_electrica_panel_solar ?? false,
                 i.acepta_mascotas ?? false, i.tiene_comedor ?? false,
                 i.tiene_farmacia_almacen_clinico ?? false,

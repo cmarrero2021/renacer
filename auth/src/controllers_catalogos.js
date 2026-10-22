@@ -110,6 +110,27 @@ const CATALOGS_CONFIG = {
         fields: ['nombre', 'descripcion', 'activo'],
         requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
+    },
+    tipo_planta: {
+        key: 'tipo_planta',
+        tableName: 'public.tipo_planta',
+        resource: 'tipo_planta',
+        label: 'Tipos de Planta Eléctrica',
+        icon: 'bolt',
+        description: 'Tipo de alimentación de la planta eléctrica del establecimiento (Combustible, Baterías, etc.)',
+        primaryKey: 'id',
+        columns: [
+            { name: 'id',           label: 'ID',          field: 'id',           sortable: true, align: 'left' },
+            { name: 'nombre',       label: 'Nombre',      field: 'nombre',       sortable: true, align: 'left', required: true },
+            { name: 'descripcion',  label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
+            { name: 'es_baterias',  label: '¿Es baterías?', field: 'es_baterias', sortable: true, align: 'center' },
+            { name: 'activo',       label: 'Estado',      field: 'activo',       sortable: true, align: 'center' },
+            { name: 'actions',      label: 'Acciones',    field: 'actions',                      align: 'center' }
+        ],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'es_baterias', 'activo'],
+        requiredFields: ['nombre'],
+        orderBy: 'nombre ASC'
     }
 };
 

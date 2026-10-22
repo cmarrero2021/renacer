@@ -645,27 +645,32 @@
                     <!-- Grupo 3: Planta eléctrica (condicional) -->
                     <q-card flat bordered class="q-pa-sm q-mb-md">
                         <div class="text-subtitle2 q-mb-sm">Planta Eléctrica</div>
-                        <div class="row q-col-gutter-md">
-                            <div class="col-12 col-md-4">
+                        <div class="row q-col-gutter-md items-end">
+                            <div class="col-12 col-sm-6 col-md-3">
                                 <div class="text-caption q-mb-xs">¿Posee planta eléctrica?</div>
                                 <q-toggle v-model="infra.planta_electrica" :label="infra.planta_electrica ? 'Sí' : 'No'" color="primary" />
                             </div>
-                        </div>
-                        <template v-if="infra.planta_electrica">
-                            <div class="text-caption q-mb-xs q-mt-sm">Tipo</div>
-                            <div class="row q-col-gutter-md q-mb-sm">
-                                <div class="col-12 col-sm-6 col-md-3" v-for="t in plantaTipos" :key="t.field">
-                                    <div class="text-caption q-mb-xs">{{ t.label }}</div>
-                                    <q-toggle v-model="infra[t.field]" :label="infra[t.field] ? 'Sí' : 'No'" color="primary" />
+                            <template v-if="infra.planta_electrica">
+                                <div class="col-12 col-sm-6 col-md-3">
+                                    <div class="text-caption q-mb-xs">Tipo</div>
+                                    <q-select
+                                        v-model="infra.planta_electrica_tipo_id"
+                                        :options="opcionesTiposPlanta"
+                                        option-value="value"
+                                        option-label="label"
+                                        emit-value
+                                        map-options
+                                        clearable
+                                        outlined
+                                        dense
+                                    />
                                 </div>
-                            </div>
-                            <div v-if="mostrarPanelSolar" class="row q-col-gutter-md">
-                                <div class="col-12 col-md-3">
+                                <div v-if="mostrarPanelSolar" class="col-12 col-sm-6 col-md-3">
                                     <div class="text-caption q-mb-xs">Panel solar</div>
                                     <q-toggle v-model="infra.planta_electrica_panel_solar" :label="infra.planta_electrica_panel_solar ? 'Sí' : 'No'" color="primary" />
                                 </div>
-                            </div>
-                        </template>
+                            </template>
+                        </div>
                     </q-card>
 
                     <div class="text-subtitle2 q-mb-sm">Servicios Básicos</div>
@@ -1160,6 +1165,7 @@ function nextTab() {
 const opcionesTipoEstab = computed(() => catalogosStore.opcionesTipoEstab);
 const opcionesTipoClasif = computed(() => catalogosStore.opcionesTipoClasif);
 const opcionesEstadoInmueble = computed(() => catalogosStore.opcionesEstadoInmueble);
+const opcionesTiposPlanta = computed(() => catalogosStore.opcionesTiposPlanta);
 const listaServicios = computed(() => catalogosStore.opcionesServicios);
 
 const opcionesRifTipo = [
@@ -1176,13 +1182,6 @@ const serviciosBasicos = [
     { field: 'agua_servidas', label: 'Aguas servidas' },
     { field: 'deposito_basura', label: 'Depósito de basura' },
     { field: 'sistema_seguridad', label: 'Sistema de seguridad' },
-];
-const plantaTipos = [
-    { field: 'planta_electrica_gasolina', label: 'Combustible gasolina' },
-    { field: 'planta_electrica_gasoil', label: 'Combustible gasoil' },
-    { field: 'planta_electrica_kerosen', label: 'Combustible kerosen' },
-    { field: 'planta_electrica_baterias_fijas', label: 'Estaciones de baterías fijas' },
-    { field: 'planta_electrica_baterias_portatiles', label: 'Estaciones de baterías portátiles' },
 ];
 const camposPersonal = [
     { field: 'num_medicos_geriatra', label: 'Médicos Geriatras' },
@@ -1253,10 +1252,8 @@ const infra = ref({
     // Condiciones del inmueble
     iluminacion_emergencia: false, senalizacion_clara: false, prevencion_incendios: false,
     sistemas_ventilacion: false, aire_acondicionado: false, normativa_visible: false,
-    // Planta eléctrica (tipos; panel solar solo aplica con baterías)
-    planta_electrica: false, planta_electrica_gasolina: false, planta_electrica_gasoil: false,
-    planta_electrica_kerosen: false, planta_electrica_baterias_fijas: false,
-    planta_electrica_baterias_portatiles: false, planta_electrica_panel_solar: false,
+    // Planta eléctrica (tipo desde catálogo; panel solar solo aplica con baterías)
+    planta_electrica: false, planta_electrica_tipo_id: null, planta_electrica_panel_solar: false,
     // Áreas y convivencia
     acepta_mascotas: false, tiene_comedor: false, tiene_farmacia_almacen_clinico: false,
     gerogranjas: false, residuos_separados: false
@@ -1268,19 +1265,19 @@ watch(() => infra.value.tiene_area_cocina, (val) => {
 watch(() => infra.value.tiene_comedor, (val) => {
     if (!val) infra.value.capacidad_comedor_pct = null;
 });
-const plantaTiposCampos = ['planta_electrica_gasolina', 'planta_electrica_gasoil',
-    'planta_electrica_kerosen', 'planta_electrica_baterias_fijas',
-    'planta_electrica_baterias_portatiles'];
 watch(() => infra.value.planta_electrica, (val) => {
     if (!val) {
-        for (const f of plantaTiposCampos) infra.value[f] = false;
+        infra.value.planta_electrica_tipo_id = null;
         infra.value.planta_electrica_panel_solar = false;
     }
 });
-const mostrarPanelSolar = computed(() =>
-    infra.value.planta_electrica &&
-    (infra.value.planta_electrica_baterias_fijas || infra.value.planta_electrica_baterias_portatiles)
-);
+// Panel solar solo se muestra si el tipo seleccionado es de baterías
+// (flag es_baterias del catálogo); por defecto (sin tipo) queda oculto
+const mostrarPanelSolar = computed(() => {
+    if (!infra.value.planta_electrica || infra.value.planta_electrica_tipo_id == null) return false;
+    const opt = opcionesTiposPlanta.value.find(t => t.value === Number(infra.value.planta_electrica_tipo_id));
+    return !!opt?.es_baterias;
+});
 watch(mostrarPanelSolar, (val) => {
     if (!val) infra.value.planta_electrica_panel_solar = false;
 });
@@ -2496,10 +2493,13 @@ onMounted(async () => {
                             infra.value[f] = Number(infra.value[f]);
                         }
                     });
+                if (infra.value.planta_electrica_tipo_id != null) {
+                    infra.value.planta_electrica_tipo_id = Number(infra.value.planta_electrica_tipo_id);
+                }
                 // Booleanos del bloque ampliado
                 ['iluminacion_emergencia', 'senalizacion_clara', 'prevencion_incendios',
                     'sistemas_ventilacion', 'aire_acondicionado', 'normativa_visible',
-                    'planta_electrica', ...plantaTiposCampos, 'planta_electrica_panel_solar',
+                    'planta_electrica', 'planta_electrica_panel_solar',
                     'acepta_mascotas', 'tiene_comedor', 'tiene_farmacia_almacen_clinico',
                     'gerogranjas', 'residuos_separados']
                     .forEach(f => {

@@ -52,6 +52,14 @@ const DEFAULT_ESTADOS_INMUEBLE = [
     { value: 4, label: 'Regular' },
 ];
 
+const DEFAULT_TIPOS_PLANTA = [
+    { value: 1, label: 'Combustible gasolina', es_baterias: false },
+    { value: 2, label: 'Combustible gasoil', es_baterias: false },
+    { value: 3, label: 'Combustible kerosen', es_baterias: false },
+    { value: 4, label: 'Estaciones de baterías fijas', es_baterias: true },
+    { value: 5, label: 'Estaciones de baterías portátiles', es_baterias: true },
+];
+
 export const useCatalogosStore = defineStore('catalogos', () => {
     // ─── Estado ───────────────────────────────────────────────────────────────
     const tiposEstablecimiento = ref([]);
@@ -59,6 +67,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
     const tiposDocumentos = ref([]);
     const serviciosCatalogo = ref([]);
     const estadosInmueble = ref([]);
+    const tiposPlanta = ref([]);
     const loading = ref(false);
     const initialized = ref(false);
 
@@ -117,6 +126,15 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         return DEFAULT_ESTADOS_INMUEBLE;
     });
 
+    const opcionesTiposPlanta = computed(() => {
+        if (tiposPlanta.value.length > 0) {
+            return tiposPlanta.value
+                .filter(t => t.activo !== false)
+                .map(t => ({ value: Number(t.id), label: t.nombre, es_baterias: !!t.es_baterias }));
+        }
+        return DEFAULT_TIPOS_PLANTA;
+    });
+
     // ─── Acciones de consulta ────────────────────────────────────────────────
     async function fetchCatalog(catalogKey) {
         try {
@@ -133,6 +151,8 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 serviciosCatalogo.value = items;
             } else if (catalogKey === 'estados_inmueble') {
                 estadosInmueble.value = items;
+            } else if (catalogKey === 'tipo_planta') {
+                tiposPlanta.value = items;
             }
         } catch (err) {
             console.error(`Error al actualizar catálogo '${catalogKey}':`, err);
@@ -148,7 +168,8 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 fetchCatalog('tipos_clasificacion'),
                 fetchCatalog('tipos_documentos'),
                 fetchCatalog('servicios_catalogo'),
-                fetchCatalog('estados_inmueble')
+                fetchCatalog('estados_inmueble'),
+                fetchCatalog('tipo_planta')
             ]);
             initialized.value = true;
         } finally {
@@ -185,6 +206,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         tiposDocumentos,
         serviciosCatalogo,
         estadosInmueble,
+        tiposPlanta,
         loading,
         initialized,
         // Getters reactivos
@@ -193,6 +215,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         opcionesDocumentos,
         opcionesServicios,
         opcionesEstadoInmueble,
+        opcionesTiposPlanta,
         // Acciones
         fetchCatalog,
         fetchAll,

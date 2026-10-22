@@ -905,8 +905,19 @@ exports.createFicha = async (req, res) => {
           num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
           areas_atencion_medica, areas_verdes,
           ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
-          luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+          luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros,
+          area_total_m2, area_construida_m2, tamano_habitaciones_m2,
+          banos_por_habitacion, personas_por_habitacion,
+          iluminacion_emergencia, senalizacion_clara, prevencion_incendios,
+          sistemas_ventilacion, aire_acondicionado, normativa_visible,
+          planta_electrica, planta_electrica_gasolina, planta_electrica_gasoil,
+          planta_electrica_kerosen, planta_electrica_baterias_fijas, planta_electrica_baterias_portatiles,
+          planta_electrica_panel_solar,
+          acepta_mascotas, tiene_comedor, tiene_farmacia_almacen_clinico,
+          gerogranjas, residuos_separados)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+                 $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,
+                 $37,$38,$39,$40,$41,$42)`,
                 [ficha.id, infraestructura.estado_inmueble_id, infraestructura.num_dormitorios,
                 infraestructura.dormitorios_adecuados, infraestructura.num_sanitarios,
                 infraestructura.sanitarios_adecuados, infraestructura.tiene_area_cocina,
@@ -916,7 +927,21 @@ exports.createFicha = async (req, res) => {
                 infraestructura.iluminacion_adecuada, infraestructura.capacidad_comedor_pct,
                 infraestructura.luz_electrica, infraestructura.agua_potable,
                 infraestructura.agua_servidas, infraestructura.deposito_basura,
-                infraestructura.sistema_seguridad, infraestructura.descripcion_otros]
+                infraestructura.sistema_seguridad, infraestructura.descripcion_otros || null,
+                infraestructura.area_total_m2 ?? null, infraestructura.area_construida_m2 ?? null,
+                infraestructura.tamano_habitaciones_m2 ?? null,
+                infraestructura.banos_por_habitacion ?? null, infraestructura.personas_por_habitacion ?? null,
+                infraestructura.iluminacion_emergencia ?? false, infraestructura.senalizacion_clara ?? false,
+                infraestructura.prevencion_incendios ?? false, infraestructura.sistemas_ventilacion ?? false,
+                infraestructura.aire_acondicionado ?? false, infraestructura.normativa_visible ?? false,
+                infraestructura.planta_electrica ?? false, infraestructura.planta_electrica_gasolina ?? false,
+                infraestructura.planta_electrica_gasoil ?? false, infraestructura.planta_electrica_kerosen ?? false,
+                infraestructura.planta_electrica_baterias_fijas ?? false,
+                infraestructura.planta_electrica_baterias_portatiles ?? false,
+                infraestructura.planta_electrica_panel_solar ?? false,
+                infraestructura.acepta_mascotas ?? false, infraestructura.tiene_comedor ?? false,
+                infraestructura.tiene_farmacia_almacen_clinico ?? false,
+                infraestructura.gerogranjas ?? false, infraestructura.residuos_separados ?? false]
             );
         }
 
@@ -1273,8 +1298,19 @@ exports.saveInfraestructura = async (req, res) => {
               num_sanitarios, sanitarios_adecuados, tiene_area_cocina, cocina_adecuada,
               areas_atencion_medica, areas_verdes,
               ventilacion_adecuada, iluminacion_adecuada, capacidad_comedor_pct,
-              luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+              luz_electrica, agua_potable, agua_servidas, deposito_basura, sistema_seguridad, descripcion_otros,
+              area_total_m2, area_construida_m2, tamano_habitaciones_m2,
+              banos_por_habitacion, personas_por_habitacion,
+              iluminacion_emergencia, senalizacion_clara, prevencion_incendios,
+              sistemas_ventilacion, aire_acondicionado, normativa_visible,
+              planta_electrica, planta_electrica_gasolina, planta_electrica_gasoil,
+              planta_electrica_kerosen, planta_electrica_baterias_fijas, planta_electrica_baterias_portatiles,
+              planta_electrica_panel_solar,
+              acepta_mascotas, tiene_comedor, tiene_farmacia_almacen_clinico,
+              gerogranjas, residuos_separados)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
+                     $20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,
+                     $37,$38,$39,$40,$41,$42)
              ON CONFLICT (ficha_id) DO UPDATE SET
                estado_inmueble_id=$2, num_dormitorios=$3, dormitorios_adecuados=$4,
                num_sanitarios=$5, sanitarios_adecuados=$6, tiene_area_cocina=$7,
@@ -1282,14 +1318,35 @@ exports.saveInfraestructura = async (req, res) => {
                ventilacion_adecuada=$11, iluminacion_adecuada=$12,
                capacidad_comedor_pct=$13, luz_electrica=$14, agua_potable=$15,
                agua_servidas=$16, deposito_basura=$17, sistema_seguridad=$18,
-               descripcion_otros=$19, updated_at=NOW()
+               descripcion_otros=$19,
+               area_total_m2=$20, area_construida_m2=$21, tamano_habitaciones_m2=$22,
+               banos_por_habitacion=$23, personas_por_habitacion=$24,
+               iluminacion_emergencia=$25, senalizacion_clara=$26, prevencion_incendios=$27,
+               sistemas_ventilacion=$28, aire_acondicionado=$29, normativa_visible=$30,
+               planta_electrica=$31, planta_electrica_gasolina=$32, planta_electrica_gasoil=$33,
+               planta_electrica_kerosen=$34, planta_electrica_baterias_fijas=$35,
+               planta_electrica_baterias_portatiles=$36, planta_electrica_panel_solar=$37,
+               acepta_mascotas=$38, tiene_comedor=$39, tiene_farmacia_almacen_clinico=$40,
+               gerogranjas=$41, residuos_separados=$42, updated_at=NOW()
              RETURNING *`,
             [fichaId, i.estado_inmueble_id, i.num_dormitorios, i.dormitorios_adecuados,
                 i.num_sanitarios, i.sanitarios_adecuados, i.tiene_area_cocina, i.cocina_adecuada,
                 i.areas_atencion_medica ?? false, i.areas_verdes ?? false,
                 i.ventilacion_adecuada, i.iluminacion_adecuada, i.capacidad_comedor_pct,
                 i.luz_electrica, i.agua_potable, i.agua_servidas, i.deposito_basura,
-                i.sistema_seguridad, i.descripcion_otros]
+                i.sistema_seguridad, i.descripcion_otros || null,
+                i.area_total_m2 ?? null, i.area_construida_m2 ?? null, i.tamano_habitaciones_m2 ?? null,
+                i.banos_por_habitacion ?? null, i.personas_por_habitacion ?? null,
+                i.iluminacion_emergencia ?? false, i.senalizacion_clara ?? false,
+                i.prevencion_incendios ?? false, i.sistemas_ventilacion ?? false,
+                i.aire_acondicionado ?? false, i.normativa_visible ?? false,
+                i.planta_electrica ?? false, i.planta_electrica_gasolina ?? false,
+                i.planta_electrica_gasoil ?? false, i.planta_electrica_kerosen ?? false,
+                i.planta_electrica_baterias_fijas ?? false, i.planta_electrica_baterias_portatiles ?? false,
+                i.planta_electrica_panel_solar ?? false,
+                i.acepta_mascotas ?? false, i.tiene_comedor ?? false,
+                i.tiene_farmacia_almacen_clinico ?? false,
+                i.gerogranjas ?? false, i.residuos_separados ?? false]
         );
         res.json({ message: 'Infraestructura guardada.', data: r.rows[0] });
     } catch (err) {

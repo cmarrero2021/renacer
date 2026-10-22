@@ -547,6 +547,45 @@
                     <inner-progress :value="tabProgress('infraestructura')" :count="tabFieldCount('infraestructura')" />
                     <section-header icon="home" label="Infraestructura del Inmueble" />
 
+                    <!-- Grupo 1 ▸ Dimensiones y Capacidad -->
+                    <div class="text-subtitle2 q-mb-sm">Dimensiones y Capacidad</div>
+                    <div class="row q-col-gutter-md q-mb-md">
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Área total (m²)</div>
+                            <q-input v-model.number="infra.area_total_m2" outlined dense type="number" step="0.01" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Área construida (m²)</div>
+                            <q-input v-model.number="infra.area_construida_m2" outlined dense type="number" step="0.01" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Tamaño de las habitaciones (m²)</div>
+                            <q-input v-model.number="infra.tamano_habitaciones_m2" outlined dense type="number" step="0.01" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Nro. de dormitorios</div>
+                            <q-input v-model.number="infra.num_dormitorios" outlined dense type="number" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Personas por habitación</div>
+                            <q-input v-model.number="infra.personas_por_habitacion" outlined dense type="number" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Baños por habitación</div>
+                            <q-input v-model.number="infra.banos_por_habitacion" outlined dense type="number" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Nro. de sanitarios</div>
+                            <q-input v-model.number="infra.num_sanitarios" outlined dense type="number" min="0" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Sanitarios adecuados</div>
+                            <q-toggle v-model="infra.sanitarios_adecuados" :label="infra.sanitarios_adecuados ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                    </div>
+
+                    <!-- Grupo 2: Condiciones del Inmueble -->
+                    <div class="text-subtitle2 q-mb-sm">Condiciones del Inmueble</div>
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Estado del inmueble</div>
@@ -561,59 +600,116 @@
                                 dense
                             />
                         </div>
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Nro. de dormitorios</div>
-                            <q-input v-model.number="infra.num_dormitorios" outlined dense type="number" min="0" />
-                        </div>
-                        <!--
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Dormitorios adecuados</div>
-                            <q-toggle v-model="infra.dormitorios_adecuados" :label="infra.dormitorios_adecuados ? 'Sí' : 'No'" color="primary" />
-                        </div>
-                    -->
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Nro. de sanitarios</div>
-                            <q-input v-model.number="infra.num_sanitarios" outlined dense type="number" min="0" />
-                        </div>
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Sanitarios adecuados</div>
-                            <q-toggle v-model="infra.sanitarios_adecuados" :label="infra.sanitarios_adecuados ? 'Sí' : 'No'" color="primary" />
-                        </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-sm-6 col-md-3">
                             <div class="text-caption q-mb-xs">Área de cocina</div>
                             <q-toggle v-model="infra.tiene_area_cocina" :label="infra.tiene_area_cocina ? 'Sí' : 'No'" color="primary" />
                         </div>
-                        <div class="col-12 col-md-4" v-if="infra.tiene_area_cocina">
+                        <div class="col-12 col-sm-6 col-md-3" v-if="infra.tiene_area_cocina">
                             <div class="text-caption q-mb-xs">Cocina adecuada</div>
                             <q-toggle v-model="infra.cocina_adecuada" :label="infra.cocina_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Áreas de atención médica o enfermería</div>
-                            <q-toggle v-model="infra.areas_atencion_medica" :label="infra.areas_atencion_medica ? 'Sí' : 'No'" color="primary" />
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Sistemas de ventilación</div>
+                            <q-toggle v-model="infra.sistemas_ventilacion" :label="infra.sistemas_ventilacion ? 'Sí' : 'No'" color="primary" />
                         </div>
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Áreas verdes</div>
-                            <q-toggle v-model="infra.areas_verdes" :label="infra.areas_verdes ? 'Sí' : 'No'" color="primary" />
-                        </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-sm-6 col-md-3">
                             <div class="text-caption q-mb-xs">Ventilación adecuada</div>
                             <q-toggle v-model="infra.ventilacion_adecuada" :label="infra.ventilacion_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
-                        <div class="col-12 col-md-4">
+                        <div class="col-12 col-sm-6 col-md-3">
                             <div class="text-caption q-mb-xs">Iluminación adecuada</div>
                             <q-toggle v-model="infra.iluminacion_adecuada" :label="infra.iluminacion_adecuada ? 'Sí' : 'No'" color="primary" />
                         </div>
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">% Capacidad comedor</div>
-                            <q-input v-model.number="infra.capacidad_comedor_pct" outlined dense type="number" min="0" max="100" suffix="%" />
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Iluminación de emergencia</div>
+                            <q-toggle v-model="infra.iluminacion_emergencia" :label="infra.iluminacion_emergencia ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Aire acondicionado</div>
+                            <q-toggle v-model="infra.aire_acondicionado" :label="infra.aire_acondicionado ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Normativa visible</div>
+                            <q-toggle v-model="infra.normativa_visible" :label="infra.normativa_visible ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Señalizaciones claras</div>
+                            <q-toggle v-model="infra.senalizacion_clara" :label="infra.senalizacion_clara ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Elementos de prevención de incendios</div>
+                            <q-toggle v-model="infra.prevencion_incendios" :label="infra.prevencion_incendios ? 'Sí' : 'No'" color="primary" />
                         </div>
                     </div>
+
+                    <!-- Grupo 3: Planta eléctrica (condicional) -->
+                    <q-card flat bordered class="q-pa-sm q-mb-md">
+                        <div class="text-subtitle2 q-mb-sm">Planta Eléctrica</div>
+                        <div class="row q-col-gutter-md">
+                            <div class="col-12 col-md-4">
+                                <div class="text-caption q-mb-xs">¿Posee planta eléctrica?</div>
+                                <q-toggle v-model="infra.planta_electrica" :label="infra.planta_electrica ? 'Sí' : 'No'" color="primary" />
+                            </div>
+                        </div>
+                        <template v-if="infra.planta_electrica">
+                            <div class="text-caption q-mb-xs q-mt-sm">Tipo</div>
+                            <div class="row q-col-gutter-md q-mb-sm">
+                                <div class="col-12 col-sm-6 col-md-3" v-for="t in plantaTipos" :key="t.field">
+                                    <div class="text-caption q-mb-xs">{{ t.label }}</div>
+                                    <q-toggle v-model="infra[t.field]" :label="infra[t.field] ? 'Sí' : 'No'" color="primary" />
+                                </div>
+                            </div>
+                            <div v-if="mostrarPanelSolar" class="row q-col-gutter-md">
+                                <div class="col-12 col-md-3">
+                                    <div class="text-caption q-mb-xs">Panel solar</div>
+                                    <q-toggle v-model="infra.planta_electrica_panel_solar" :label="infra.planta_electrica_panel_solar ? 'Sí' : 'No'" color="primary" />
+                                </div>
+                            </div>
+                        </template>
+                    </q-card>
 
                     <div class="text-subtitle2 q-mb-sm">Servicios Básicos</div>
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-6 col-md-3" v-for="s in serviciosBasicos" :key="s.field">
                             <div class="text-caption q-mb-xs">{{ s.label }}</div>
                             <q-toggle v-model="infra[s.field]" :label="infra[s.field] ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                    </div>
+
+                    <!-- Grupo 4: Áreas y Convivencia -->
+                    <div class="text-subtitle2 q-mb-sm">Áreas y Convivencia</div>
+                    <div class="row q-col-gutter-md q-mb-md">
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Tiene comedor</div>
+                            <q-toggle v-model="infra.tiene_comedor" :label="infra.tiene_comedor ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-md-3" v-if="infra.tiene_comedor">
+                            <div class="text-caption q-mb-xs">Capacidad comedor (%)</div>
+                            <q-input v-model.number="infra.capacidad_comedor_pct" outlined dense type="number" min="0" max="100" suffix="%" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Aceptan mascotas</div>
+                            <q-toggle v-model="infra.acepta_mascotas" :label="infra.acepta_mascotas ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-caption q-mb-xs">Área de farmacia y almacenamiento clínico</div>
+                            <q-toggle v-model="infra.tiene_farmacia_almacen_clinico" :label="infra.tiene_farmacia_almacen_clinico ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-caption q-mb-xs">Áreas verdes y recreación</div>
+                            <q-toggle v-model="infra.areas_verdes" :label="infra.areas_verdes ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-3">
+                            <div class="text-caption q-mb-xs">Gerogranjas</div>
+                            <q-toggle v-model="infra.gerogranjas" :label="infra.gerogranjas ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-caption q-mb-xs">Áreas de atención médica o enfermería</div>
+                            <q-toggle v-model="infra.areas_atencion_medica" :label="infra.areas_atencion_medica ? 'Sí' : 'No'" color="primary" />
+                        </div>
+                        <div class="col-12 col-sm-6 col-md-4">
+                            <div class="text-caption q-mb-xs">Zonas de almacenamiento de residuos separadas de las áreas de residentes</div>
+                            <q-toggle v-model="infra.residuos_separados" :label="infra.residuos_separados ? 'Sí' : 'No'" color="primary" />
                         </div>
                     </div>
 
@@ -1081,6 +1177,13 @@ const serviciosBasicos = [
     { field: 'deposito_basura', label: 'Depósito de basura' },
     { field: 'sistema_seguridad', label: 'Sistema de seguridad' },
 ];
+const plantaTipos = [
+    { field: 'planta_electrica_gasolina', label: 'Combustible gasolina' },
+    { field: 'planta_electrica_gasoil', label: 'Combustible gasoil' },
+    { field: 'planta_electrica_kerosen', label: 'Combustible kerosen' },
+    { field: 'planta_electrica_baterias_fijas', label: 'Estaciones de baterías fijas' },
+    { field: 'planta_electrica_baterias_portatiles', label: 'Estaciones de baterías portátiles' },
+];
 const camposPersonal = [
     { field: 'num_medicos_geriatra', label: 'Médicos Geriatras' },
     { field: 'num_medicos_psiquiatra', label: 'Médicos Psiquiatras' },
@@ -1143,11 +1246,43 @@ const infra = ref({
     ventilacion_adecuada: false, iluminacion_adecuada: false,
     capacidad_comedor_pct: null, luz_electrica: false, agua_potable: false,
     agua_servidas: false, deposito_basura: false, sistema_seguridad: false,
-    descripcion_otros: ''
+    descripcion_otros: '',
+    // Bloque ampliado: dimensiones y ratios
+    area_total_m2: null, area_construida_m2: null, tamano_habitaciones_m2: null,
+    banos_por_habitacion: null, personas_por_habitacion: null,
+    // Condiciones del inmueble
+    iluminacion_emergencia: false, senalizacion_clara: false, prevencion_incendios: false,
+    sistemas_ventilacion: false, aire_acondicionado: false, normativa_visible: false,
+    // Planta eléctrica (tipos; panel solar solo aplica con baterías)
+    planta_electrica: false, planta_electrica_gasolina: false, planta_electrica_gasoil: false,
+    planta_electrica_kerosen: false, planta_electrica_baterias_fijas: false,
+    planta_electrica_baterias_portatiles: false, planta_electrica_panel_solar: false,
+    // Áreas y convivencia
+    acepta_mascotas: false, tiene_comedor: false, tiene_farmacia_almacen_clinico: false,
+    gerogranjas: false, residuos_separados: false
 });
 
 watch(() => infra.value.tiene_area_cocina, (val) => {
     if (!val) infra.value.cocina_adecuada = false;
+});
+watch(() => infra.value.tiene_comedor, (val) => {
+    if (!val) infra.value.capacidad_comedor_pct = null;
+});
+const plantaTiposCampos = ['planta_electrica_gasolina', 'planta_electrica_gasoil',
+    'planta_electrica_kerosen', 'planta_electrica_baterias_fijas',
+    'planta_electrica_baterias_portatiles'];
+watch(() => infra.value.planta_electrica, (val) => {
+    if (!val) {
+        for (const f of plantaTiposCampos) infra.value[f] = false;
+        infra.value.planta_electrica_panel_solar = false;
+    }
+});
+const mostrarPanelSolar = computed(() =>
+    infra.value.planta_electrica &&
+    (infra.value.planta_electrica_baterias_fijas || infra.value.planta_electrica_baterias_portatiles)
+);
+watch(mostrarPanelSolar, (val) => {
+    if (!val) infra.value.planta_electrica_panel_solar = false;
 });
 const acc = ref({
     rampas_fijas: false,
@@ -1292,7 +1427,9 @@ const tabFieldDefs = {
         'rif', 'propietarios', 'telefonos', 'latitud', 'longitud'],
     capacidad: ['capacidad_total_residente', 'capacidad_actual_residente', 'atencion_ambulatoria'],
     poblacion: ['fecha_corte', 'registros'],
-    infraestructura: ['estado_inmueble_id', 'num_dormitorios', 'num_sanitarios',
+    infraestructura: ['estado_inmueble_id', 'area_total_m2', 'area_construida_m2',
+        'num_dormitorios', 'tamano_habitaciones_m2', 'personas_por_habitacion',
+        'banos_por_habitacion', 'num_sanitarios',
         'luz_electrica', 'agua_potable', 'agua_servidas'],
     accesibilidad: [
         'rampas_fijas', 'piso_antirresbalante', 'alfombras_sueltas', 'ascensores',
@@ -2351,6 +2488,23 @@ onMounted(async () => {
                 serviciosBasicos.forEach(s => {
                     infra.value[s.field] = !!ficha.infraestructura[s.field];
                 });
+                // Numéricos: pg devuelve numeric como string
+                ['area_total_m2', 'area_construida_m2', 'tamano_habitaciones_m2',
+                    'banos_por_habitacion', 'personas_por_habitacion', 'capacidad_comedor_pct']
+                    .forEach(f => {
+                        if (infra.value[f] != null && infra.value[f] !== '') {
+                            infra.value[f] = Number(infra.value[f]);
+                        }
+                    });
+                // Booleanos del bloque ampliado
+                ['iluminacion_emergencia', 'senalizacion_clara', 'prevencion_incendios',
+                    'sistemas_ventilacion', 'aire_acondicionado', 'normativa_visible',
+                    'planta_electrica', ...plantaTiposCampos, 'planta_electrica_panel_solar',
+                    'acepta_mascotas', 'tiene_comedor', 'tiene_farmacia_almacen_clinico',
+                    'gerogranjas', 'residuos_separados']
+                    .forEach(f => {
+                        infra.value[f] = !!ficha.infraestructura[f];
+                    });
                 savedTabs.value.infraestructura = true;
             }
             if (ficha.accesibilidad) {

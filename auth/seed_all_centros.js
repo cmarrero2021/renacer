@@ -88,9 +88,9 @@ async function runSeeder() {
 
             // Insert Ficha Personal
             await client.query(`
-                INSERT INTO ficha_personal (ficha_id, num_medicos_geriatra, num_medicos_psiquiatra, num_enfermeros, num_cuidadores, num_camareros, num_auxiliares_enfermeria, num_servicios_generales, num_personal_cocina, num_personal_no_adscrito, posee_expediente_curricular, otros_personal, created_at, updated_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
-            `, [fichaId, faker.number.int({min:0, max:5}), faker.number.int({min:0, max:5}), faker.number.int({min:1, max:15}), faker.number.int({min:0, max:20}), faker.number.int({min:0, max:10}), faker.number.int({min:0, max:10}), faker.number.int({min:0, max:5}), faker.number.int({min:1, max:5}), 0, faker.datatype.boolean(), false]);
+                INSERT INTO ficha_personal (ficha_id, num_medicos, num_gerontologos, num_psicologos, num_enfermeros, num_auxiliares_enfermeria, num_cuidadores, num_camareros, num_servicios_generales, num_personal_cocina, num_responsables_farmacia, num_personal_seguridad, num_personal_no_adscrito, otros_personal, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW())
+            `, [fichaId, faker.number.int({min:0, max:5}), faker.number.int({min:0, max:3}), faker.number.int({min:0, max:3}), faker.number.int({min:1, max:15}), faker.number.int({min:0, max:10}), faker.number.int({min:0, max:20}), faker.number.int({min:0, max:10}), faker.number.int({min:0, max:5}), faker.number.int({min:1, max:5}), faker.number.int({min:0, max:3}), faker.number.int({min:0, max:5}), 0, false]);
 
             // Insert Ficha Poblacion
             const cat = faker.helpers.arrayElement(['adultos', 'con_discapacidad', 'otras_categorias']);

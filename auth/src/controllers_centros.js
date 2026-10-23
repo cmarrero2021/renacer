@@ -886,17 +886,20 @@ exports.createFicha = async (req, res) => {
         if (personal) {
             await client.query(
                 `INSERT INTO public.ficha_personal
-         (ficha_id, num_medicos_geriatra, num_medicos_psiquiatra, num_enfermeros, num_cuidadores,
-          num_camareros, num_auxiliares_enfermeria, num_servicios_generales, num_personal_cocina,
-          num_personal_no_adscrito, descripcion_no_adscrito, posee_expediente_curricular,
+         (ficha_id, num_medicos, num_gerontologos, num_psicologos, num_enfermeros,
+          num_auxiliares_enfermeria, num_cuidadores, num_camareros,
+          num_servicios_generales, num_personal_cocina, num_responsables_farmacia,
+          num_personal_seguridad, num_personal_no_adscrito, descripcion_no_adscrito,
           otros_personal, descripcion_otros_personal)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
-                [ficha.id, personal.num_medicos_geriatra, personal.num_medicos_psiquiatra,
-                personal.num_enfermeros, personal.num_cuidadores, personal.num_camareros,
-                personal.num_auxiliares_enfermeria, personal.num_servicios_generales,
-                personal.num_personal_cocina, personal.num_personal_no_adscrito,
-                personal.descripcion_no_adscrito, personal.posee_expediente_curricular,
-                personal.otros_personal, personal.descripcion_otros_personal]
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+                [ficha.id, personal.num_medicos ?? 0, personal.num_gerontologos ?? 0,
+                personal.num_psicologos ?? 0, personal.num_enfermeros ?? 0,
+                personal.num_auxiliares_enfermeria ?? 0, personal.num_cuidadores ?? 0,
+                personal.num_camareros ?? 0, personal.num_servicios_generales ?? 0,
+                personal.num_personal_cocina ?? 0, personal.num_responsables_farmacia ?? 0,
+                personal.num_personal_seguridad ?? 0, personal.num_personal_no_adscrito ?? 0,
+                personal.descripcion_no_adscrito || null,
+                personal.otros_personal ?? false, personal.descripcion_otros_personal || null]
             );
         }
 
@@ -950,14 +953,32 @@ exports.createFicha = async (req, res) => {
                 `INSERT INTO public.ficha_accesibilidad
          (ficha_id, rampas_fijas, piso_antirresbalante, alfombras_sueltas, ascensores,
           num_ascensores, pasamanos, escaleras_antirresbalantes, banos_geriatricos,
-          senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas,
+          marquesinas_acceso, estacionamientos_reservados,
+          pasamanos_dobles, zonas_descanso,
+          barras_apoyo, inodoros_elevados, duchas_ras_suelo,
+          lavamanos_suspendidos, griferia_palanca, boton_emergencia,
+          sillas_apoyabrazos, mesas_sin_obstaculos,
+          pisos_podotactiles, alto_contraste_visual, pictogramas_universales,
+          iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+                 $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
                 [ficha.id, accesibilidad.rampas_fijas ?? false, accesibilidad.piso_antirresbalante ?? false,
                 accesibilidad.alfombras_sueltas ?? false, accesibilidad.ascensores ?? false,
                 accesibilidad.ascensores ? (accesibilidad.num_ascensores ? parseInt(accesibilidad.num_ascensores, 10) : null) : null,
                 accesibilidad.pasamanos ?? false, accesibilidad.escaleras_antirresbalantes ?? false,
                 accesibilidad.banos_geriatricos ?? false, accesibilidad.senales_accesibles ?? false,
-                accesibilidad.timbres_emergencia ?? false, accesibilidad.pasillos_accesibles_sillas ?? false]
+                accesibilidad.timbres_emergencia ?? false, accesibilidad.pasillos_accesibles_sillas ?? false,
+                accesibilidad.marquesinas_acceso ?? false, accesibilidad.estacionamientos_reservados ?? false,
+                accesibilidad.pasamanos_dobles ?? false, accesibilidad.zonas_descanso ?? false,
+                accesibilidad.barras_apoyo ?? false, accesibilidad.inodoros_elevados ?? false,
+                accesibilidad.duchas_ras_suelo ?? false,
+                accesibilidad.lavamanos_suspendidos ?? false, accesibilidad.griferia_palanca ?? false,
+                accesibilidad.boton_emergencia ?? false,
+                accesibilidad.sillas_apoyabrazos ?? false, accesibilidad.mesas_sin_obstaculos ?? false,
+                accesibilidad.pisos_podotactiles ?? false, accesibilidad.alto_contraste_visual ?? false,
+                accesibilidad.pictogramas_universales ?? false, accesibilidad.iluminacion_homogenea ?? false,
+                accesibilidad.alarmas_duales ?? false, accesibilidad.rutas_evacuacion_anchas ?? false]
             );
         }
 
@@ -1254,24 +1275,27 @@ exports.savePersonal = async (req, res) => {
         const r = await client.query(
 
             `INSERT INTO public.ficha_personal
-             (ficha_id, num_medicos_geriatra, num_medicos_psiquiatra, num_enfermeros, num_cuidadores,
-              num_camareros, num_auxiliares_enfermeria, num_servicios_generales, num_personal_cocina,
-              num_personal_no_adscrito, descripcion_no_adscrito, posee_expediente_curricular,
+             (ficha_id, num_medicos, num_gerontologos, num_psicologos, num_enfermeros,
+              num_auxiliares_enfermeria, num_cuidadores, num_camareros,
+              num_servicios_generales, num_personal_cocina, num_responsables_farmacia,
+              num_personal_seguridad, num_personal_no_adscrito, descripcion_no_adscrito,
               otros_personal, descripcion_otros_personal)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
              ON CONFLICT (ficha_id) DO UPDATE SET
-               num_medicos_geriatra=$2, num_medicos_psiquiatra=$3, num_enfermeros=$4,
-               num_cuidadores=$5, num_camareros=$6, num_auxiliares_enfermeria=$7,
-               num_servicios_generales=$8, num_personal_cocina=$9,
-               num_personal_no_adscrito=$10, descripcion_no_adscrito=$11,
-               posee_expediente_curricular=$12, otros_personal=$13,
-               descripcion_otros_personal=$14, updated_at=NOW()
+               num_medicos=$2, num_gerontologos=$3, num_psicologos=$4,
+               num_enfermeros=$5, num_auxiliares_enfermeria=$6, num_cuidadores=$7,
+               num_camareros=$8, num_servicios_generales=$9, num_personal_cocina=$10,
+               num_responsables_farmacia=$11, num_personal_seguridad=$12,
+               num_personal_no_adscrito=$13, descripcion_no_adscrito=$14,
+               otros_personal=$15, descripcion_otros_personal=$16, updated_at=NOW()
              RETURNING *`,
-            [fichaId, p.num_medicos_geriatra, p.num_medicos_psiquiatra, p.num_enfermeros,
-                p.num_cuidadores, p.num_camareros, p.num_auxiliares_enfermeria,
-                p.num_servicios_generales, p.num_personal_cocina, p.num_personal_no_adscrito,
-                p.descripcion_no_adscrito, p.posee_expediente_curricular,
-                p.otros_personal, p.descripcion_otros_personal]
+            [fichaId, p.num_medicos ?? 0, p.num_gerontologos ?? 0, p.num_psicologos ?? 0,
+                p.num_enfermeros ?? 0, p.num_auxiliares_enfermeria ?? 0,
+                p.num_cuidadores ?? 0, p.num_camareros ?? 0, p.num_servicios_generales ?? 0,
+                p.num_personal_cocina ?? 0, p.num_responsables_farmacia ?? 0,
+                p.num_personal_seguridad ?? 0, p.num_personal_no_adscrito ?? 0,
+                p.descripcion_no_adscrito || null,
+                p.otros_personal ?? false, p.descripcion_otros_personal || null]
         );
         res.json({ message: 'Personal guardado.', data: r.rows[0] });
     } catch (err) {
@@ -1364,19 +1388,43 @@ exports.saveAccesibilidad = async (req, res) => {
             `INSERT INTO public.ficha_accesibilidad
              (ficha_id, rampas_fijas, piso_antirresbalante, alfombras_sueltas, ascensores,
               num_ascensores, pasamanos, escaleras_antirresbalantes, banos_geriatricos,
-              senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+              senales_accesibles, timbres_emergencia, pasillos_accesibles_sillas,
+              marquesinas_acceso, estacionamientos_reservados,
+              pasamanos_dobles, zonas_descanso,
+              barras_apoyo, inodoros_elevados, duchas_ras_suelo,
+              lavamanos_suspendidos, griferia_palanca, boton_emergencia,
+              sillas_apoyabrazos, mesas_sin_obstaculos,
+              pisos_podotactiles, alto_contraste_visual, pictogramas_universales,
+              iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
+                     $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
              ON CONFLICT (ficha_id) DO UPDATE SET
                rampas_fijas=$2, piso_antirresbalante=$3, alfombras_sueltas=$4, ascensores=$5,
                num_ascensores=$6, pasamanos=$7, escaleras_antirresbalantes=$8, banos_geriatricos=$9,
-               senales_accesibles=$10, timbres_emergencia=$11, pasillos_accesibles_sillas=$12, updated_at=NOW()
+               senales_accesibles=$10, timbres_emergencia=$11, pasillos_accesibles_sillas=$12,
+               marquesinas_acceso=$13, estacionamientos_reservados=$14,
+               pasamanos_dobles=$15, zonas_descanso=$16,
+               barras_apoyo=$17, inodoros_elevados=$18, duchas_ras_suelo=$19,
+               lavamanos_suspendidos=$20, griferia_palanca=$21, boton_emergencia=$22,
+               sillas_apoyabrazos=$23, mesas_sin_obstaculos=$24,
+               pisos_podotactiles=$25, alto_contraste_visual=$26, pictogramas_universales=$27,
+               iluminacion_homogenea=$28, alarmas_duales=$29, rutas_evacuacion_anchas=$30,
+               updated_at=NOW()
              RETURNING *`,
-            [fichaId, a.rampas_fijas ?? false, a.piso_antirresbalante ?? false,
-             a.alfombras_sueltas ?? false, a.ascensores ?? false,
+            [fichaId, a.rampas_fijas ?? false, a.piso_antirresbalante ?? false, a.alfombras_sueltas ?? false,
+             a.ascensores ?? false,
              a.ascensores ? (a.num_ascensores ? parseInt(a.num_ascensores, 10) : null) : null,
              a.pasamanos ?? false, a.escaleras_antirresbalantes ?? false,
              a.banos_geriatricos ?? false, a.senales_accesibles ?? false,
-             a.timbres_emergencia ?? false, a.pasillos_accesibles_sillas ?? false]
+             a.timbres_emergencia ?? false, a.pasillos_accesibles_sillas ?? false,
+             a.marquesinas_acceso ?? false, a.estacionamientos_reservados ?? false,
+             a.pasamanos_dobles ?? false, a.zonas_descanso ?? false,
+             a.barras_apoyo ?? false, a.inodoros_elevados ?? false, a.duchas_ras_suelo ?? false,
+             a.lavamanos_suspendidos ?? false, a.griferia_palanca ?? false, a.boton_emergencia ?? false,
+             a.sillas_apoyabrazos ?? false, a.mesas_sin_obstaculos ?? false,
+             a.pisos_podotactiles ?? false, a.alto_contraste_visual ?? false,
+             a.pictogramas_universales ?? false, a.iluminacion_homogenea ?? false,
+             a.alarmas_duales ?? false, a.rutas_evacuacion_anchas ?? false]
         );
         res.json({ message: 'Accesibilidad guardada.', data: r.rows[0] });
     } catch (err) {

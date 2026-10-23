@@ -291,12 +291,16 @@
                                 <q-card-section>
                                     <div class="row q-col-gutter-md">
                                         <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Méd. Geriatra</div>{{
-                                            ficha.personal.num_medicos_geriatra }}
+                                            <div class="text-caption text-grey">Médicos</div>{{
+                                            ficha.personal.num_medicos ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Méd. Psiquiatra</div>{{
-                                            ficha.personal.num_medicos_psiquiatra }}
+                                            <div class="text-caption text-grey">Gerontólogos</div>{{
+                                            ficha.personal.num_gerontologos ?? 0 }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2">
+                                            <div class="text-caption text-grey">Psicólogos</div>{{
+                                            ficha.personal.num_psicologos ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Enfermeros</div>{{
@@ -319,8 +323,16 @@
                                             ficha.personal.num_servicios_generales }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Personal Cocina</div>{{
+                                            <div class="text-caption text-grey">Cocina y comedor</div>{{
                                             ficha.personal.num_personal_cocina }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2">
+                                            <div class="text-caption text-grey">Resp. de farmacia</div>{{
+                                            ficha.personal.num_responsables_farmacia ?? 0 }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2">
+                                            <div class="text-caption text-grey">Personal de seguridad</div>{{
+                                            ficha.personal.num_personal_seguridad ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">No Adscritos</div>{{

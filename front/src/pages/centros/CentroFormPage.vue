@@ -689,8 +689,8 @@
                             <q-toggle v-model="infra.tiene_comedor" :label="infra.tiene_comedor ? 'Sí' : 'No'" color="primary" />
                         </div>
                         <div class="col-12 col-md-3" v-if="infra.tiene_comedor">
-                            <div class="text-caption q-mb-xs">Capacidad comedor (%)</div>
-                            <q-input v-model.number="infra.capacidad_comedor_pct" outlined dense type="number" min="0" max="100" suffix="%" />
+                            <div class="text-caption q-mb-xs">Capacidad comedor</div>
+                            <q-input v-model.number="infra.capacidad_comedor_pct" outlined dense type="number" min="0" max="100" suffix="" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
                             <div class="text-caption q-mb-xs">Aceptan mascotas</div>
@@ -736,100 +736,37 @@
                     <inner-progress :value="tabProgress('accesibilidad')" :count="tabFieldCount('accesibilidad')" />
                     <section-header icon="accessible" label="Accesibilidad del Inmueble" />
 
-                    <div class="row q-col-gutter-md q-mb-md">
-                        <!-- Rampas fijas -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Rampas fijas</div>
-                                <q-toggle v-model="acc.rampas_fijas" :label="acc.rampas_fijas ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Piso en acabado antiresbalante -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Piso en acabado antirresbalante</div>
-                                <q-toggle v-model="acc.piso_antirresbalante" :label="acc.piso_antirresbalante ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Alfombras sueltas -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Alfombras sueltas</div>
-                                <q-toggle v-model="acc.alfombras_sueltas" :label="acc.alfombras_sueltas ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Ascensores y Cuántos -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Ascensores</div>
-                                <div class="row items-center justify-between">
-                                    <q-toggle v-model="acc.ascensores" :label="acc.ascensores ? 'Sí' : 'No'" color="primary" />
-                                    <div v-if="acc.ascensores" style="max-width: 140px;">
-                                        <div class="text-caption q-mb-xs">¿Cuántos? *</div>
-                                        <q-input
-                                            v-model.number="acc.num_ascensores"
-                                            outlined
-                                            dense
-                                            type="number"
-                                            min="1"
-                                            :rules="[val => (val !== null && val !== '' && Number(val) > 0) || 'Requerido']"
-                                        />
+                    <template v-for="grupo in gruposAccesibilidad" :key="grupo.titulo">
+                        <div class="text-subtitle2 q-mb-sm">{{ grupo.titulo }}</div>
+                        <div class="row q-col-gutter-md q-mb-md">
+                            <div class="col-12 col-sm-6 col-md-3" v-for="c in grupo.campos" :key="c.field">
+                                <q-card flat bordered class="q-pa-sm">
+                                    <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">{{ c.label }}</div>
+                                    <q-toggle v-model="acc[c.field]" :label="acc[c.field] ? 'Sí' : 'No'" color="primary" />
+                                </q-card>
+                            </div>
+                            <!-- Ascensores y cuántos (campo condicional del grupo Accesos) -->
+                            <div v-if="grupo.titulo === 'Accesos y Entradas'" class="col-12 col-sm-6 col-md-3">
+                                <q-card flat bordered class="q-pa-sm">
+                                    <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Ascensores</div>
+                                    <div class="row items-center justify-between">
+                                        <q-toggle v-model="acc.ascensores" :label="acc.ascensores ? 'Sí' : 'No'" color="primary" />
+                                        <div v-if="acc.ascensores" style="max-width: 140px;">
+                                            <div class="text-caption q-mb-xs">¿Cuántos? *</div>
+                                            <q-input
+                                                v-model.number="acc.num_ascensores"
+                                                outlined
+                                                dense
+                                                type="number"
+                                                min="1"
+                                                :rules="[val => (val !== null && val !== '' && Number(val) > 0) || 'Requerido']"
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            </q-card>
+                                </q-card>
+                            </div>
                         </div>
-
-                        <!-- Pasamanos -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Pasamanos</div>
-                                <q-toggle v-model="acc.pasamanos" :label="acc.pasamanos ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Escaleras con huellas antirresbalantes -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Escaleras con huellas antirresbalantes</div>
-                                <q-toggle v-model="acc.escaleras_antirresbalantes" :label="acc.escaleras_antirresbalantes ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Baños Geriátricos -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Baños Geriátricos</div>
-                                <q-toggle v-model="acc.banos_geriatricos" :label="acc.banos_geriatricos ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Señales visuales, audibles y táctiles -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Señales visuales, audibles y táctiles</div>
-                                <q-toggle v-model="acc.senales_accesibles" :label="acc.senales_accesibles ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Timbres de emergencia -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Timbres de emergencia</div>
-                                <q-toggle v-model="acc.timbres_emergencia" :label="acc.timbres_emergencia ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-
-                        <!-- Pasillos accesibles para sillas de ruedas -->
-                        <div class="col-12 col-sm-6 col-md-4">
-                            <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-medium text-grey-8 q-mb-xs">Pasillos accesibles para sillas de ruedas</div>
-                                <q-toggle v-model="acc.pasillos_accesibles_sillas" :label="acc.pasillos_accesibles_sillas ? 'Sí' : 'No'" color="primary" />
-                            </q-card>
-                        </div>
-                    </div>
+                    </template>
 
                     <div class="row justify-end q-mt-md q-gutter-sm">
                         <q-btn unelevated color="primary" icon="save" label="Guardar Accesibilidad" :loading="saving"
@@ -846,21 +783,20 @@
                     <inner-progress :value="tabProgress('personal')" :count="tabFieldCount('personal')" />
                     <section-header icon="group" label="Recurso Humano / Personal" />
 
-                    <div class="row q-col-gutter-md q-mb-md">
-                        <div v-for="f in camposPersonal" :key="f.field" class="col-12 col-md-4 col-sm-6">
-                            <div class="text-caption q-mb-xs">{{ f.label }}</div>
-                            <q-input v-model.number="pers[f.field]" outlined dense type="number" min="0" />
+                    <template v-for="grupo in gruposPersonal" :key="grupo.titulo">
+                        <div class="text-subtitle2 q-mb-sm">{{ grupo.titulo }}</div>
+                        <div class="row q-col-gutter-md q-mb-md">
+                            <div v-for="f in grupo.campos" :key="f.field" class="col-12 col-md-3 col-sm-6">
+                                <div class="text-caption q-mb-xs">{{ f.label }}</div>
+                                <q-input v-model.number="pers[f.field]" outlined dense type="number" min="0" />
+                            </div>
                         </div>
-                    </div>
+                    </template>
 
                     <div class="row q-col-gutter-md q-mb-md">
-                        <div class="col-12 col-md-6">
+                        <div class="col-12 col-md-4">
                             <div class="text-caption q-mb-xs">Descripción personal no adscrito</div>
                             <q-input v-model="pers.descripcion_no_adscrito" outlined dense />
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <div class="text-caption q-mb-xs">Posee expediente curricular</div>
-                            <q-toggle v-model="pers.posee_expediente_curricular" label="Sí" />
                         </div>
                         <div class="col-12 col-md-3">
                             <div class="text-caption q-mb-xs">Otros tipos de personal</div>
@@ -1183,16 +1119,23 @@ const serviciosBasicos = [
     { field: 'deposito_basura', label: 'Depósito de basura' },
     { field: 'sistema_seguridad', label: 'Sistema de seguridad' },
 ];
-const camposPersonal = [
-    { field: 'num_medicos_geriatra', label: 'Médicos Geriatras' },
-    { field: 'num_medicos_psiquiatra', label: 'Médicos Psiquiatras' },
-    { field: 'num_enfermeros', label: 'Enfermeros/as' },
-    { field: 'num_cuidadores', label: 'Cuidadores' },
-    { field: 'num_camareros', label: 'Camareros' },
-    { field: 'num_auxiliares_enfermeria', label: 'Aux. Enfermería' },
-    { field: 'num_servicios_generales', label: 'Serv. Generales' },
-    { field: 'num_personal_cocina', label: 'Personal Cocina' },
-    { field: 'num_personal_no_adscrito', label: 'Personal No Adscrito' },
+const gruposPersonal = [
+    { titulo: 'Personal Asistencial y de Salud', campos: [
+        { field: 'num_medicos', label: 'Médicos' },
+        { field: 'num_gerontologos', label: 'Gerontólogos' },
+        { field: 'num_psicologos', label: 'Psicólogos' },
+        { field: 'num_enfermeros', label: 'Enfermeros' },
+        { field: 'num_auxiliares_enfermeria', label: 'Aux. Enfermería' },
+        { field: 'num_cuidadores', label: 'Cuidadores' },
+    ]},
+    { titulo: 'Personal de Apoyo y Servicios', campos: [
+        { field: 'num_camareros', label: 'Camareros' },
+        { field: 'num_servicios_generales', label: 'Servicios generales' },
+        { field: 'num_personal_cocina', label: 'Personal de cocina y comedor' },
+        { field: 'num_responsables_farmacia', label: 'Responsables de farmacia' },
+        { field: 'num_personal_seguridad', label: 'Personal de seguridad' },
+        { field: 'num_personal_no_adscrito', label: 'Personal no adscrito' },
+    ]},
 ];
 
 // ── Helpers de fecha dd/mm/aaaa ↔ yyyy-mm-dd ────────────────────────────────
@@ -1281,6 +1224,47 @@ const mostrarPanelSolar = computed(() => {
 watch(mostrarPanelSolar, (val) => {
     if (!val) infra.value.planta_electrica_panel_solar = false;
 });
+const gruposAccesibilidad = [
+    { titulo: 'Accesos y Entradas', campos: [
+        { field: 'rampas_fijas', label: 'Rampas de acceso' },
+        { field: 'marquesinas_acceso', label: 'Marquesinas de acceso' },
+        { field: 'estacionamientos_reservados', label: 'Estacionamientos reservados' },
+    ]},
+    { titulo: 'Pasillos y Zonas de Paso', campos: [
+        { field: 'pasamanos', label: 'Pasamanos' },
+        { field: 'pasamanos_dobles', label: 'Pasamanos dobles' },
+        { field: 'piso_antirresbalante', label: 'Pisos antideslizantes' },
+        { field: 'pasillos_accesibles_sillas', label: 'Pasillos anchos' },
+        { field: 'alfombras_sueltas', label: 'Alfombras sueltas' },
+        { field: 'zonas_descanso', label: 'Zonas de descanso' },
+    ]},
+    { titulo: 'Baños y Zonas Húmedas', campos: [
+        { field: 'banos_geriatricos', label: 'Baños geriátricos' },
+        { field: 'barras_apoyo', label: 'Barras de apoyo' },
+        { field: 'inodoros_elevados', label: 'Inodoros elevados' },
+        { field: 'duchas_ras_suelo', label: 'Duchas a ras del suelo' },
+        { field: 'lavamanos_suspendidos', label: 'Lavamanos suspendidos' },
+        { field: 'griferia_palanca', label: 'Grifería de palanca' },
+        { field: 'boton_emergencia', label: 'Botón de emergencia' },
+    ]},
+    { titulo: 'Mobiliario y Ergonomía', campos: [
+        { field: 'sillas_apoyabrazos', label: 'Sillas con apoyabrazos' },
+        { field: 'mesas_sin_obstaculos', label: 'Mesas sin obstáculos' },
+    ]},
+    { titulo: 'Comunicación, Visión y Orientación', campos: [
+        { field: 'pisos_podotactiles', label: 'Pisos podotáctiles' },
+        { field: 'alto_contraste_visual', label: 'Alto contraste visual' },
+        { field: 'pictogramas_universales', label: 'Pictogramas universales' },
+        { field: 'iluminacion_homogenea', label: 'Iluminación homogénea' },
+        { field: 'senales_accesibles', label: 'Señales visuales, audibles y táctiles' },
+    ]},
+    { titulo: 'Seguridad y Emergencia', campos: [
+        { field: 'alarmas_duales', label: 'Alarmas duales auditivas y visuales' },
+        { field: 'rutas_evacuacion_anchas', label: 'Rutas de evacuación anchas' },
+        { field: 'escaleras_antirresbalantes', label: 'Escaleras con huellas antirresbalantes' },
+        { field: 'timbres_emergencia', label: 'Timbres de emergencia' },
+    ]},
+];
 const acc = ref({
     rampas_fijas: false,
     piso_antirresbalante: false,
@@ -1293,13 +1277,21 @@ const acc = ref({
     senales_accesibles: false,
     timbres_emergencia: false,
     pasillos_accesibles_sillas: false,
+    // Bloque ampliado: accesos, pasillos, baños, mobiliario, comunicación y seguridad
+    marquesinas_acceso: false, estacionamientos_reservados: false,
+    pasamanos_dobles: false, zonas_descanso: false,
+    barras_apoyo: false, inodoros_elevados: false, duchas_ras_suelo: false,
+    lavamanos_suspendidos: false, griferia_palanca: false, boton_emergencia: false,
+    sillas_apoyabrazos: false, mesas_sin_obstaculos: false,
+    pisos_podotactiles: false, alto_contraste_visual: false, pictogramas_universales: false,
+    iluminacion_homogenea: false, alarmas_duales: false, rutas_evacuacion_anchas: false,
 });
 const pers = ref({
-    num_medicos_geriatra: null, num_medicos_psiquiatra: null,
-    num_enfermeros: null, num_cuidadores: null, num_camareros: null,
-    num_auxiliares_enfermeria: null, num_servicios_generales: null,
-    num_personal_cocina: null, num_personal_no_adscrito: null,
-    descripcion_no_adscrito: '', posee_expediente_curricular: null,
+    num_medicos: 0, num_gerontologos: 0, num_psicologos: 0,
+    num_enfermeros: 0, num_auxiliares_enfermeria: 0, num_cuidadores: 0,
+    num_camareros: 0, num_servicios_generales: 0, num_personal_cocina: 0,
+    num_responsables_farmacia: 0, num_personal_seguridad: 0, num_personal_no_adscrito: 0,
+    descripcion_no_adscrito: '',
     otros_personal: false, descripcion_otros_personal: ''
 });
 const serv = ref({
@@ -1431,10 +1423,18 @@ const tabFieldDefs = {
     accesibilidad: [
         'rampas_fijas', 'piso_antirresbalante', 'alfombras_sueltas', 'ascensores',
         'pasamanos', 'escaleras_antirresbalantes', 'banos_geriatricos',
-        'senales_accesibles', 'timbres_emergencia', 'pasillos_accesibles_sillas'
+        'senales_accesibles', 'timbres_emergencia', 'pasillos_accesibles_sillas',
+        'marquesinas_acceso', 'estacionamientos_reservados', 'pasamanos_dobles',
+        'zonas_descanso', 'barras_apoyo', 'inodoros_elevados', 'duchas_ras_suelo',
+        'lavamanos_suspendidos', 'griferia_palanca', 'boton_emergencia',
+        'sillas_apoyabrazos', 'mesas_sin_obstaculos', 'pisos_podotactiles',
+        'alto_contraste_visual', 'pictogramas_universales', 'iluminacion_homogenea',
+        'alarmas_duales', 'rutas_evacuacion_anchas'
     ],
-    personal: ['num_medicos_geriatra', 'num_enfermeros', 'num_cuidadores',
-        'num_servicios_generales', 'num_personal_cocina'],
+    personal: ['num_medicos', 'num_gerontologos', 'num_psicologos',
+        'num_enfermeros', 'num_auxiliares_enfermeria', 'num_cuidadores',
+        'num_camareros', 'num_servicios_generales', 'num_personal_cocina',
+        'num_responsables_farmacia', 'num_personal_seguridad', 'num_personal_no_adscrito'],
     servicios: ['farmacia', 'evaluacion_nutricional', 'medicos', 'lavanderia', 'barberia_peluqueria'],
     documentos: ['tiene_original'],
 };
@@ -2468,7 +2468,16 @@ onMounted(async () => {
             });
             if (ficha.capacidad) { Object.assign(cap.value, ficha.capacidad); savedTabs.value.capacidad = true; }
             if (ficha.servicios) { Object.assign(serv.value, ficha.servicios); savedTabs.value.servicios = true; }
-            if (ficha.personal) { Object.assign(pers.value, ficha.personal); savedTabs.value.personal = true; }
+            if (ficha.personal) {
+                Object.assign(pers.value, ficha.personal);
+                // Conteos NOT NULL DEFAULT 0: coerción defensiva para legacy NULL
+                Object.keys(pers.value).forEach(f => {
+                    if (f.startsWith('num_')) {
+                        pers.value[f] = Number(ficha.personal[f] ?? 0) || 0;
+                    }
+                });
+                savedTabs.value.personal = true;
+            }
             if (ficha.infraestructura) {
                 Object.assign(infra.value, ficha.infraestructura);
                 if (ficha.infraestructura.estado_inmueble_id != null) {
@@ -2512,6 +2521,10 @@ onMounted(async () => {
                 if (ficha.accesibilidad.num_ascensores != null) {
                     acc.value.num_ascensores = Number(ficha.accesibilidad.num_ascensores);
                 }
+                // Booleanos: pg los devuelve como boolean real; coerción defensiva
+                Object.keys(acc.value).forEach(f => {
+                    if (f !== 'num_ascensores') acc.value[f] = !!ficha.accesibilidad[f];
+                });
                 savedTabs.value.accesibilidad = true;
             }
             if (ficha.poblacion?.length) { savedTabs.value.poblacion = true; }

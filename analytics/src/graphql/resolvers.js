@@ -32,16 +32,18 @@ const FIELD_MAP = {
     'capacidad.num_ambulatoria': { sql: 'cap.num_atencion_ambulatoria', table: 'capacidad', label: 'Nº Atención Ambulatoria', category: 'Capacidad', numeric: true },
 
     // Personal
-    'personal.medicos_geriatra': { sql: 'per.num_medicos_geriatra', table: 'personal', label: 'Médicos Geriatra', category: 'Personal', numeric: true },
-    'personal.medicos_psiquiatra': { sql: 'per.num_medicos_psiquiatra', table: 'personal', label: 'Médicos Psiquiatra', category: 'Personal', numeric: true },
+    'personal.medicos': { sql: 'per.num_medicos', table: 'personal', label: 'Médicos', category: 'Personal', numeric: true },
+    'personal.gerontologos': { sql: 'per.num_gerontologos', table: 'personal', label: 'Gerontólogos', category: 'Personal', numeric: true },
+    'personal.psicologos': { sql: 'per.num_psicologos', table: 'personal', label: 'Psicólogos', category: 'Personal', numeric: true },
     'personal.enfermeros': { sql: 'per.num_enfermeros', table: 'personal', label: 'Enfermeros', category: 'Personal', numeric: true },
     'personal.cuidadores': { sql: 'per.num_cuidadores', table: 'personal', label: 'Cuidadores', category: 'Personal', numeric: true },
     'personal.camareros': { sql: 'per.num_camareros', table: 'personal', label: 'Camareros', category: 'Personal', numeric: true },
     'personal.auxiliares_enfermeria': { sql: 'per.num_auxiliares_enfermeria', table: 'personal', label: 'Auxiliares Enfermería', category: 'Personal', numeric: true },
     'personal.servicios_generales': { sql: 'per.num_servicios_generales', table: 'personal', label: 'Servicios Generales', category: 'Personal', numeric: true },
-    'personal.cocina': { sql: 'per.num_personal_cocina', table: 'personal', label: 'Personal de Cocina', category: 'Personal', numeric: true },
+    'personal.cocina': { sql: 'per.num_personal_cocina', table: 'personal', label: 'Personal de Cocina y Comedor', category: 'Personal', numeric: true },
+    'personal.responsables_farmacia': { sql: 'per.num_responsables_farmacia', table: 'personal', label: 'Responsables de Farmacia', category: 'Personal', numeric: true },
+    'personal.seguridad': { sql: 'per.num_personal_seguridad', table: 'personal', label: 'Personal de Seguridad', category: 'Personal', numeric: true },
     'personal.no_adscrito': { sql: 'per.num_personal_no_adscrito', table: 'personal', label: 'Personal No Adscrito', category: 'Personal', numeric: true },
-    'personal.expediente_curricular': { sql: 'per.posee_expediente_curricular', table: 'personal', label: 'Posee Exp. Curricular', category: 'Personal' },
 
     // Servicios
     'servicios.farmacia': { sql: 'srv.farmacia', table: 'servicios', label: 'Farmacia', category: 'Servicios' },

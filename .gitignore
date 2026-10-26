@@ -20,3 +20,10 @@ cedula/
 # front/src/pages/MarcoLegagal.bak
 "rencam.rar" 
 analytics/.env.development
+auth/k6_usuarios.json
+auth/k6_test_5000_usuarios.js
+k6_usuarios.json
+k6_test_5000_usuarios.js
+auth/generate_k6_users.js
+.gitignore
+auth/llenar_fichas_1000.js

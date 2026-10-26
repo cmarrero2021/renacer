@@ -526,8 +526,9 @@ exports.login = async (req, res) => {
   const { username, password } = req.body;
   const ip = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // Sesión activa no expirada
     const activeSession = await client.query(
       "SELECT * FROM sessions WHERE user_id = (SELECT id FROM users WHERE email = $1) AND is_revoked = false",
@@ -573,7 +574,7 @@ exports.login = async (req, res) => {
     // ============================================
     // Verificar cooldown entre intentos de login
     // ============================================
-    const cooldownMin = await getCooldownMinutes(user.id);
+    const cooldownMin = await getCooldownMinutes(user.id, client);
     if (cooldownMin > 0 && user.last_login_attempt) {
       const lastAttempt = moment.tz(user.last_login_attempt, "America/Caracas");
       const cooldownEnd = lastAttempt.clone().add(cooldownMin, 'minutes');
@@ -658,7 +659,7 @@ exports.login = async (req, res) => {
         .json({ error: "Nombre de usuario o contraseña incorrectos." });
     }
 
-    const is2faEnabled = await isTwoFactorEnabled(user.id);
+    const is2faEnabled = await isTwoFactorEnabled(user.id, client);
 
     if (!is2faEnabled) {
       // ============================================
@@ -667,7 +668,7 @@ exports.login = async (req, res) => {
       console.log(`🔓 LOGIN DIRECTO (2FA Deshabilitado): ${user.email}`);
 
       // Duración de sesión
-      const timeoutMin = await getSessionTimeout(user.id);
+      const timeoutMin = await getSessionTimeout(user.id, client);
       const expiresInSeconds = Math.max(parseInt(timeoutMin, 10) || 20, 1) * 60;
       const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
         expiresIn: expiresInSeconds,
@@ -818,7 +819,7 @@ exports.login = async (req, res) => {
     console.error("❌ Error en login:", err.message);
     res.status(500).json({ error: "Error en el inicio de sesión." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };
 
@@ -997,8 +998,9 @@ exports.logout = async (req, res) => {
   const decoded = jwt.decode(token);
   const userId = decoded?.userId;
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     await client.query(
       "UPDATE login_logs SET logout_type = $1, logout_timestamp = NOW() WHERE session_token = $2",
       ["logout", token]
@@ -1020,7 +1022,7 @@ exports.logout = async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: "Error al cerrar sesión." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };
 

@@ -131,11 +131,11 @@ exports.sendResetCodeEmail = async (to, code) => {
 
 // Obtener duración de sesión (en minutos)
 // Prioridad: users.session_timeout_min > roles.session_timeout_min > session_settings.global_timeout
-exports.getSessionTimeout = async (userId) => {
-  const client = await pool.connect();
+exports.getSessionTimeout = async (userId, clientParam = null) => {
+  const runner = clientParam || pool;
   try {
     // 1. Verificar si el usuario tiene configuración específica (no null y mayor a 0)
-    const userRes = await client.query(
+    const userRes = await runner.query(
       'SELECT session_timeout_min FROM users WHERE id = $1',
       [userId]
     );
@@ -145,7 +145,7 @@ exports.getSessionTimeout = async (userId) => {
     }
 
     // 2. Verificar si el rol del usuario tiene configuración específica (no null y mayor a 0)
-    const roleRes = await client.query(`
+    const roleRes = await runner.query(`
       SELECT r.session_timeout_min 
       FROM user_roles ur
       JOIN roles r ON ur.role_id = r.id
@@ -159,23 +159,24 @@ exports.getSessionTimeout = async (userId) => {
     }
 
     // 3. Usar configuración global
-    const globalRes = await client.query(
+    const globalRes = await runner.query(
       'SELECT global_timeout FROM session_settings WHERE id = 1'
     );
     return globalRes.rows[0]?.global_timeout || 120; // Fallback de 120 minutos si no hay configuración
-  } finally {
-    client.release();
+  } catch (err) {
+    console.error("Error al obtener timeout de sesión:", err.message);
+    return 120;
   }
 };
 
 // Obtener tiempo de enfriamiento (cooldown) en minutos
 // Prioridad: users.cooldown_minutes > roles.cooldown_minutes > session_settings.cooldown_minutes
 // Valor 0 = cooldown desactivado, NULL = hereda del nivel superior
-exports.getCooldownMinutes = async (userId) => {
-  const client = await pool.connect();
+exports.getCooldownMinutes = async (userId, clientParam = null) => {
+  const runner = clientParam || pool;
   try {
     // 1. Verificar si el usuario tiene configuración específica (no null)
-    const userRes = await client.query(
+    const userRes = await runner.query(
       'SELECT cooldown_minutes FROM users WHERE id = $1',
       [userId]
     );
@@ -185,7 +186,7 @@ exports.getCooldownMinutes = async (userId) => {
     }
 
     // 2. Verificar si el rol del usuario tiene configuración específica (no null)
-    const roleRes = await client.query(`
+    const roleRes = await runner.query(`
       SELECT r.cooldown_minutes 
       FROM user_roles ur
       JOIN roles r ON ur.role_id = r.id
@@ -199,12 +200,13 @@ exports.getCooldownMinutes = async (userId) => {
     }
 
     // 3. Usar configuración global
-    const globalRes = await client.query(
+    const globalRes = await runner.query(
       'SELECT cooldown_minutes FROM session_settings WHERE id = 1'
     );
     return globalRes.rows[0]?.cooldown_minutes ?? 10; // Fallback de 10 minutos
-  } finally {
-    client.release();
+  } catch (err) {
+    console.error("Error al obtener cooldown:", err.message);
+    return 10;
   }
 };
 
@@ -219,25 +221,23 @@ exports.generateToken = async (userId) => {
 /**
  * Verifica si el 2FA está habilitado para un usuario específico.
  */
-exports.isTwoFactorEnabled = async (userId) => {
-  const client = await pool.connect();
+exports.isTwoFactorEnabled = async (userId, clientParam = null) => {
+  const runner = clientParam || pool;
   try {
     // 1. Verificar configuración global (primer registro)
-    const globalRes = await client.query(
+    const globalRes = await runner.query(
       'SELECT two_factor_enabled FROM session_settings ORDER BY id ASC LIMIT 1'
     );
     if (globalRes.rows.length > 0 && globalRes.rows[0].two_factor_enabled === false) {
-      console.log(`[DEBUG] 2FA deshabilitado GLOBALMENTE`);
       return false;
     }
 
     // 2. Verificar configuración del usuario
-    const userRes = await client.query(
+    const userRes = await runner.query(
       'SELECT two_factor_enabled FROM users WHERE id = $1',
       [userId]
     );
     if (userRes.rows.length > 0) {
-      console.log(`[DEBUG] 2FA para usuario ${userId}: ${userRes.rows[0].two_factor_enabled}`);
       if (userRes.rows[0].two_factor_enabled === false) {
         return false;
       }
@@ -245,9 +245,7 @@ exports.isTwoFactorEnabled = async (userId) => {
 
     return true; // Por defecto habilitado
   } catch (err) {
-    console.error("Error al verificar si 2FA está habilitado:", err);
+    console.error("Error al verificar si 2FA está habilitado:", err.message);
     return true; // En caso de error, preferir seguridad
-  } finally {
-    client.release();
   }
 };

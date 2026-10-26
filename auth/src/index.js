@@ -78,3 +78,12 @@ server.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
     console.log(`WebSocket disponible en ws://localhost:${PORT}/ws`);
 });
+
+// Manejadores globales para evitar caída del servidor ante saturación del pool de base de datos
+process.on('unhandledRejection', (reason) => {
+    console.error('⚠️ [Unhandled Rejection evitado]:', reason?.message || reason);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('⚠️ [Uncaught Exception evitado]:', err.message);
+});

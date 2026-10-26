@@ -303,8 +303,9 @@ exports.listParroquias = async (req, res) => {
 // ============================================================
 
 exports.listCentros = async (req, res) => {
-    const client = await pool.connect();
+    let client;
     try {
+        client = await pool.connect();
         const { filter, params, isArray } = await getCentroFilter(req.userId, client);
         const paramIdx = isArray ? params.length : 0;
 
@@ -353,7 +354,7 @@ exports.listCentros = async (req, res) => {
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener centros', detail: err.message });
     } finally {
-        client.release();
+        if (client) client.release();
     }
 };
 

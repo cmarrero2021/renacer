@@ -18,8 +18,9 @@ exports.authenticate = async (req, res, next) => {
   }
   req.userId = decoded.userId;
 
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     // Query principal: sesión + blacklist (siempre debe funcionar)
     const sessionResult = await client.query(`
       SELECT expires_at FROM sessions
@@ -83,7 +84,7 @@ exports.authenticate = async (req, res, next) => {
     console.error("Error en authenticate:", err.message);
     return res.status(500).json({ error: "Error al verificar la autenticación." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };
 
@@ -100,8 +101,9 @@ exports.authorize = (requiredPermission) => {
 };
 
 exports.verifyUser = async (req, res, next) => {
-  const client = await pool.connect();
+  let client;
   try {
+    client = await pool.connect();
     const result = await client.query(
       "SELECT is_verified, is_email_verified FROM users WHERE id = $1",
       [req.userId]
@@ -115,6 +117,6 @@ exports.verifyUser = async (req, res, next) => {
     console.error("Error en verifyUser:", err.message);
     return res.status(500).json({ error: "Error al verificar el usuario." });
   } finally {
-    client.release();
+    if (client) client.release();
   }
 };

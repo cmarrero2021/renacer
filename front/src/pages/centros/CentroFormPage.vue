@@ -185,7 +185,7 @@
                             <div class="col-12">
                                 <div class="row q-gutter-sm items-center q-mb-xs">
                                     <q-btn unelevated color="primary" icon="my_location" size="sm"
-                                        label="Usar mi ubicación actual" :loading="geoLoading"
+                                        label="Obtener mi ubicación actual" :loading="geoLoading"
                                         @click="obtenerUbicacionActual" />
                                     <!-- <q-btn outline color="secondary" icon="search" size="sm" label="Geocodificar dirección" :loading="geocodeLoading" :disable="!datos.direccion" @click="geocodificarDireccion" /> -->
                                     <q-chip v-if="datos.latitud && datos.longitud" dense color="positive"
@@ -195,7 +195,7 @@
                                 </div>
                                 <div class="text-caption text-grey-6">
                                     <q-icon name="info" size="xs" />
-                                    "Ubicación actual" usa el GPS/WiFi del dispositivo · "Geocodificar" convierte la
+                                    "Obtener mi ubicación actual" usa el GPS/WiFi del dispositivo · "Geocodificar" convierte la
                                     dirección en coordenadas
                                     (OpenStreetMap, sin costo)
                                 </div>
@@ -1636,23 +1636,10 @@ async function obtenerUbicacionActual() {
                 const { data } = await geoService.proxyReverse(lat, lng);
 
                 if (data && data.address) {
-                    // Construir una dirección legible con los componentes disponibles
-                    const a = data.address;
-                    const partes = [
-                        a.road || a.pedestrian || a.footway || '',
-                        a.house_number ? `N° ${a.house_number}` : '',
-                        a.neighbourhood || a.suburb || a.quarter || '',
-                        a.city_district || a.county || '',
-                    ].filter(Boolean);
-                    const direccionObtenida = partes.join(', ');
-                    if (direccionObtenida) {
-                        datos.value.direccion = direccionObtenida;
-                    }
-
                     Notify.create({
                         type: 'positive',
                         icon: 'my_location',
-                        message: 'Ubicación y dirección obtenidas (vía proxy)',
+                        message: `Coordenadas obtenidas: ${lat}, ${lng}`,
                         caption: data.display_name,
                         timeout: 5000
                     });
@@ -1664,7 +1651,6 @@ async function obtenerUbicacionActual() {
                         type: 'positive',
                         icon: 'my_location',
                         message: `Coordenadas obtenidas: ${lat}, ${lng}`,
-                        caption: 'No se pudo obtener la dirección textual.',
                         timeout: 4000
                     });
                 }
@@ -1674,7 +1660,6 @@ async function obtenerUbicacionActual() {
                     type: 'positive',
                     icon: 'my_location',
                     message: `Coordenadas obtenidas: ${lat}, ${lng}`,
-                    caption: 'No se pudo obtener la dirección textual.',
                     timeout: 4000
                 });
             } finally {

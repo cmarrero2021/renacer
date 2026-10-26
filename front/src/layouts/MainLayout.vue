@@ -114,6 +114,11 @@
               <q-item-section avatar><q-icon name="home_work" /></q-item-section>
               <q-item-section>Estados del Inmueble</q-item-section>
             </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/tipo_planta"
+              v-if="isAdmin() || hasPermission('view_tipo_planta') || hasPermission('view_tipos_planta')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="bolt" /></q-item-section>
+              <q-item-section>Tipos de Planta Eléctrica</q-item-section>
+            </q-item>
           </q-expansion-item>
 
           <!-- Menú expandible de Mantenimiento -->

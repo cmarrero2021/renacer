@@ -100,6 +100,17 @@
           </div>
         </template>
 
+        <!-- Celda de ¿Es baterías? (tipo_planta) -->
+        <template v-slot:body-cell-es_baterias="props">
+          <q-td :props="props" class="text-center">
+            <q-badge
+              :color="props.row.es_baterias ? 'primary' : 'grey-5'"
+              :label="props.row.es_baterias ? 'Sí' : 'No'"
+              class="q-px-sm q-py-xs text-weight-medium"
+            />
+          </q-td>
+        </template>
+
         <!-- Celda de Estado (Activo / Inactivo) -->
         <template v-slot:body-cell-activo="props">
           <q-td :props="props" class="text-center">
@@ -209,6 +220,16 @@
                 rows="3"
                 outlined
                 dense
+              />
+            </div>
+
+            <!-- Es baterías (para tipo_planta) -->
+            <div v-if="hasField('es_baterias')" class="row items-center justify-between q-mt-sm">
+              <span class="text-body2 text-grey-8">¿Funciona con baterías / acumulación?</span>
+              <q-toggle
+                v-model="formData.es_baterias"
+                color="primary"
+                :label="formData.es_baterias ? 'Sí' : 'No'"
               />
             </div>
 
@@ -390,7 +411,8 @@ function openCreateModal() {
   isEditing.value = false;
   editingId.value = null;
   formData.value = {
-    activo: true
+    activo: true,
+    es_baterias: false
   };
   modalOpen.value = true;
 }

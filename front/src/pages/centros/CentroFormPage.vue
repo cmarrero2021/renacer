@@ -24,17 +24,28 @@
         <!-- ───── Barra de progreso global ────────────────────────────────── -->
         <q-card flat bordered class="q-mb-md bg-grey-1">
             <q-card-section class="q-py-sm">
-                <div class="row items-center justify-between q-mb-xs">
+                <div class="row items-center q-mb-sm">
                     <span class="text-subtitle2 text-weight-bold">
                         <q-icon name="assignment_turned_in" class="q-mr-xs text-primary" />
-                        Progreso General
-                    </span>
-                    <span class="text-caption text-grey">
-                        {{ savedCount }}/{{ steps.length }} secciones completadas
+                        Progreso General: {{ savedCount }} de {{ steps.length }} secciones completadas
                     </span>
                 </div>
-                <q-linear-progress :value="savedCount / steps.length" color="primary" size="10px" rounded
-                    class="q-mb-sm" />
+                <!-- Barra de progreso con 8 divisiones (Semáforo) -->
+                <div class="row no-wrap items-center q-mb-sm" style="gap: 5px;">
+                    <div v-for="(s, idx) in steps" :key="s.name" class="col"
+                        :style="{
+                            height: '18px',
+                            borderRadius: '4px',
+                            backgroundColor: savedTabs[s.name] ? getStepProgressColor(idx) : '#e0e0e0',
+                            transition: 'all 0.3s ease',
+                            cursor: 'pointer'
+                        }"
+                        @click="goToTab(s.name)">
+                        <q-tooltip anchor="top middle" self="bottom middle">
+                            {{ s.label }}: {{ savedTabs[s.name] ? 'Completada' : 'Pendiente' }}
+                        </q-tooltip>
+                    </div>
+                </div>
                 <div class="row q-gutter-xs">
                     <q-chip v-for="s in steps" :key="s.name" dense size="sm"
                         :color="savedTabs[s.name] ? 'positive' : (activeTab === s.name ? 'primary' : 'grey-4')"
@@ -1082,6 +1093,11 @@ const savedTabs = ref({
     infraestructura: false, accesibilidad: false, personal: false, servicios: false, documentos: false
 });
 const savedCount = computed(() => Object.values(savedTabs.value).filter(Boolean).length);
+function getStepProgressColor(index) {
+    if (index < 4) return '#e53935'; // 4 primeras: rojo
+    if (index < 7) return '#fb8c00'; // 3 siguientes: tono entre amarillo y naranja
+    return '#2e7d32'; // última: verde
+}
 function tabEnabled(name) { return savedTabs.value.datos; }
 async function goToTab(name) {
     if (activeTab.value === 'infraestructura' && name !== 'infraestructura' && fichaId.value && hasInfraestructura.value) {

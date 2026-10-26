@@ -1,0 +1,318 @@
+{
+  "tablasSoloDev": [],
+  "tablasSoloProd": [],
+  "colsFaltanProd": [
+    {
+      "tabla": "ficha_accesibilidad",
+      "cols": [
+        {
+          "col": "marquesinas_acceso",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "estacionamientos_reservados",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "pasamanos_dobles",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "zonas_descanso",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "barras_apoyo",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "inodoros_elevados",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "duchas_ras_suelo",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "lavamanos_suspendidos",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "griferia_palanca",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "boton_emergencia",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "sillas_apoyabrazos",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "mesas_sin_obstaculos",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "pisos_podotactiles",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "alto_contraste_visual",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "pictogramas_universales",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "iluminacion_homogenea",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "alarmas_duales",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        },
+        {
+          "col": "rutas_evacuacion_anchas",
+          "tipo": "boolean",
+          "notNull": true,
+          "default": "false"
+        }
+      ]
+    },
+    {
+      "tabla": "ficha_personal",
+      "cols": [
+        {
+          "col": "num_medicos",
+          "tipo": "integer",
+          "notNull": true,
+          "default": "0"
+        },
+        {
+          "col": "num_responsables_farmacia",
+          "tipo": "integer",
+          "notNull": true,
+          "default": "0"
+        },
+        {
+          "col": "num_gerontologos",
+          "tipo": "integer",
+          "notNull": true,
+          "default": "0"
+        },
+        {
+          "col": "num_psicologos",
+          "tipo": "integer",
+          "notNull": true,
+          "default": "0"
+        },
+        {
+          "col": "num_personal_seguridad",
+          "tipo": "integer",
+          "notNull": true,
+          "default": "0"
+        }
+      ]
+    }
+  ],
+  "colsFaltanDev": [
+    {
+      "tabla": "ficha_personal",
+      "cols": [
+        "num_medicos_geriatra",
+        "num_medicos_psiquiatra",
+        "posee_expediente_curricular"
+      ]
+    }
+  ],
+  "colsDistintas": [
+    {
+      "tabla": "ficha_documentos",
+      "col": "archivo_mimetype",
+      "dev": {
+        "tipo": "character varying(100)",
+        "notNull": false,
+        "default": "'application/pdf'::character varying"
+      },
+      "prod": {
+        "tipo": "character varying(100)",
+        "notNull": false,
+        "default": null
+      }
+    },
+    {
+      "tabla": "ficha_infraestructura",
+      "col": "capacidad_comedor_pct",
+      "dev": {
+        "tipo": "bigint",
+        "notNull": false,
+        "default": null
+      },
+      "prod": {
+        "tipo": "numeric(5,2)",
+        "notNull": false,
+        "default": null
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_enfermeros",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_cuidadores",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_camareros",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_auxiliares_enfermeria",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_servicios_generales",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_personal_cocina",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    },
+    {
+      "tabla": "ficha_personal",
+      "col": "num_personal_no_adscrito",
+      "dev": {
+        "tipo": "integer",
+        "notNull": true,
+        "default": "0"
+      },
+      "prod": {
+        "tipo": "integer",
+        "notNull": false,
+        "default": "0"
+      }
+    }
+  ],
+  "consFaltanProd": [
+    {
+      "tabla": "registro_verificaciones",
+      "nombre": "registro_verificaciones_pkey",
+      "def": "PRIMARY KEY (id)"
+    }
+  ],
+  "consDistintos": [],
+  "consSoloProd": [],
+  "idxSoloDev": [
+    {
+      "nombre": "idx_registro_verificaciones_email",
+      "def": "idx_registro_verificaciones_email ON public.registro_verificaciones USING btree (email)"
+    }
+  ],
+  "idxSoloProd": [],
+  "seqSoloDev": [
+    "registro_verificaciones_id_seq"
+  ],
+  "seqSoloProd": [],
+  "alterSoloDev": [],
+  "alterSoloProd": [],
+  "funcSoloDev": [],
+  "funcSoloProd": [],
+  "trigSoloDev": [],
+  "trigSoloProd": []
+}

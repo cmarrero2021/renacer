@@ -27,6 +27,7 @@ export default configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#build
     build: {
+      distDir: 'D:\\quasar-dist\\rencaam\\dist',
       target: {
         browser: ["es2019", "edge88", "firefox78", "chrome87", "safari13.1"],
         node: "node20",
@@ -38,14 +39,14 @@ export default configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#devServer
     devServer: {
-      // port: 9110,
-      // open: true,
-      //ELIMINAR ESTO ES SÓLO PARA PRUEBAS CON ZAPROXY
-      host: '0.0.0.0', // Permite conexiones desde el contenedor de Docker
       port: 9110,
-      open: false,
-      allowedHosts: true, // En Vite, 'true' desactiva el bloqueo 403 por Host header
-      cors: true
+      open: true,
+      //ELIMINAR ESTO ES SÓLO PARA PRUEBAS CON ZAPROXY
+      // host: '0.0.0.0', // Permite conexiones desde el contenedor de Docker
+      // port: 9110,
+      // open: false,
+      // allowedHosts: true, // En Vite, 'true' desactiva el bloqueo 403 por Host header
+      // cors: true
 
 
 

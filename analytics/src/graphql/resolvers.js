@@ -10,6 +10,9 @@ const FIELD_MAP = {
     'centro.tipo_clasificacion': { sql: 'c.tipo_clasificacion', table: 'centros', label: 'Clasificación', category: 'Centro' },
     'centro.estado_centro': { sql: 'c.estado_centro', table: 'centros', label: 'Estado del Centro', category: 'Centro' },
     'centro.rif': { sql: 'c.rif', table: 'centros', label: 'RIF', category: 'Centro' },
+    'centro.nro_registro_mercantil': { sql: 'c.nro_registro_mercantil', table: 'centros', label: 'Nº Registro Mercantil', category: 'Centro' },
+    'centro.tipo_establecimiento_descripcion': { sql: 'c.tipo_establecimiento_descripcion', table: 'centros', label: 'Descripción Tipo de Establecimiento', category: 'Centro' },
+    'centro.rif_archivo': { sql: 'c.rif_archivo', table: 'centros', label: 'Archivo RIF (ruta)', category: 'Centro' },
     'centro.latitud': { sql: 'c.latitud', table: 'centros', label: 'Latitud', category: 'Centro', numeric: true },
     'centro.longitud': { sql: 'c.longitud', table: 'centros', label: 'Longitud', category: 'Centro', numeric: true },
 
@@ -24,6 +27,8 @@ const FIELD_MAP = {
     'ficha.tipo_solicitud': { sql: 'f.tipo_solicitud', table: 'ficha', label: 'Tipo de Solicitud', category: 'Ficha' },
     'ficha.fecha_fundacion': { sql: 'f.fecha_fundacion', table: 'ficha', label: 'Fecha de Fundación', category: 'Ficha', date: true },
     'ficha.direccion': { sql: 'f.direccion', table: 'ficha', label: 'Dirección', category: 'Ficha' },
+    'ficha.nro_registro_nacional': { sql: 'f.nro_registro_nacional', table: 'ficha', label: 'Nº Registro Nacional', category: 'Ficha' },
+    'ficha.costo_mensual': { sql: 'f.costo_mensual', table: 'ficha', label: 'Costo Mensual', category: 'Ficha', numeric: true },
 
     // Capacidad
     'capacidad.total_residente': { sql: 'cap.capacidad_total_residente', table: 'capacidad', label: 'Capacidad Total Residente', category: 'Capacidad', numeric: true },
@@ -44,6 +49,9 @@ const FIELD_MAP = {
     'personal.responsables_farmacia': { sql: 'per.num_responsables_farmacia', table: 'personal', label: 'Responsables de Farmacia', category: 'Personal', numeric: true },
     'personal.seguridad': { sql: 'per.num_personal_seguridad', table: 'personal', label: 'Personal de Seguridad', category: 'Personal', numeric: true },
     'personal.no_adscrito': { sql: 'per.num_personal_no_adscrito', table: 'personal', label: 'Personal No Adscrito', category: 'Personal', numeric: true },
+    'personal.tiene_otros': { sql: 'per.otros_personal', table: 'personal', label: 'Tiene Otro Personal', category: 'Personal' },
+    'personal.descripcion_otros': { sql: 'per.descripcion_otros_personal', table: 'personal', label: 'Descripción Otro Personal', category: 'Personal' },
+    'personal.descripcion_no_adscrito': { sql: 'per.descripcion_no_adscrito', table: 'personal', label: 'Descripción Personal No Adscrito', category: 'Personal' },
 
     // Servicios
     'servicios.farmacia': { sql: 'srv.farmacia', table: 'servicios', label: 'Farmacia', category: 'Servicios' },
@@ -54,6 +62,10 @@ const FIELD_MAP = {
     'servicios.medicos': { sql: 'srv.medicos', table: 'servicios', label: 'Servicio Médico', category: 'Servicios' },
     'servicios.lavanderia': { sql: 'srv.lavanderia', table: 'servicios', label: 'Lavandería', category: 'Servicios' },
     'servicios.barberia_peluqueria': { sql: 'srv.barberia_peluqueria', table: 'servicios', label: 'Barbería/Peluquería', category: 'Servicios' },
+    'servicios.otros': { sql: 'srv.otros', table: 'servicios', label: 'Otros Servicios', category: 'Servicios' },
+    'servicios.medicos_descripcion': { sql: 'srv.medicos_descripcion', table: 'servicios', label: 'Descripción Servicio Médico', category: 'Servicios' },
+    'servicios.lavanderia_descripcion': { sql: 'srv.lavanderia_descripcion', table: 'servicios', label: 'Descripción Lavandería', category: 'Servicios' },
+    'servicios.otros_descripcion': { sql: 'srv.otros_descripcion', table: 'servicios', label: 'Descripción Otros Servicios', category: 'Servicios' },
 
     // Infraestructura
     'infraestructura.estado_inmueble': { sql: 'ei.nombre', table: 'infraestructura', label: 'Estado del Inmueble', category: 'Infraestructura' },
@@ -70,6 +82,29 @@ const FIELD_MAP = {
     'infraestructura.luz_electrica': { sql: 'inf.luz_electrica', table: 'infraestructura', label: 'Luz Eléctrica', category: 'Infraestructura' },
     'infraestructura.agua_potable': { sql: 'inf.agua_potable', table: 'infraestructura', label: 'Agua Potable', category: 'Infraestructura' },
     'infraestructura.sistema_seguridad': { sql: 'inf.sistema_seguridad', table: 'infraestructura', label: 'Sistema de Seguridad', category: 'Infraestructura' },
+    'infraestructura.capacidad_comedor_pct': { sql: 'inf.capacidad_comedor_pct', table: 'infraestructura', label: 'Capacidad Comedor (%)', category: 'Infraestructura', numeric: true },
+    'infraestructura.agua_servidas': { sql: 'inf.agua_servidas', table: 'infraestructura', label: 'Agua Servidas', category: 'Infraestructura' },
+    'infraestructura.deposito_basura': { sql: 'inf.deposito_basura', table: 'infraestructura', label: 'Depósito de Basura', category: 'Infraestructura' },
+    'infraestructura.descripcion_otros': { sql: 'inf.descripcion_otros', table: 'infraestructura', label: 'Descripción Otros', category: 'Infraestructura' },
+    'infraestructura.area_total_m2': { sql: 'inf.area_total_m2', table: 'infraestructura', label: 'Área Total (m²)', category: 'Infraestructura', numeric: true },
+    'infraestructura.area_construida_m2': { sql: 'inf.area_construida_m2', table: 'infraestructura', label: 'Área Construida (m²)', category: 'Infraestructura', numeric: true },
+    'infraestructura.tamano_habitaciones_m2': { sql: 'inf.tamano_habitaciones_m2', table: 'infraestructura', label: 'Tamaño de Habitaciones (m²)', category: 'Infraestructura', numeric: true },
+    'infraestructura.banos_por_habitacion': { sql: 'inf.banos_por_habitacion', table: 'infraestructura', label: 'Baños por Habitación', category: 'Infraestructura', numeric: true },
+    'infraestructura.personas_por_habitacion': { sql: 'inf.personas_por_habitacion', table: 'infraestructura', label: 'Personas por Habitación', category: 'Infraestructura', numeric: true },
+    'infraestructura.iluminacion_emergencia': { sql: 'inf.iluminacion_emergencia', table: 'infraestructura', label: 'Iluminación de Emergencia', category: 'Infraestructura' },
+    'infraestructura.senalizacion_clara': { sql: 'inf.senalizacion_clara', table: 'infraestructura', label: 'Señalización Clara', category: 'Infraestructura' },
+    'infraestructura.prevencion_incendios': { sql: 'inf.prevencion_incendios', table: 'infraestructura', label: 'Prevención de Incendios', category: 'Infraestructura' },
+    'infraestructura.sistemas_ventilacion': { sql: 'inf.sistemas_ventilacion', table: 'infraestructura', label: 'Sistemas de Ventilación', category: 'Infraestructura' },
+    'infraestructura.aire_acondicionado': { sql: 'inf.aire_acondicionado', table: 'infraestructura', label: 'Aire Acondicionado', category: 'Infraestructura' },
+    'infraestructura.normativa_visible': { sql: 'inf.normativa_visible', table: 'infraestructura', label: 'Normativa Visible', category: 'Infraestructura' },
+    'infraestructura.planta_electrica': { sql: 'inf.planta_electrica', table: 'infraestructura', label: 'Planta Eléctrica', category: 'Infraestructura' },
+    'infraestructura.planta_electrica_panel_solar': { sql: 'inf.planta_electrica_panel_solar', table: 'infraestructura', label: 'Planta Eléctrica / Panel Solar', category: 'Infraestructura' },
+    'infraestructura.tipo_planta_electrica': { sql: 'tp.nombre', table: 'infraestructura', label: 'Tipo de Planta Eléctrica', category: 'Infraestructura' },
+    'infraestructura.acepta_mascotas': { sql: 'inf.acepta_mascotas', table: 'infraestructura', label: 'Acepta Mascotas', category: 'Infraestructura' },
+    'infraestructura.tiene_comedor': { sql: 'inf.tiene_comedor', table: 'infraestructura', label: 'Tiene Comedor', category: 'Infraestructura' },
+    'infraestructura.tiene_farmacia_almacen': { sql: 'inf.tiene_farmacia_almacen_clinico', table: 'infraestructura', label: 'Farmacia/Almacén Clínico', category: 'Infraestructura' },
+    'infraestructura.gerogranjas': { sql: 'inf.gerogranjas', table: 'infraestructura', label: 'Gerogranjas', category: 'Infraestructura' },
+    'infraestructura.residuos_separados': { sql: 'inf.residuos_separados', table: 'infraestructura', label: 'Residuos Separados', category: 'Infraestructura' },
 
     // Accesibilidad
     'accesibilidad.rampas_fijas': { sql: 'acc.rampas_fijas', table: 'accesibilidad', label: 'Rampas Fijas', category: 'Accesibilidad' },
@@ -83,6 +118,24 @@ const FIELD_MAP = {
     'accesibilidad.senales_accesibles': { sql: 'acc.senales_accesibles', table: 'accesibilidad', label: 'Señales Accesibles', category: 'Accesibilidad' },
     'accesibilidad.timbres_emergencia': { sql: 'acc.timbres_emergencia', table: 'accesibilidad', label: 'Timbres de Emergencia', category: 'Accesibilidad' },
     'accesibilidad.pasillos_accesibles_sillas': { sql: 'acc.pasillos_accesibles_sillas', table: 'accesibilidad', label: 'Pasillos Accesibles Sillas', category: 'Accesibilidad' },
+    'accesibilidad.marquesinas_acceso': { sql: 'acc.marquesinas_acceso', table: 'accesibilidad', label: 'Marquesinas de Acceso', category: 'Accesibilidad' },
+    'accesibilidad.estacionamientos_reservados': { sql: 'acc.estacionamientos_reservados', table: 'accesibilidad', label: 'Estacionamientos Reservados', category: 'Accesibilidad' },
+    'accesibilidad.pasamanos_dobles': { sql: 'acc.pasamanos_dobles', table: 'accesibilidad', label: 'Pasamanos Dobles', category: 'Accesibilidad' },
+    'accesibilidad.zonas_descanso': { sql: 'acc.zonas_descanso', table: 'accesibilidad', label: 'Zonas de Descanso', category: 'Accesibilidad' },
+    'accesibilidad.barras_apoyo': { sql: 'acc.barras_apoyo', table: 'accesibilidad', label: 'Barras de Apoyo', category: 'Accesibilidad' },
+    'accesibilidad.inodoros_elevados': { sql: 'acc.inodoros_elevados', table: 'accesibilidad', label: 'Inodoros Elevados', category: 'Accesibilidad' },
+    'accesibilidad.duchas_ras_suelo': { sql: 'acc.duchas_ras_suelo', table: 'accesibilidad', label: 'Duchas a Ras de Suelo', category: 'Accesibilidad' },
+    'accesibilidad.lavamanos_suspendidos': { sql: 'acc.lavamanos_suspendidos', table: 'accesibilidad', label: 'Lavamanos Suspendidos', category: 'Accesibilidad' },
+    'accesibilidad.griferia_palanca': { sql: 'acc.griferia_palanca', table: 'accesibilidad', label: 'Grifería de Palanca', category: 'Accesibilidad' },
+    'accesibilidad.boton_emergencia': { sql: 'acc.boton_emergencia', table: 'accesibilidad', label: 'Botón de Emergencia', category: 'Accesibilidad' },
+    'accesibilidad.sillas_apoyabrazos': { sql: 'acc.sillas_apoyabrazos', table: 'accesibilidad', label: 'Sillas con Apoyabrazos', category: 'Accesibilidad' },
+    'accesibilidad.mesas_sin_obstaculos': { sql: 'acc.mesas_sin_obstaculos', table: 'accesibilidad', label: 'Mesas sin Obstáculos', category: 'Accesibilidad' },
+    'accesibilidad.pisos_podotactiles': { sql: 'acc.pisos_podotactiles', table: 'accesibilidad', label: 'Pisos Podotáctiles', category: 'Accesibilidad' },
+    'accesibilidad.alto_contraste_visual': { sql: 'acc.alto_contraste_visual', table: 'accesibilidad', label: 'Alto Contraste Visual', category: 'Accesibilidad' },
+    'accesibilidad.pictogramas_universales': { sql: 'acc.pictogramas_universales', table: 'accesibilidad', label: 'Pictogramas Universales', category: 'Accesibilidad' },
+    'accesibilidad.iluminacion_homogenea': { sql: 'acc.iluminacion_homogenea', table: 'accesibilidad', label: 'Iluminación Homogénea', category: 'Accesibilidad' },
+    'accesibilidad.alarmas_duales': { sql: 'acc.alarmas_duales', table: 'accesibilidad', label: 'Alarmas Duales', category: 'Accesibilidad' },
+    'accesibilidad.rutas_evacuacion_anchas': { sql: 'acc.rutas_evacuacion_anchas', table: 'accesibilidad', label: 'Rutas de Evacuación Anchas', category: 'Accesibilidad' },
 
     // Población
     'poblacion.fecha_corte': { sql: 'pob.fecha_corte', table: 'poblacion', label: 'Fecha de Corte', category: 'Población', date: true },
@@ -117,6 +170,7 @@ function buildJoins(requiredTables) {
     if (unique.has('infraestructura')) {
         joins.push(`LEFT JOIN public.ficha_infraestructura inf ON inf.ficha_id = f.id AND inf.deleted_at IS NULL`);
         joins.push(`LEFT JOIN public.estados_inmueble ei ON ei.id = inf.estado_inmueble_id`);
+        joins.push(`LEFT JOIN public.tipo_planta tp ON tp.id = inf.planta_electrica_tipo_id`);
     }
     if (unique.has('accesibilidad')) {
         joins.push(`LEFT JOIN public.ficha_accesibilidad acc ON acc.ficha_id = f.id AND acc.deleted_at IS NULL`);

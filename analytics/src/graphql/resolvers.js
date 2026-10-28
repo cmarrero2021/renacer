@@ -12,9 +12,9 @@ const FIELD_MAP = {
     'centro.rif': { sql: 'c.rif', table: 'centros', label: 'RIF', category: 'Centro' },
     'centro.nro_registro_mercantil': { sql: 'c.nro_registro_mercantil', table: 'centros', label: 'Nº Registro Mercantil', category: 'Centro' },
     'centro.tipo_establecimiento_descripcion': { sql: 'c.tipo_establecimiento_descripcion', table: 'centros', label: 'Descripción Tipo de Establecimiento', category: 'Centro' },
-    'centro.rif_archivo': { sql: 'c.rif_archivo', table: 'centros', label: 'Archivo RIF (ruta)', category: 'Centro' },
-    'centro.latitud': { sql: 'c.latitud', table: 'centros', label: 'Latitud', category: 'Centro', numeric: true },
-    'centro.longitud': { sql: 'c.longitud', table: 'centros', label: 'Longitud', category: 'Centro', numeric: true },
+    // 'centro.rif_archivo': { sql: 'c.rif_archivo', table: 'centros', label: 'Archivo RIF (ruta)', category: 'Centro' },
+    // 'centro.latitud': { sql: 'c.latitud', table: 'centros', label: 'Latitud', category: 'Centro', numeric: true },
+    // 'centro.longitud': { sql: 'c.longitud', table: 'centros', label: 'Longitud', category: 'Centro', numeric: true },
 
     // Geografía
     'geo.estado': { sql: 'g.estado', table: 'geo', label: 'Estado', category: 'Geografía' },
@@ -22,13 +22,13 @@ const FIELD_MAP = {
     'geo.parroquia': { sql: 'g.parroquia', table: 'geo', label: 'Parroquia', category: 'Geografía' },
 
     // Ficha
-    'ficha.version': { sql: 'f.version', table: 'ficha', label: 'Versión Ficha', category: 'Ficha', numeric: true },
+    // 'ficha.version': { sql: 'f.version', table: 'ficha', label: 'Versión Ficha', category: 'Ficha', numeric: true },
     'ficha.fecha_solicitud': { sql: 'f.fecha_solicitud', table: 'ficha', label: 'Fecha de Solicitud', category: 'Ficha', date: true },
     'ficha.tipo_solicitud': { sql: 'f.tipo_solicitud', table: 'ficha', label: 'Tipo de Solicitud', category: 'Ficha' },
     'ficha.fecha_fundacion': { sql: 'f.fecha_fundacion', table: 'ficha', label: 'Fecha de Fundación', category: 'Ficha', date: true },
     'ficha.direccion': { sql: 'f.direccion', table: 'ficha', label: 'Dirección', category: 'Ficha' },
     'ficha.nro_registro_nacional': { sql: 'f.nro_registro_nacional', table: 'ficha', label: 'Nº Registro Nacional', category: 'Ficha' },
-    'ficha.costo_mensual': { sql: 'f.costo_mensual', table: 'ficha', label: 'Costo Mensual', category: 'Ficha', numeric: true },
+    // 'ficha.costo_mensual': { sql: 'f.costo_mensual', table: 'ficha', label: 'Costo Mensual', category: 'Ficha', numeric: true },
 
     // Capacidad
     'capacidad.total_residente': { sql: 'cap.capacidad_total_residente', table: 'capacidad', label: 'Capacidad Total Residente', category: 'Capacidad', numeric: true },
@@ -49,9 +49,9 @@ const FIELD_MAP = {
     'personal.responsables_farmacia': { sql: 'per.num_responsables_farmacia', table: 'personal', label: 'Responsables de Farmacia', category: 'Personal', numeric: true },
     'personal.seguridad': { sql: 'per.num_personal_seguridad', table: 'personal', label: 'Personal de Seguridad', category: 'Personal', numeric: true },
     'personal.no_adscrito': { sql: 'per.num_personal_no_adscrito', table: 'personal', label: 'Personal No Adscrito', category: 'Personal', numeric: true },
-    'personal.tiene_otros': { sql: 'per.otros_personal', table: 'personal', label: 'Tiene Otro Personal', category: 'Personal' },
-    'personal.descripcion_otros': { sql: 'per.descripcion_otros_personal', table: 'personal', label: 'Descripción Otro Personal', category: 'Personal' },
-    'personal.descripcion_no_adscrito': { sql: 'per.descripcion_no_adscrito', table: 'personal', label: 'Descripción Personal No Adscrito', category: 'Personal' },
+    // 'personal.tiene_otros': { sql: 'per.otros_personal', table: 'personal', label: 'Tiene Otro Personal', category: 'Personal' },
+    // 'personal.descripcion_otros': { sql: 'per.descripcion_otros_personal', table: 'personal', label: 'Descripción Otro Personal', category: 'Personal' },
+    // 'personal.descripcion_no_adscrito': { sql: 'per.descripcion_no_adscrito', table: 'personal', label: 'Descripción Personal No Adscrito', category: 'Personal' },
 
     // Servicios
     'servicios.farmacia': { sql: 'srv.farmacia', table: 'servicios', label: 'Farmacia', category: 'Servicios' },
@@ -63,9 +63,9 @@ const FIELD_MAP = {
     'servicios.lavanderia': { sql: 'srv.lavanderia', table: 'servicios', label: 'Lavandería', category: 'Servicios' },
     'servicios.barberia_peluqueria': { sql: 'srv.barberia_peluqueria', table: 'servicios', label: 'Barbería/Peluquería', category: 'Servicios' },
     'servicios.otros': { sql: 'srv.otros', table: 'servicios', label: 'Otros Servicios', category: 'Servicios' },
-    'servicios.medicos_descripcion': { sql: 'srv.medicos_descripcion', table: 'servicios', label: 'Descripción Servicio Médico', category: 'Servicios' },
-    'servicios.lavanderia_descripcion': { sql: 'srv.lavanderia_descripcion', table: 'servicios', label: 'Descripción Lavandería', category: 'Servicios' },
-    'servicios.otros_descripcion': { sql: 'srv.otros_descripcion', table: 'servicios', label: 'Descripción Otros Servicios', category: 'Servicios' },
+    // 'servicios.medicos_descripcion': { sql: 'srv.medicos_descripcion', table: 'servicios', label: 'Descripción Servicio Médico', category: 'Servicios' },
+    // 'servicios.lavanderia_descripcion': { sql: 'srv.lavanderia_descripcion', table: 'servicios', label: 'Descripción Lavandería', category: 'Servicios' },
+    // 'servicios.otros_descripcion': { sql: 'srv.otros_descripcion', table: 'servicios', label: 'Descripción Otros Servicios', category: 'Servicios' },
 
     // Infraestructura
     'infraestructura.estado_inmueble': { sql: 'ei.nombre', table: 'infraestructura', label: 'Estado del Inmueble', category: 'Infraestructura' },
@@ -82,10 +82,10 @@ const FIELD_MAP = {
     'infraestructura.luz_electrica': { sql: 'inf.luz_electrica', table: 'infraestructura', label: 'Luz Eléctrica', category: 'Infraestructura' },
     'infraestructura.agua_potable': { sql: 'inf.agua_potable', table: 'infraestructura', label: 'Agua Potable', category: 'Infraestructura' },
     'infraestructura.sistema_seguridad': { sql: 'inf.sistema_seguridad', table: 'infraestructura', label: 'Sistema de Seguridad', category: 'Infraestructura' },
-    'infraestructura.capacidad_comedor_pct': { sql: 'inf.capacidad_comedor_pct', table: 'infraestructura', label: 'Capacidad Comedor (%)', category: 'Infraestructura', numeric: true },
+    'infraestructura.capacidad_comedor_pct': { sql: 'inf.capacidad_comedor_pct', table: 'infraestructura', label: 'Capacidad Comedor', category: 'Infraestructura', numeric: true },
     'infraestructura.agua_servidas': { sql: 'inf.agua_servidas', table: 'infraestructura', label: 'Agua Servidas', category: 'Infraestructura' },
     'infraestructura.deposito_basura': { sql: 'inf.deposito_basura', table: 'infraestructura', label: 'Depósito de Basura', category: 'Infraestructura' },
-    'infraestructura.descripcion_otros': { sql: 'inf.descripcion_otros', table: 'infraestructura', label: 'Descripción Otros', category: 'Infraestructura' },
+    // 'infraestructura.descripcion_otros': { sql: 'inf.descripcion_otros', table: 'infraestructura', label: 'Descripción Otros', category: 'Infraestructura' },
     'infraestructura.area_total_m2': { sql: 'inf.area_total_m2', table: 'infraestructura', label: 'Área Total (m²)', category: 'Infraestructura', numeric: true },
     'infraestructura.area_construida_m2': { sql: 'inf.area_construida_m2', table: 'infraestructura', label: 'Área Construida (m²)', category: 'Infraestructura', numeric: true },
     'infraestructura.tamano_habitaciones_m2': { sql: 'inf.tamano_habitaciones_m2', table: 'infraestructura', label: 'Tamaño de Habitaciones (m²)', category: 'Infraestructura', numeric: true },

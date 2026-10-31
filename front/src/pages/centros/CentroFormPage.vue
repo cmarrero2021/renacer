@@ -381,7 +381,7 @@
                         </div>
 
                         <!-- Foto del Centro -->
-                        <section-header icon="photo_camera" label="Foto del Establecimiento" />
+                        <section-header icon="photo_camera" label="Foto de la Fachada del Recinto" />
                         <div class="row q-col-gutter-md q-mb-md">
                             <div class="col-12">
                                 <!-- Input oculto -->

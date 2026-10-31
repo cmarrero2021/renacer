@@ -30,7 +30,7 @@
                         Progreso General: {{ savedCount }} de {{ steps.length }} secciones completadas
                     </span>
                 </div>
-                <!-- Barra de progreso con 8 divisiones (Semáforo) -->
+                <!-- Barra de progreso con 7 divisiones (Semáforo) -->
                 <div class="row no-wrap items-center q-mb-sm" style="gap: 5px;">
                     <div v-for="(s, idx) in steps" :key="s.name" class="col"
                         :style="{
@@ -452,107 +452,110 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 2 ▸ CAPACIDAD                                            -->
-                <!-- ══════════════════════════════════════════════════════════════ -->
-                <q-tab-panel name="capacidad">
-                    <inner-progress :value="tabProgress('capacidad')" :count="tabFieldCount('capacidad')" />
-                    <section-header icon="people" label="Capacidad Instalada y Uso" />
-                    <div class="row q-col-gutter-md q-mb-lg">
-                        <div class="col-12 col-md-3">
-                            <div class="text-caption q-mb-xs">Capacidad total de residentes *</div>
-                            <q-input v-model.number="cap.capacidad_total_residente"
-                                outlined dense type="number" min="0" />
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <div class="text-caption q-mb-xs">Residentes actuales</div>
-                            <q-input v-model.number="cap.capacidad_actual_residente"
-                                outlined dense type="number" min="0" />
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <div class="text-caption text-weight-bold q-mb-xs">Atención ambulatoria</div>
-                            <q-toggle v-model="cap.atencion_ambulatoria" label="Presta este servicio" />
-                        </div>
-                        <div class="col-12 col-md-3" v-if="cap.atencion_ambulatoria">
-                            <div class="text-caption q-mb-xs">Cupos ambulatorios</div>
-                            <q-input v-model.number="cap.num_atencion_ambulatoria" outlined dense type="number" min="0" />
-                        </div>
-                    </div>
-                    <div class="row justify-end q-mt-md q-gutter-sm">
-                        <q-btn unelevated color="primary" icon="save" label="Guardar Capacidad" :loading="saving"
-                            @click="saveCapacidad(false)" />
-                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
-                            :loading="saving" @click="saveCapacidad(true)" />
-                    </div>
-                </q-tab-panel>
-
-                <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 3 ▸ POBLACIÓN                                            -->
+                <!-- TAB 2 ▸ POBLACIÓN Y CAPACIDAD                                -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="poblacion">
                     <inner-progress :value="tabProgress('poblacion')" :count="tabFieldCount('poblacion')" />
-                    <section-header icon="bar_chart" label="Registro de Población" />
 
-                    <div class="row q-col-gutter-md q-mb-md">
-                        <div class="col-12 col-md-4">
-                            <div class="text-caption q-mb-xs">Fecha de corte</div>
-                            <q-input v-model="pob.fecha_corte" outlined dense readonly disable>
-                                <template #prepend>
-                                    <q-icon name="event" color="grey-6" />
-                                </template>
-                            </q-input>
-                        </div>
-                    </div>
+                    <!-- Sección colapsable ▸ Capacidad (primero, desplegada por defecto) -->
+                    <q-expansion-item icon="people" label="Capacidad Instalada y Uso" default-opened
+                        header-class="text-primary text-weight-bold" class="q-mb-md">
+                        <q-card flat>
+                            <q-card-section>
+                                <div class="row q-col-gutter-md">
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-caption q-mb-xs">Capacidad total de residentes *</div>
+                                        <q-input v-model.number="cap.capacidad_total_residente"
+                                            outlined dense type="number" min="0" />
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-caption q-mb-xs">Residentes actuales</div>
+                                        <q-input v-model.number="cap.capacidad_actual_residente"
+                                            outlined dense type="number" min="0" />
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <div class="text-caption text-weight-bold q-mb-xs">Atención ambulatoria</div>
+                                        <q-toggle v-model="cap.atencion_ambulatoria" label="Presta este servicio" />
+                                    </div>
+                                    <div class="col-12 col-md-3" v-if="cap.atencion_ambulatoria">
+                                        <div class="text-caption q-mb-xs">Cupos ambulatorios</div>
+                                        <q-input v-model.number="cap.num_atencion_ambulatoria" outlined dense type="number" min="0" />
+                                    </div>
+                                </div>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
 
-                    <!-- Tabla de carga de población -->
-                    <q-table :rows="pob.registros" :columns="colsPob" flat bordered dense
-                        no-data-label="Agregue filas con el botón +" hide-bottom>
-                        <template #top>
-                            <span class="text-caption text-grey">Residentes y ambulatorios por condición de autonomía</span>
-                            <q-space />
-                            <q-btn flat dense icon="add" label="Agregar fila" @click="addPobRow" size="sm" />
-                        </template>
-                        <template #body="{ row, rowIndex }">
-                            <tr>
-                                <td>
-                                    <q-select v-model="row.modalidad" :options="[
-                                        { value: 'residente', label: 'Residente' },
-                                        { value: 'ambulatoria', label: 'Ambulatoria' }
-                                    ]" option-value="value" option-label="label" emit-value map-options  outlined style="min-width:140px" />
-                                </td>
-                                <td>
-                                    <q-select v-model="row.categoria" :options="[
-                                        { value: 'adultos', label: 'Adultos' },
-                                        { value: 'con_discapacidad', label: 'Con Discapacidad' },
-                                        { value: 'otras_categorias', label: 'Otras categorías' }
-                                    ]" option-value="valu" option-label="label" emit-value map-options outlined style="min-width:180px" />
-                                </td>
-                                <td>
-                                    <q-input v-model.number="row.femenino" outlined dense
-                                        type="number" min="0" style="width:80px" />
-                                </td>
-                                <td>
-                                    <q-input v-model.number="row.masculino" outlined dense
-                                        type="number" min="0" style="width:80px" />
-                                </td>
-                                <td>{{ (row.femenino || 0) + (row.masculino || 0) }}</td>
-                                <td>
-                                    <q-btn flat round dense icon="delete" size="sm" color="negative"
-                                        @click="pob.registros.splice(rowIndex, 1)" />
-                                </td>
-                            </tr>
-                        </template>
-                    </q-table>
+                    <!-- Sección colapsable ▸ Población (desplegada por defecto) -->
+                    <q-expansion-item icon="bar_chart" label="Registro de Población" default-opened
+                        header-class="text-primary text-weight-bold" class="q-mb-md">
+                        <q-card flat>
+                            <q-card-section>
+                                <div class="row q-col-gutter-md q-mb-md">
+                                    <div class="col-12 col-md-4">
+                                        <div class="text-caption q-mb-xs">Fecha de corte</div>
+                                        <q-input v-model="pob.fecha_corte" outlined dense readonly disable>
+                                            <template #prepend>
+                                                <q-icon name="event" color="grey-6" />
+                                            </template>
+                                        </q-input>
+                                    </div>
+                                </div>
 
+                                <!-- Tabla de carga de población -->
+                                <q-table :rows="pob.registros" :columns="colsPob" flat bordered dense
+                                    no-data-label="Agregue filas con el botón +" hide-bottom>
+                                    <template #top>
+                                        <span class="text-caption text-grey">Residentes y ambulatorios por condición de autonomía</span>
+                                        <q-space />
+                                        <q-btn flat dense icon="add" label="Agregar fila" @click="addPobRow" size="sm" />
+                                    </template>
+                                    <template #body="{ row, rowIndex }">
+                                        <tr>
+                                            <td>
+                                                <q-select v-model="row.modalidad" :options="[
+                                                    { value: 'residente', label: 'Residente' },
+                                                    { value: 'ambulatoria', label: 'Ambulatoria' }
+                                                ]" option-value="value" option-label="label" emit-value map-options  outlined style="min-width:140px" />
+                                            </td>
+                                            <td>
+                                                <q-select v-model="row.categoria" :options="[
+                                                    { value: 'adultos', label: 'Adultos' },
+                                                    { value: 'con_discapacidad', label: 'Con Discapacidad' },
+                                                    { value: 'otras_categorias', label: 'Otras categorías' }
+                                                ]" option-value="value" option-label="label" emit-value map-options outlined style="min-width:180px" />
+                                            </td>
+                                            <td>
+                                                <q-input v-model.number="row.femenino" outlined dense
+                                                    type="number" min="0" style="width:80px" />
+                                            </td>
+                                            <td>
+                                                <q-input v-model.number="row.masculino" outlined dense
+                                                    type="number" min="0" style="width:80px" />
+                                            </td>
+                                            <td>{{ (row.femenino || 0) + (row.masculino || 0) }}</td>
+                                            <td>
+                                                <q-btn flat round dense icon="delete" size="sm" color="negative"
+                                                    @click="pob.registros.splice(rowIndex, 1)" />
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </q-table>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
+
+                    <!-- Guardado conjunto: Capacidad + Población -->
                     <div class="row justify-end q-mt-md q-gutter-sm">
-                        <q-btn unelevated color="primary" icon="save" label="Guardar Población" :loading="saving"
-                            @click="savePoblacion(false)" />
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Población y Capacidad" :loading="saving"
+                            @click="savePoblacionCapacidad(false)" />
                         <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
-                            :loading="saving" @click="savePoblacion(true)" />
+                            :loading="saving" @click="savePoblacionCapacidad(true)" />
                     </div>
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 4 ▸ INFRAESTRUCTURA                                      -->
+                <!-- TAB 3 ▸ INFRAESTRUCTURA                                      -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="infraestructura">
                     <inner-progress :value="tabProgress('infraestructura')" :count="tabFieldCount('infraestructura')" />
@@ -741,7 +744,7 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 5 ▸ ACCESIBILIDAD                                         -->
+                <!-- TAB 4 ▸ ACCESIBILIDAD                                         -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="accesibilidad">
                     <inner-progress :value="tabProgress('accesibilidad')" :count="tabFieldCount('accesibilidad')" />
@@ -788,7 +791,7 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 6 ▸ PERSONAL                                             -->
+                <!-- TAB 5 ▸ PERSONAL                                             -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="personal">
                     <inner-progress :value="tabProgress('personal')" :count="tabFieldCount('personal')" />
@@ -857,7 +860,7 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 8 ▸ DOCUMENTOS                                           -->
+                <!-- TAB 7 ▸ DOCUMENTOS                                           -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
                 <q-tab-panel name="documentos">
                     <inner-progress :value="tabProgress('documentos')" :count="tabFieldCount('documentos')" />
@@ -1079,23 +1082,22 @@ function eliminarFoto() {
 const activeTab = ref('datos');
 const steps = [
     { name: 'datos', label: '1. Datos del Centro', icon: 'business', alwaysEnabled: true },
-    { name: 'capacidad', label: '2. Capacidad', icon: 'people' },
-    { name: 'poblacion', label: '3. Población', icon: 'bar_chart' },
-    { name: 'infraestructura', label: '4. Infraestructura', icon: 'home' },
-    { name: 'accesibilidad', label: '5. Accesibilidad', icon: 'accessible' },
-    { name: 'personal', label: '6. Personal', icon: 'group' },
-    { name: 'servicios', label: '7. Servicios', icon: 'medical_services' },
-    { name: 'documentos', label: '8. Documentos', icon: 'folder' },
+    { name: 'poblacion', label: '2. Población y Capacidad', icon: 'groups' },
+    { name: 'infraestructura', label: '3. Infraestructura', icon: 'home' },
+    { name: 'accesibilidad', label: '4. Accesibilidad', icon: 'accessible' },
+    { name: 'personal', label: '5. Personal', icon: 'group' },
+    { name: 'servicios', label: '6. Servicios', icon: 'medical_services' },
+    { name: 'documentos', label: '7. Documentos', icon: 'folder' },
 ];
 
 const savedTabs = ref({
-    datos: false, capacidad: false, poblacion: false,
+    datos: false, poblacion: false,
     infraestructura: false, accesibilidad: false, personal: false, servicios: false, documentos: false
 });
 const savedCount = computed(() => Object.values(savedTabs.value).filter(Boolean).length);
 function getStepProgressColor(index) {
-    if (index < 4) return '#e53935'; // 4 primeras: rojo
-    if (index < 7) return '#fb8c00'; // 3 siguientes: tono entre amarillo y naranja
+    if (index < 3) return '#e53935'; // 3 primeras: rojo
+    if (index < 6) return '#fb8c00'; // 3 siguientes: tono entre amarillo y naranja
     return '#2e7d32'; // última: verde
 }
 function tabEnabled(name) { return savedTabs.value.datos; }
@@ -1456,7 +1458,7 @@ const tabFieldDefs = {
 };
 
 const tabSources = {
-    datos, capacidad: cap, poblacion: pob, infraestructura: infra, accesibilidad: acc, personal: pers, servicios: serv
+    datos, poblacion: pob, infraestructura: infra, accesibilidad: acc, personal: pers, servicios: serv
 };
 
 function tabFieldCount(name) {
@@ -1465,6 +1467,12 @@ function tabFieldCount(name) {
         const contables = docs.value.filter(d => !esRifPrecargado(d));
         const filled = contables.filter(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo).length;
         return { filled, total: contables.length };
+    }
+    if (name === 'poblacion') {
+        // Tab fusionado ▸ Capacidad + Población (una sola barra combinada)
+        const a = countFields(cap.value, tabFieldDefs.capacidad);
+        const b = countFields(pob.value, tabFieldDefs.poblacion);
+        return { filled: a.filled + b.filled, total: a.total + b.total };
     }
     const src = tabSources[name];
     return src ? countFields(src.value, tabFieldDefs[name] || []) : { filled: 0, total: 0 };
@@ -1836,38 +1844,24 @@ async function saveDatos() {
     }
 }
 
-async function saveCapacidad(andNext = false) {
-    if (!fichaId.value) return warn();
-    saving.value = true;
-    try {
-        await fichasService.saveCapacidad(fichaId.value, cap.value);
-        savedTabs.value.capacidad = true;
-        Notify.create({ type: 'positive', message: 'Capacidad guardada.' });
-        if (andNext) nextTab();
-        return true;
-    } catch { 
-        Notify.create({ type: 'negative', message: 'Error al guardar capacidad.' }); 
-        return false;
-    } finally { 
-        saving.value = false; 
-    }
-}
-
-async function savePoblacion(andNext = false) {
+async function savePoblacionCapacidad(andNext = false) {
     if (!fichaId.value) return warn();
     if (!pob.value.fecha_corte) return Notify.create({ type: 'warning', message: 'Indique la fecha de corte.' });
     saving.value = true;
     try {
+        // Orden: primero Capacidad, luego Población (ambos endpoints separados)
+        await fichasService.saveCapacidad(fichaId.value, cap.value);
         await fichasService.addPoblacion(fichaId.value, pob.value);
+        // La sección fusionada solo se marca completa cuando AMBOS se guardaron
         savedTabs.value.poblacion = true;
-        Notify.create({ type: 'positive', message: 'Población guardada.' });
+        Notify.create({ type: 'positive', message: 'Población y Capacidad guardadas.' });
         if (andNext) nextTab();
         return true;
-    } catch { 
-        Notify.create({ type: 'negative', message: 'Error al guardar población.' }); 
+    } catch {
+        Notify.create({ type: 'negative', message: 'Error al guardar Población y Capacidad.' });
         return false;
-    } finally { 
-        saving.value = false; 
+    } finally {
+        saving.value = false;
     }
 }
 
@@ -2198,10 +2192,17 @@ async function saveDocumentos() {
         const hasServicios = Object.entries(serv.value)
             .some(([k, v]) => v === true && !k.endsWith('_descripcion'));
 
-        if ((isEdit.value || !savedTabs.value.capacidad) && hasCapacidad) {
+        // Sección fusionada ▸ Capacidad + Población se guardan juntas
+        const tareasCapPob = [];
+        if ((isEdit.value || !savedTabs.value.poblacion) && hasCapacidad) {
+            tareasCapPob.push(fichasService.saveCapacidad(fichaId.value, cap.value));
+        }
+        if (!savedTabs.value.poblacion && pob.value.fecha_corte && pob.value.registros.length > 0) {
+            tareasCapPob.push(fichasService.addPoblacion(fichaId.value, pob.value));
+        }
+        if (tareasCapPob.length) {
             pendientes.push(
-                fichasService.saveCapacidad(fichaId.value, cap.value)
-                    .then(() => { savedTabs.value.capacidad = true; })
+                Promise.all(tareasCapPob).then(() => { savedTabs.value.poblacion = true; })
             );
         }
         if ((isEdit.value || !savedTabs.value.infraestructura) && hasInfraestructura.value) {
@@ -2226,12 +2227,6 @@ async function saveDocumentos() {
             pendientes.push(
                 fichasService.saveServicios(fichaId.value, serv.value)
                     .then(() => { savedTabs.value.servicios = true; })
-            );
-        }
-        if (!savedTabs.value.poblacion && pob.value.fecha_corte && pob.value.registros.length > 0) {
-            pendientes.push(
-                fichasService.addPoblacion(fichaId.value, pob.value)
-                    .then(() => { savedTabs.value.poblacion = true; })
             );
         }
 
@@ -2313,11 +2308,18 @@ async function saveAll() {
                 .then(() => { savedTabs.value.accesibilidad = true; })
         );
 
-        // 3. Guardar Capacidad
-        tareas.push(
-            fichasService.saveCapacidad(fichaId.value, cap.value)
-                .then(() => { savedTabs.value.capacidad = true; })
-        );
+        // 3. Guardar Capacidad + Población (sección fusionada; completa solo si ambos)
+        {
+            const saveCap = fichasService.saveCapacidad(fichaId.value, cap.value);
+            const savePob = (pob.value.fecha_corte && pob.value.registros.length > 0)
+                ? fichasService.addPoblacion(fichaId.value, pob.value)
+                : null;
+            tareas.push(
+                savePob
+                    ? Promise.all([saveCap, savePob]).then(() => { savedTabs.value.poblacion = true; })
+                    : saveCap
+            );
+        }
 
         // 4. Guardar Personal
         tareas.push(
@@ -2332,12 +2334,7 @@ async function saveAll() {
         );
 
         // 6. Guardar Población si tiene fecha_corte
-        if (pob.value.fecha_corte && pob.value.registros.length > 0) {
-            tareas.push(
-                fichasService.addPoblacion(fichaId.value, pob.value)
-                    .then(() => { savedTabs.value.poblacion = true; })
-            );
-        }
+        // (ya se guarda junto con Capacidad en el paso 3 — sección fusionada)
 
         // 7. Guardar Documentos si hay docs
         if (docs.value.length) {
@@ -2467,7 +2464,10 @@ onMounted(async () => {
                 fecha_fundacion: toDisplay(ficha.fecha_fundacion),
                 direccion: ficha.direccion,
             });
-            if (ficha.capacidad) { Object.assign(cap.value, ficha.capacidad); savedTabs.value.capacidad = true; }
+            if (ficha.capacidad) {
+                Object.assign(cap.value, ficha.capacidad);
+                // La marca de sección guardada se resuelve junto con población (sección fusionada)
+            }
             if (ficha.servicios) { Object.assign(serv.value, ficha.servicios); savedTabs.value.servicios = true; }
             if (ficha.personal) {
                 Object.assign(pers.value, ficha.personal);
@@ -2528,7 +2528,8 @@ onMounted(async () => {
                 });
                 savedTabs.value.accesibilidad = true;
             }
-            if (ficha.poblacion?.length) { savedTabs.value.poblacion = true; }
+            // Sección fusionada ▸ Población y Capacidad: completa solo si existen ambos datos
+            if (ficha.capacidad && ficha.poblacion?.length) { savedTabs.value.poblacion = true; }
             if (ficha.documentos?.length) {
                 ficha.documentos.forEach(d => {
                     const row = docs.value.find(r => r.tipo_documento === d.tipo_documento);

@@ -144,6 +144,43 @@ const InfraestructuraType = new GraphQLObjectType({
         deposito_basura: { type: GraphQLBoolean },
         sistema_seguridad: { type: GraphQLBoolean },
         descripcion_otros: { type: GraphQLString },
+        // Bloque ampliado: dimensiones y ratios
+        area_total_m2: { type: GraphQLFloat },
+        area_construida_m2: { type: GraphQLFloat },
+        tamano_habitaciones_m2: { type: GraphQLFloat },
+        camas_por_habitacion: { type: GraphQLInt },
+        personas_por_habitacion: { type: GraphQLFloat },
+        // Bloque Baños
+        banos_completos: { type: GraphQLInt },
+        banos_sin_ducha: { type: GraphQLInt },
+        cant_tinas: { type: GraphQLInt },
+        tanque_agua: { type: GraphQLBoolean },
+        capacidad_tanque: { type: GraphQLInt },
+        bomba_agua: { type: GraphQLBoolean },
+        // Bloque Seguridad
+        tiene_camaras: { type: GraphQLBoolean },
+        control_acceso: { type: GraphQLBoolean },
+        control_salida: { type: GraphQLBoolean },
+        boton_emergencia_habitaciones: { type: GraphQLBoolean },
+        boton_emergencia_banio: { type: GraphQLBoolean },
+        boton_emergencia_pasillos: { type: GraphQLBoolean },
+        alarma_emergencia: { type: GraphQLBoolean },
+        // Condiciones del inmueble y planta eléctrica
+        iluminacion_emergencia: { type: GraphQLBoolean },
+        senalizacion_clara: { type: GraphQLBoolean },
+        prevencion_incendios: { type: GraphQLBoolean },
+        sistemas_ventilacion: { type: GraphQLBoolean },
+        aire_acondicionado: { type: GraphQLBoolean },
+        normativa_visible: { type: GraphQLBoolean },
+        planta_electrica: { type: GraphQLBoolean },
+        planta_electrica_tipo_id: { type: GraphQLInt },
+        planta_electrica_panel_solar: { type: GraphQLBoolean },
+        // Áreas y convivencia
+        acepta_mascotas: { type: GraphQLBoolean },
+        tiene_comedor: { type: GraphQLBoolean },
+        tiene_farmacia_almacen_clinico: { type: GraphQLBoolean },
+        gerogranjas: { type: GraphQLBoolean },
+        residuos_separados: { type: GraphQLBoolean },
     }
 });
 

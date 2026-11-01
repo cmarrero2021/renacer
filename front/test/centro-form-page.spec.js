@@ -265,10 +265,9 @@ describe('CentroFormPage (centro 336) — tab fusionado Población y Capacidad',
         const contador = wrapper.findAll('.text-caption').map(c => c.text())
             .find(t => t.includes('Campos diligenciados en esta sección'));
         expect(contador).toBeTruthy();
-        // capacidad: 3 campos llenos + población: fecha_corte lleno y registros VACÍOS
-        // (comportamiento preexistente: en edición la tabla no recarga las filas
-        // guardadas) → 4/5
-        expect(wrapper.text()).toContain('4 / 5');
+        // capacidad: 3 campos llenos (residentes actuales se calcula) + población:
+        // fecha_corte + registros (hidratados desde la ficha en edición) → 5/5
+        expect(wrapper.text()).toContain('5 / 5');
     });
 
     it('el tab fusionado muestra el badge de "guardada" cuando ambos datos existen', async () => {
@@ -306,6 +305,88 @@ describe('CentroFormPage (centro 336) — tab fusionado Población y Capacidad',
         const wrapper = await mountPage(FICHA_SIN_POB_CAP);
         const tabs = wrapper.findAll('.q-tab');
         expect(tabs[1].find('.q-badge').exists()).toBe(false);
+    });
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// 4. Residentes actuales calculados + validación de capacidad
+// ══════════════════════════════════════════════════════════════════════════════
+describe('CentroFormPage (centro 336) — residentes actuales calculados', () => {
+    it('Residentes actuales es de solo lectura y muestra el acumulado de la tabla (15)', async () => {
+        const wrapper = await mountPage(FICHA_COMPLETA);
+        await abrirTabPoblacion(wrapper);
+
+        // Buscar entre los inputs deshabilitados el que vale 15
+        // (fecha_corte también es disabled, pero su valor es una fecha)
+        const deshabilitados = wrapper.findAll('input')
+            .filter(i => i.attributes('disabled') !== undefined);
+        const residentes = deshabilitados.find(i => i.element.value === '15');
+        expect(residentes).toBeTruthy();
+    });
+
+    it('muestra advertencia y bloquea guardar/avanzar cuando el acumulado excede la capacidad', async () => {
+        // Capacidad total 10, población registrada 8+7 = 15 → excede
+        const wrapper = await mountPage({
+            ...FICHA_COMPLETA,
+            capacidad: { ...FICHA_COMPLETA.capacidad, capacidad_total_residente: 10 },
+        });
+        await abrirTabPoblacion(wrapper);
+
+        // Banner de advertencia visible
+        const plano = wrapper.text().replace(/\s+/g, ' ');
+        expect(plano).toContain('excede la Capacidad Total de Residentes');
+
+        // GUARDAR bloqueado: no llama a los servicios y notifica el motivo
+        await boton(wrapper, 'Guardar Población y Capacidad').trigger('click');
+        await flushPromises();
+        expect(fichasService.saveCapacidad).not.toHaveBeenCalled();
+        expect(fichasService.addPoblacion).not.toHaveBeenCalled();
+        expect(Notify.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                type: 'negative',
+                message: expect.stringContaining('excede la capacidad total de residentes'),
+            })
+        );
+
+        // GUARDAR Y SIGUIENTE también bloqueado: no avanza a Infraestructura
+        await boton(wrapper, 'Guardar y Siguiente').trigger('click');
+        await flushPromises();
+        const tabs = wrapper.findAll('.q-tab');
+        expect(tabs[1].classes()).toContain('q-tab--active');
+        expect(tabs[2].classes()).not.toContain('q-tab--active');
+
+        // Clic en el tab 3 (Infraestructura) tampoco permite cambiar
+        await tabs[2].trigger('click');
+        await flushPromises();
+        expect(wrapper.findAll('.q-tab').at(1).classes()).toContain('q-tab--active');
+    });
+
+    it('permite guardar normalmente cuando el acumulado no excede la capacidad', async () => {
+        // Capacidad total 20, población registrada 15 → válido
+        const wrapper = await mountPage(FICHA_COMPLETA);
+        await abrirTabPoblacion(wrapper);
+
+        expect(wrapper.text()).not.toContain('excede la Capacidad Total');
+        await boton(wrapper, 'Guardar Población y Capacidad').trigger('click');
+        await flushPromises();
+        expect(fichasService.saveCapacidad).toHaveBeenCalledTimes(1);
+        expect(fichasService.addPoblacion).toHaveBeenCalledTimes(1);
+        expect(Notify.create).toHaveBeenCalledWith(
+            expect.objectContaining({ type: 'positive', message: 'Población y Capacidad guardadas.' })
+        );
+    });
+
+    it('los registros de población guardados se hidratan al entrar en edición', async () => {
+        const wrapper = await mountPage(FICHA_COMPLETA);
+        await abrirTabPoblacion(wrapper);
+
+        // La tabla debe mostrar la fila guardada (residente/adultos 8+7)
+        const plano = wrapper.text().replace(/\s+/g, ' ');
+        expect(plano).toContain('Adultos');
+        // Y el acumulado calculado es 15
+        const deshabilitados = wrapper.findAll('input')
+            .filter(i => i.attributes('disabled') !== undefined);
+        expect(deshabilitados.find(i => i.element.value === '15')).toBeTruthy();
     });
 });
 

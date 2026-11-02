@@ -593,7 +593,7 @@
                             <q-input v-model.number="infra.num_dormitorios" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <div class="text-caption q-mb-xs">Camas por habitación (entero)</div>
+                            <div class="text-caption q-mb-xs">Camas por habitación</div>
                             <q-input v-model.number="infra.camas_por_habitacion" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
@@ -725,15 +725,15 @@
                     <div class="text-subtitle2 q-mb-sm">Baños</div>
                     <div class="row q-col-gutter-md q-mb-md">
                         <div class="col-12 col-sm-6 col-md-3">
-                            <div class="text-caption q-mb-xs">Baños completos (entero)</div>
+                            <div class="text-caption q-mb-xs">Baños completos</div>
                             <q-input v-model.number="infra.banos_completos" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <div class="text-caption q-mb-xs">Baños sin ducha (entero)</div>
+                            <div class="text-caption q-mb-xs">Baños sin ducha</div>
                             <q-input v-model.number="infra.banos_sin_ducha" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <div class="text-caption q-mb-xs">Cantidad de tinas (entero)</div>
+                            <div class="text-caption q-mb-xs">Cantidad de tinas</div>
                             <q-input v-model.number="infra.cant_tinas" outlined dense type="number" min="0" />
                         </div>
                     </div>
@@ -746,7 +746,7 @@
                         </div>
                         <template v-if="infra.tanque_agua">
                             <div class="col-12 col-sm-6 col-md-3">
-                                <div class="text-caption q-mb-xs">Capacidad del tanque (entero)</div>
+                                <div class="text-caption q-mb-xs">Capacidad del tanque</div>
                                 <q-input v-model.number="infra.capacidad_tanque" outlined dense type="number" min="0" />
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
@@ -980,9 +980,11 @@
                     <div class="row q-col-gutter-md q-mb-md">
                         <div v-for="s in listaServicios" :key="s.field" class="col-12 col-md-4 col-sm-6">
                             <q-card flat bordered class="q-pa-sm">
-                                <div class="text-caption text-weight-bold q-mb-xs">{{ s.label }}</div>
-                                <q-toggle v-model="serv[s.field]"
-                                    :label="serv[s.field] ? 'Disponible' : 'No disponible'" />
+                                <div class="text-caption text-weight-bold q-mb-xs">{{ capitalize(s.label) }}</div>
+                                <q-toggle
+                                    :model-value="!!serv[s.field]"
+                                    @update:model-value="val => serv[s.field] = val"
+                                    :label="serv[s.field] ? 'Sí' : 'No'" />
                                 <template v-if="s.desc && serv[s.field]">
                                     <div class="text-caption q-mb-xs q-mt-xs">Especifique</div>
                                     <q-input v-model="serv[s.desc]" outlined dense />
@@ -1159,6 +1161,9 @@ const SectionHeader = defineComponent({
         ]);
     }
 });
+
+// ── Utilidades ───────────────────────────────────────────────────────────────
+const capitalize = (str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
 
 // ── Router / Store ────────────────────────────────────────────────────────────
 const router = useRouter();
@@ -1442,7 +1447,7 @@ const gruposAccesibilidad = [
     ]},
     { titulo: 'Mobiliario y Ergonomía', campos: [
         { field: 'sillas_apoyabrazos', label: 'Sillas con apoyabrazos' },
-        { field: 'mesas_sin_obstaculos', label: 'Mesas sin obstáculos' },
+        // { field: 'mesas_sin_obstaculos', label: 'Mesas sin obstáculos' },
     ]},
     { titulo: 'Comunicación, Visión y Orientación', campos: [
         { field: 'pisos_podotactiles', label: 'Pisos podotáctiles' },
@@ -1493,6 +1498,15 @@ const serv = ref({
     medicos_descripcion: '', lavanderia: false, lavanderia_descripcion: '',
     barberia_peluqueria: false, otros: false, otros_descripcion: ''
 });
+// Inicializar a false cualquier campo de servicio del catálogo que no exista en serv
+// (evita el estado triestado del q-toggle cuando el valor es undefined)
+watch(listaServicios, (lista) => {
+    lista.forEach(s => {
+        if (serv.value[s.field] === undefined) {
+            serv.value[s.field] = false;
+        }
+    });
+}, { immediate: true });
 const docs = ref([]);
 
 // ── RIF precargado desde el autorregistro (centros.rif_archivo) ──────────────
@@ -2673,7 +2687,16 @@ onMounted(async () => {
                     pob.value.fecha_corte = toDisplay(String(ficha.poblacion[0].fecha_corte));
                 }
             }
-            if (ficha.servicios) { Object.assign(serv.value, ficha.servicios); savedTabs.value.servicios = true; }
+            if (ficha.servicios) {
+                Object.assign(serv.value, ficha.servicios);
+                // Coercionar booleanos: pg puede devolver null para campos no guardados
+                listaServicios.value.forEach(s => {
+                    if (typeof serv.value[s.field] !== 'boolean') {
+                        serv.value[s.field] = !!serv.value[s.field];
+                    }
+                });
+                savedTabs.value.servicios = true;
+            }
             if (ficha.personal) {
                 Object.assign(pers.value, ficha.personal);
                 // Conteos NOT NULL DEFAULT 0: coerción defensiva para legacy NULL

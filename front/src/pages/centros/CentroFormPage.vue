@@ -30,30 +30,30 @@
                         Progreso General: {{ savedCount }} de {{ steps.length }} secciones completadas
                     </span>
                 </div>
-                <!-- Barra de progreso con 7 divisiones (Semáforo) -->
+                <!-- Barra de progreso con 6 divisiones (Semáforo) -->
                 <div class="row no-wrap items-center q-mb-sm" style="gap: 5px;">
                     <div v-for="(s, idx) in steps" :key="s.name" class="col"
                         :style="{
                             height: '18px',
                             borderRadius: '4px',
-                            backgroundColor: savedTabs[s.name] ? getStepProgressColor(idx) : '#e0e0e0',
+                            backgroundColor: isStepCompleted(s.name) ? getStepProgressColor(idx) : '#e0e0e0',
                             transition: 'all 0.3s ease',
                             cursor: 'pointer'
                         }"
                         @click="goToTab(s.name)">
                         <q-tooltip anchor="top middle" self="bottom middle">
-                            {{ s.label }}: {{ savedTabs[s.name] ? 'Completada' : 'Pendiente' }}
+                            {{ s.label }}: {{ isStepCompleted(s.name) ? 'Completada' : 'Pendiente' }}
                         </q-tooltip>
                     </div>
                 </div>
                 <div class="row q-gutter-xs">
                     <q-chip v-for="s in steps" :key="s.name" dense size="sm"
-                        :color="savedTabs[s.name] ? 'positive' : (activeTab === s.name ? 'primary' : 'grey-4')"
-                        :text-color="savedTabs[s.name] || activeTab === s.name ? 'white' : 'grey-7'" clickable
+                        :color="isStepCompleted(s.name) ? 'positive' : (activeTab === s.name ? 'primary' : 'grey-4')"
+                        :text-color="isStepCompleted(s.name) || activeTab === s.name ? 'white' : 'grey-7'" clickable
                         @click="goToTab(s.name)">
-                        <q-avatar :color="savedTabs[s.name] ? 'positive' : (activeTab === s.name ? 'blue-7' : 'grey-5')"
+                        <q-avatar :color="isStepCompleted(s.name) ? 'positive' : (activeTab === s.name ? 'blue-7' : 'grey-5')"
                             text-color="white" size="xs">
-                            <q-icon :name="savedTabs[s.name] ? 'check' : s.icon" size="xs" />
+                            <q-icon :name="isStepCompleted(s.name) ? 'check' : s.icon" size="xs" />
                         </q-avatar>
                         {{ s.label }}
                     </q-chip>
@@ -67,7 +67,7 @@
                 class="bg-grey-2" @update:model-value="goToTab">
                 <q-tab v-for="s in steps" :key="s.name" :name="s.name" :icon="s.icon" :label="s.label"
                     :disable="!s.alwaysEnabled && !tabEnabled(s.name)">
-                    <q-badge v-if="savedTabs[s.name]" color="positive" floating rounded style="top:4px;right:4px"
+                    <q-badge v-if="isStepCompleted(s.name)" color="positive" floating rounded style="top:4px;right:4px"
                         icon="check" />
                 </q-tab>
             </q-tabs>
@@ -567,11 +567,24 @@
                 </q-tab-panel>
 
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 3 ▸ INFRAESTRUCTURA                                      -->
+                <!-- TAB 3 ▸ INFRAESTRUCTURA Y ACCESIBILIDAD (secciones colapsables) -->
                 <!-- ══════════════════════════════════════════════════════════════ -->
-                <q-tab-panel name="infraestructura">
-                    <inner-progress :value="tabProgress('infraestructura')" :count="tabFieldCount('infraestructura')" />
-                    <section-header icon="home" label="Infraestructura del Inmueble" />
+                <q-tab-panel name="infraestructura_accesibilidad">
+                    <inner-progress :value="tabProgress('infraestructura_accesibilidad')"
+                        :count="tabFieldCount('infraestructura_accesibilidad')" />
+
+                    <!-- ── Sección colapsable 1 ▸ Infraestructura ─────────────── -->
+                    <q-expansion-item v-model="seccionInfraAbierta" default-opened header-class="text-weight-bold">
+                        <template #header>
+                            <q-item-section avatar>
+                                <q-icon name="foundation" :color="savedTabs.infraestructura ? 'positive' : 'primary'" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">Infraestructura del Inmueble</q-item-label>
+                                <q-item-label caption>{{ savedTabs.infraestructura ? 'Sección guardada' : 'Sección pendiente' }}</q-item-label>
+                            </q-item-section>
+                        </template>
+                        <div class="q-px-sm">
 
                     <!-- Grupo 1 ▸ Dimensiones y Capacidad -->
                     <div class="text-subtitle2 q-mb-sm">Dimensiones y Capacidad</div>
@@ -874,21 +887,21 @@
 
                     <div class="text-caption q-mb-xs">Observaciones adicionales</div>
                     <q-input v-model="infra.descripcion_otros" outlined dense type="textarea" rows="2" class="q-mb-md" />
+                        </div>
+                    </q-expansion-item>
 
-                    <div class="row justify-end q-mt-md q-gutter-sm">
-                        <q-btn unelevated color="primary" icon="save" label="Guardar Infraestructura" :loading="saving"
-                            @click="saveInfraestructura(false)" />
-                        <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
-                            :loading="saving" @click="saveInfraestructuraAndNext" />
-                    </div>
-                </q-tab-panel>
-
-                <!-- ══════════════════════════════════════════════════════════════ -->
-                <!-- TAB 4 ▸ ACCESIBILIDAD                                         -->
-                <!-- ══════════════════════════════════════════════════════════════ -->
-                <q-tab-panel name="accesibilidad">
-                    <inner-progress :value="tabProgress('accesibilidad')" :count="tabFieldCount('accesibilidad')" />
-                    <section-header icon="accessible" label="Accesibilidad del Inmueble" />
+                    <!-- ── Sección colapsable 2 ▸ Accesibilidad ───────────────── -->
+                    <q-expansion-item v-model="seccionAccAbierta" default-opened header-class="text-weight-bold">
+                        <template #header>
+                            <q-item-section avatar>
+                                <q-icon name="accessible" :color="savedTabs.accesibilidad ? 'positive' : 'primary'" />
+                            </q-item-section>
+                            <q-item-section>
+                                <q-item-label class="text-weight-bold">Accesibilidad del Inmueble</q-item-label>
+                                <q-item-label caption>{{ savedTabs.accesibilidad ? 'Sección guardada' : 'Sección pendiente' }}</q-item-label>
+                            </q-item-section>
+                        </template>
+                        <div class="q-px-sm">
 
                     <template v-for="grupo in gruposAccesibilidad" :key="grupo.titulo">
                         <div class="text-subtitle2 q-mb-sm">{{ grupo.titulo }}</div>
@@ -922,11 +935,15 @@
                         </div>
                     </template>
 
+                        </div>
+                    </q-expansion-item>
+
+                    <!-- Guardado combinado ▸ garantiza el guardado de AMBAS tablas -->
                     <div class="row justify-end q-mt-md q-gutter-sm">
-                        <q-btn unelevated color="primary" icon="save" label="Guardar Accesibilidad" :loading="saving"
-                            @click="saveAccesibilidad(false)" />
+                        <q-btn unelevated color="primary" icon="save" label="Guardar Infraestructura y Accesibilidad"
+                            :loading="saving" @click="saveInfraestructuraYAccesibilidad()" />
                         <q-btn outline color="secondary" icon="arrow_forward" label="Guardar y Siguiente"
-                            :loading="saving" @click="saveAccesibilidadAndNext" />
+                            :loading="saving" @click="saveInfraestructuraYAccesibilidadAndNext" />
                     </div>
                 </q-tab-panel>
 
@@ -1228,22 +1245,32 @@ const activeTab = ref('datos');
 const steps = [
     { name: 'datos', label: '1. Datos del Centro', icon: 'business', alwaysEnabled: true },
     { name: 'poblacion', label: '2. Población y Capacidad', icon: 'groups' },
-    { name: 'infraestructura', label: '3. Infraestructura', icon: 'home' },
-    { name: 'accesibilidad', label: '4. Accesibilidad', icon: 'accessible' },
-    { name: 'personal', label: '5. Personal', icon: 'group' },
-    { name: 'servicios', label: '6. Servicios', icon: 'medical_services' },
-    { name: 'documentos', label: '7. Documentos', icon: 'folder' },
+    { name: 'infraestructura_accesibilidad', label: '3. Infraestructura y Accesibilidad', icon: 'home_work' },
+    { name: 'personal', label: '4. Personal', icon: 'group' },
+    { name: 'servicios', label: '5. Servicios', icon: 'medical_services' },
+    { name: 'documentos', label: '6. Documentos', icon: 'folder' },
 ];
+
+// ── Secciones colapsables del tab fusionado (ambas abiertas por defecto) ─────
+const seccionInfraAbierta = ref(true);
+const seccionAccAbierta = ref(true);
 
 const savedTabs = ref({
     datos: false, poblacion: false,
     infraestructura: false, accesibilidad: false, personal: false, servicios: false, documentos: false
 });
-const savedCount = computed(() => Object.values(savedTabs.value).filter(Boolean).length);
+// El tab fusionado Infraestructura y Accesibilidad está completo solo si AMBAS secciones se guardaron
+function isStepCompleted(name) {
+    if (name === 'infraestructura_accesibilidad') {
+        return !!savedTabs.value.infraestructura && !!savedTabs.value.accesibilidad;
+    }
+    return !!savedTabs.value[name];
+}
+const savedCount = computed(() => steps.filter(s => isStepCompleted(s.name)).length);
 function getStepProgressColor(index) {
-    if (index < 3) return '#e53935'; // 3 primeras: rojo
-    if (index < 6) return '#fb8c00'; // 3 siguientes: tono entre amarillo y naranja
-    return '#2e7d32'; // última: verde
+    if (index < 2) return '#e53935'; // 2 primeras: rojo (Datos, Población)
+    if (index < 5) return '#fb8c00'; // 3 siguientes: naranja (Infra+Acc, Personal, Servicios)
+    return '#2e7d32'; // última: verde (Documentos)
 }
 function tabEnabled(name) { return savedTabs.value.datos; }
 async function goToTab(name) {
@@ -1256,11 +1283,14 @@ async function goToTab(name) {
         });
         return;
     }
-    if (activeTab.value === 'infraestructura' && name !== 'infraestructura' && fichaId.value && hasInfraestructura.value) {
-        await saveInfraestructura(true);
-    }
-    if (activeTab.value === 'accesibilidad' && name !== 'accesibilidad' && fichaId.value && hasAccesibilidad.value) {
-        await saveAccesibilidad(true);
+    if (activeTab.value === 'infraestructura_accesibilidad' && name !== 'infraestructura_accesibilidad') {
+        // Al salir del tab fusionado se persisten silenciosamente ambas secciones
+        if (fichaId.value && hasInfraestructura.value) {
+            await saveInfraestructura(true);
+        }
+        if (fichaId.value && hasAccesibilidad.value) {
+            await saveAccesibilidad(true);
+        }
     }
     if (tabEnabled(name) || name === 'datos') activeTab.value = name;
 }
@@ -1662,6 +1692,12 @@ function tabFieldCount(name) {
         // Tab fusionado ▸ Capacidad + Población (una sola barra combinada)
         const a = countFields(cap.value, tabFieldDefs.capacidad);
         const b = countFields(pob.value, tabFieldDefs.poblacion);
+        return { filled: a.filled + b.filled, total: a.total + b.total };
+    }
+    if (name === 'infraestructura_accesibilidad') {
+        // Tab fusionado ▸ Infraestructura + Accesibilidad (una sola barra combinada)
+        const a = countFields(infra.value, tabFieldDefs.infraestructura);
+        const b = countFields(acc.value, tabFieldDefs.accesibilidad);
         return { filled: a.filled + b.filled, total: a.total + b.total };
     }
     const src = tabSources[name];
@@ -2084,9 +2120,32 @@ async function saveInfraestructura(silent = false) {
     }
 }
 
-async function saveInfraestructuraAndNext() {
-    const ok = await saveInfraestructura(false);
-    if (ok) nextTab();
+// ── Guardado combinado del tab fusionado ▸ garantiza AMBAS tablas ─────────────
+// Secuencial: si Infraestructura falla, no se intenta marcar el paso como completo
+async function saveInfraestructuraYAccesibilidad(andNext = false) {
+    if (!fichaId.value) return warn();
+    if (acc.value.ascensores && (!acc.value.num_ascensores || acc.value.num_ascensores <= 0)) {
+        Notify.create({ type: 'warning', message: 'Debe indicar la cantidad de ascensores si el establecimiento posee ascensores.' });
+        return false;
+    }
+    saving.value = true;
+    try {
+        const okInfra = await saveInfraestructura(true);
+        const okAcc = okInfra ? await saveAccesibilidad(true) : false;
+        if (okInfra && okAcc) {
+            Notify.create({ type: 'positive', message: 'Infraestructura y Accesibilidad guardadas correctamente.' });
+            if (andNext) nextTab();
+            return true;
+        }
+        Notify.create({ type: 'negative', message: 'No se pudo completar el guardado de Infraestructura y Accesibilidad.' });
+        return false;
+    } finally {
+        saving.value = false;
+    }
+}
+
+async function saveInfraestructuraYAccesibilidadAndNext() {
+    await saveInfraestructuraYAccesibilidad(true);
 }
 
 async function saveAccesibilidad(silent = false) {
@@ -2112,11 +2171,6 @@ async function saveAccesibilidad(silent = false) {
     } finally {
         saving.value = false;
     }
-}
-
-async function saveAccesibilidadAndNext() {
-    const ok = await saveAccesibilidad(false);
-    if (ok) nextTab();
 }
 
 async function savePersonal(andNext = false) {
@@ -2580,11 +2634,13 @@ async function handleBack() {
 }
 
 watch(activeTab, async (newTab, oldTab) => {
-    if (oldTab === 'infraestructura' && fichaId.value && hasInfraestructura.value) {
-        await saveInfraestructura(true);
-    }
-    if (oldTab === 'accesibilidad' && fichaId.value && hasAccesibilidad.value) {
-        await saveAccesibilidad(true);
+    if (oldTab === 'infraestructura_accesibilidad' && fichaId.value) {
+        if (hasInfraestructura.value) {
+            await saveInfraestructura(true);
+        }
+        if (hasAccesibilidad.value) {
+            await saveAccesibilidad(true);
+        }
     }
 });
 

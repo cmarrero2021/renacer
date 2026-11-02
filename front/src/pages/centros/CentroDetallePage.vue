@@ -343,11 +343,25 @@
                             </q-card>
                         </q-expansion-item>
 
-                        <!-- Infraestructura -->
-                        <q-expansion-item v-if="ficha.infraestructura" icon="home" label="Infraestructura"
-                            class="q-mb-sm">
-                            <q-card flat bordered>
-                                <q-card-section>
+                        <!-- ── Infraestructura y Accesibilidad ▸ secciones colapsables ── -->
+                        <q-expansion-item v-if="ficha.infraestructura || ficha.accesibilidad"
+                            icon="foundation" label="Infraestructura y Accesibilidad"
+                            default-opened header-class="text-weight-bold" class="q-mb-sm">
+
+                            <!-- Sub-sección colapsable ▸ Infraestructura -->
+                            <q-expansion-item v-if="ficha.infraestructura"
+                                default-opened header-class="text-weight-bold">
+                                <template #header>
+                                    <q-item-section avatar>
+                                        <q-icon name="foundation" color="primary" />
+                                    </q-item-section>
+                                    <q-item-section>
+                                        <q-item-label class="text-weight-bold">Infraestructura</q-item-label>
+                                        <q-item-label caption>Dimensiones, condiciones, seguridad y convivencia</q-item-label>
+                                    </q-item-section>
+                                </template>
+                                <q-card flat bordered>
+                                    <q-card-section>
                                     <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-5">
                                             <table style="width:100%; border-collapse:collapse">
@@ -397,6 +411,26 @@
                                                     <td class="text-body2" style="padding:2px 4px">{{
                                                         ficha.infraestructura.areas_verdes ? 'Sí' : 'No' }}</td>
                                                 </tr>
+                                                <tr v-if="ficha.infraestructura.area_total_m2 != null">
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área total (m²)</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.area_total_m2 }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.area_construida_m2 != null">
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área construida (m²)</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.area_construida_m2 }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.tamano_habitaciones_m2 != null">
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Tamaño de habitaciones (m²)</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.tamano_habitaciones_m2 }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.personas_por_habitacion != null">
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Personas por habitación</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.personas_por_habitacion }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.banos_por_habitacion != null">
+                                                    <td class="text-caption text-grey" style="padding:2px 4px">Baños por habitación</td>
+                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.banos_por_habitacion }}</td>
+                                                </tr>
                                                 <tr>
                                                     <td class="text-caption text-grey" style="padding:2px 4px">Cap.
                                                         comedor</td>
@@ -445,18 +479,94 @@
                                                     :color="ficha.infraestructura.tiene_area_cocina ? 'positive' : 'grey-4'"
                                                     :text-color="ficha.infraestructura.tiene_area_cocina ? 'white' : 'grey-7'"
                                                     dense>Cocina</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.tiene_comedor ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.tiene_comedor ? 'white' : 'grey-7'"
+                                                    dense>Comedor</q-chip>
+                                                <q-chip v-if="ficha.infraestructura.tiene_comedor && ficha.infraestructura.capacidad_comedor_pct != null"
+                                                    color="primary" text-color="white" dense>Cap. comedor: {{ ficha.infraestructura.capacidad_comedor_pct }}%</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'white' : 'grey-7'"
+                                                    dense>Farmacia / almacén clínico</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.acepta_mascotas ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.acepta_mascotas ? 'white' : 'grey-7'"
+                                                    dense>Aceptan mascotas</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.gerogranjas ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.gerogranjas ? 'white' : 'grey-7'"
+                                                    dense>Gerogranjas</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.residuos_separados ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.residuos_separados ? 'white' : 'grey-7'"
+                                                    dense>Residuos separados</q-chip>
+                                            </div>
+
+                                            <div class="text-caption text-grey q-mb-xs q-mt-sm">Seguridad y energía</div>
+                                            <div class="row q-gutter-xs">
+                                                <q-chip
+                                                    :color="ficha.infraestructura.iluminacion_emergencia ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.iluminacion_emergencia ? 'white' : 'grey-7'"
+                                                    dense>Iluminación de emergencia</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.senalizacion_clara ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.senalizacion_clara ? 'white' : 'grey-7'"
+                                                    dense>Señalización clara</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.prevencion_incendios ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.prevencion_incendios ? 'white' : 'grey-7'"
+                                                    dense>Prevención de incendios</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.sistemas_ventilacion ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.sistemas_ventilacion ? 'white' : 'grey-7'"
+                                                    dense>Sistemas de ventilación</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.aire_acondicionado ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.aire_acondicionado ? 'white' : 'grey-7'"
+                                                    dense>Aire acondicionado</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.normativa_visible ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.normativa_visible ? 'white' : 'grey-7'"
+                                                    dense>Normativa visible</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.planta_electrica ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.planta_electrica ? 'white' : 'grey-7'"
+                                                    dense>Planta eléctrica</q-chip>
+                                                <q-chip
+                                                    :color="ficha.infraestructura.planta_electrica_panel_solar ? 'positive' : 'grey-4'"
+                                                    :text-color="ficha.infraestructura.planta_electrica_panel_solar ? 'white' : 'grey-7'"
+                                                    dense>Panel solar</q-chip>
+                                                <q-chip v-if="ficha.infraestructura.planta_electrica_tipo_nombre"
+                                                    color="primary" text-color="white" dense>
+                                                    Tipo: {{ ficha.infraestructura.planta_electrica_tipo_nombre }}
+                                                </q-chip>
+                                            </div>
+
+                                            <div v-if="ficha.infraestructura.descripcion_otros" class="q-mt-sm">
+                                                <div class="text-caption text-grey">Observaciones adicionales</div>
+                                                <div class="text-body2">{{ ficha.infraestructura.descripcion_otros }}</div>
                                             </div>
                                         </div>
                                     </div>
                                 </q-card-section>
-                            </q-card>
-                        </q-expansion-item>
+                                </q-card>
+                            </q-expansion-item>
 
-                        <!-- Accesibilidad -->
-                        <q-expansion-item v-if="ficha.accesibilidad" icon="accessible" label="Accesibilidad"
-                            class="q-mb-sm">
-                            <q-card flat bordered>
-                                <q-card-section>
+                            <!-- Sub-sección colapsable ▸ Accesibilidad -->
+                            <q-expansion-item v-if="ficha.accesibilidad"
+                                default-opened header-class="text-weight-bold">
+                                <template #header>
+                                    <q-item-section avatar>
+                                        <q-icon name="accessible" color="primary" />
+                                    </q-item-section>
+                                    <q-item-section>
+                                        <q-item-label class="text-weight-bold">Accesibilidad</q-item-label>
+                                        <q-item-label caption>Accesos, pasillos, baños, mobiliario y señalización</q-item-label>
+                                    </q-item-section>
+                                </template>
+                                <q-card flat bordered>
+                                    <q-card-section>
                                     <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-6">
                                             <table style="width:100%; border-collapse:collapse">
@@ -482,6 +592,13 @@
                                                     </td>
                                                 </tr>
                                                 <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Alfombras aseguradas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.alfombras_aseguradas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.alfombras_aseguradas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
                                                     <td class="text-caption text-grey" style="padding:4px">Ascensores</td>
                                                     <td class="text-body2" style="padding:4px">
                                                         <q-badge :color="ficha.accesibilidad.ascensores ? 'positive' : 'grey-5'"
@@ -493,6 +610,83 @@
                                                     <td class="text-body2" style="padding:4px">
                                                         <q-badge :color="ficha.accesibilidad.pasamanos ? 'positive' : 'grey-5'"
                                                             :label="ficha.accesibilidad.pasamanos ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Marquesinas de acceso</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.marquesinas_acceso ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.marquesinas_acceso ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Estacionamientos reservados</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.estacionamientos_reservados ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.estacionamientos_reservados ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Pasamanos dobles</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.pasamanos_dobles ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.pasamanos_dobles ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Zonas de descanso</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.zonas_descanso ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.zonas_descanso ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Barras de apoyo</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.barras_apoyo ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.barras_apoyo ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Inodoros elevados</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.inodoros_elevados ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.inodoros_elevados ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Duchas a ras del suelo</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.duchas_ras_suelo ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.duchas_ras_suelo ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Lavamanos suspendidos</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.lavamanos_suspendidos ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.lavamanos_suspendidos ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Grifería de palanca</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.griferia_palanca ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.griferia_palanca ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Sillas con apoyabrazos</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.sillas_apoyabrazos ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.sillas_apoyabrazos ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Mesas sin obstáculos</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.mesas_sin_obstaculos ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.mesas_sin_obstaculos ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
                                             </table>
@@ -534,19 +728,69 @@
                                                             :label="ficha.accesibilidad.pasillos_accesibles_sillas ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Botón de emergencia</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.boton_emergencia ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.boton_emergencia ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Baldosas para invidentes (podotáctiles)</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.pisos_podotactiles ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.pisos_podotactiles ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Alto contraste visual en avisos y señales</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.alto_contraste_visual ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.alto_contraste_visual ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Pictogramas universales</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.pictogramas_universales ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.pictogramas_universales ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Iluminación homogénea</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.iluminacion_homogenea ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.iluminacion_homogenea ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Alarmas duales auditivas y visuales</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.alarmas_duales ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.alarmas_duales ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="padding:4px">Rutas de evacuación anchas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.accesibilidad.rutas_evacuacion_anchas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.accesibilidad.rutas_evacuacion_anchas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
                                             </table>
                                         </div>
                                     </div>
                                 </q-card-section>
                             </q-card>
+                            </q-expansion-item>
                         </q-expansion-item>
 
-                        <!-- Documentos -->
-                        <q-expansion-item v-if="ficha.documentos?.length" icon="folder" label="Documentos"
+                        <!-- Documentos (solo tipos activos en el catálogo) -->
+                        <q-expansion-item v-if="documentosActivos.length" icon="folder" label="Documentos"
                             class="q-mb-sm">
                             <q-card flat bordered>
                                 <q-card-section>
-                                    <div v-for="d in ficha.documentos" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
+                                    <div v-for="d in documentosActivos" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
                                         <div class="col-12 col-md-5 text-body2 text-weight-medium">
                                             {{ labelTipoDoc(d.tipo_documento) }}
                                         </div>
@@ -701,6 +945,14 @@ function labelTipoDoc(tipo) {
     if (found && found.tipo_documento_label) return found.tipo_documento_label;
     return tipo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 }
+
+// Solo documentos cuyo tipo esté activo en el catálogo (los inactivos no se muestran)
+const documentosActivos = computed(() => {
+    const docs = ficha.value?.documentos;
+    if (!docs?.length) return [];
+    const activos = new Set(catalogosStore.opcionesDocumentos.map(d => d.tipo_documento));
+    return docs.filter(d => activos.has(d.tipo_documento));
+});
 
 function formatFileSize(bytes) {
     if (!bytes && bytes !== 0) return '';

@@ -124,6 +124,7 @@ const FIELD_MAP = {
     'accesibilidad.rampas_fijas': { sql: 'acc.rampas_fijas', table: 'accesibilidad', label: 'Rampas Fijas', category: 'Accesibilidad' },
     'accesibilidad.piso_antirresbalante': { sql: 'acc.piso_antirresbalante', table: 'accesibilidad', label: 'Piso Antirresbalante', category: 'Accesibilidad' },
     'accesibilidad.alfombras_sueltas': { sql: 'acc.alfombras_sueltas', table: 'accesibilidad', label: 'Alfombras Sueltas', category: 'Accesibilidad' },
+    'accesibilidad.alfombras_aseguradas': { sql: 'acc.alfombras_aseguradas', table: 'accesibilidad', label: 'Alfombras Aseguradas', category: 'Accesibilidad' },
     'accesibilidad.ascensores': { sql: 'acc.ascensores', table: 'accesibilidad', label: 'Ascensores', category: 'Accesibilidad' },
     'accesibilidad.num_ascensores': { sql: 'acc.num_ascensores', table: 'accesibilidad', label: 'Nº Ascensores', category: 'Accesibilidad', numeric: true },
     'accesibilidad.pasamanos': { sql: 'acc.pasamanos', table: 'accesibilidad', label: 'Pasamanos', category: 'Accesibilidad' },

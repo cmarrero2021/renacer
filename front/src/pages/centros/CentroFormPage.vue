@@ -580,7 +580,7 @@
                                 <q-icon name="foundation" :color="savedTabs.infraestructura ? 'positive' : 'primary'" />
                             </q-item-section>
                             <q-item-section>
-                                <q-item-label class="text-weight-bold">Infraestructura del Inmueble</q-item-label>
+                                <q-item-label class="text-weight-bold">Infraestructura</q-item-label>
                                 <q-item-label caption>{{ savedTabs.infraestructura ? 'Sección guardada' : 'Sección pendiente' }}</q-item-label>
                             </q-item-section>
                         </template>
@@ -897,7 +897,7 @@
                                 <q-icon name="accessible" :color="savedTabs.accesibilidad ? 'positive' : 'primary'" />
                             </q-item-section>
                             <q-item-section>
-                                <q-item-label class="text-weight-bold">Accesibilidad del Inmueble</q-item-label>
+                                <q-item-label class="text-weight-bold">Accesibilidad</q-item-label>
                                 <q-item-label caption>{{ savedTabs.accesibilidad ? 'Sección guardada' : 'Sección pendiente' }}</q-item-label>
                             </q-item-section>
                         </template>
@@ -1463,8 +1463,12 @@ const gruposAccesibilidad = [
         { field: 'pasamanos_dobles', label: 'Pasamanos dobles' },
         { field: 'piso_antirresbalante', label: 'Pisos antideslizantes' },
         { field: 'pasillos_accesibles_sillas', label: 'Pasillos anchos' },
-        { field: 'alfombras_sueltas', label: 'Alfombras sueltas' },
         { field: 'zonas_descanso', label: 'Zonas de descanso' },
+    ]},
+    { titulo: 'Seguridad de Uso', campos: [
+        { field: 'alfombras_sueltas', label: 'Alfombras sueltas' },
+        { field: 'alfombras_aseguradas', label: 'Alfombras aseguradas' },
+        { field: 'pisos_podotactiles', label: 'Baldosas para invidentes (podotáctiles)' },
     ]},
     { titulo: 'Baños y Zonas Húmedas', campos: [
         { field: 'banos_geriatricos', label: 'Baños geriátricos' },
@@ -1480,7 +1484,6 @@ const gruposAccesibilidad = [
         // { field: 'mesas_sin_obstaculos', label: 'Mesas sin obstáculos' },
     ]},
     { titulo: 'Comunicación, Visión y Orientación', campos: [
-        { field: 'pisos_podotactiles', label: 'Pisos podotáctiles' },
         { field: 'alto_contraste_visual', label: 'Alto contraste visual en avisos y señales' },
         { field: 'pictogramas_universales', label: 'Señales universales' },
         { field: 'iluminacion_homogenea', label: 'Iluminación homogénea' },
@@ -1513,6 +1516,7 @@ const acc = ref({
     sillas_apoyabrazos: false, mesas_sin_obstaculos: false,
     pisos_podotactiles: false, alto_contraste_visual: false, pictogramas_universales: false,
     iluminacion_homogenea: false, alarmas_duales: false, rutas_evacuacion_anchas: false,
+    alfombras_aseguradas: false,
 });
 const pers = ref({
     num_medicos: 0, num_gerontologos: 0, num_psicologos: 0,
@@ -1667,7 +1671,7 @@ const tabFieldDefs = {
         'lavamanos_suspendidos', 'griferia_palanca', 'boton_emergencia',
         'sillas_apoyabrazos', 'mesas_sin_obstaculos', 'pisos_podotactiles',
         'alto_contraste_visual', 'pictogramas_universales', 'iluminacion_homogenea',
-        'alarmas_duales', 'rutas_evacuacion_anchas'
+        'alarmas_duales', 'rutas_evacuacion_anchas', 'alfombras_aseguradas'
     ],
     personal: ['num_medicos', 'num_gerontologos', 'num_psicologos',
         'num_enfermeros', 'num_auxiliares_enfermeria', 'num_cuidadores',

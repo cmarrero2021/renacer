@@ -976,9 +976,10 @@ exports.createFicha = async (req, res) => {
           lavamanos_suspendidos, griferia_palanca, boton_emergencia,
           sillas_apoyabrazos, mesas_sin_obstaculos,
           pisos_podotactiles, alto_contraste_visual, pictogramas_universales,
-          iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas)
+          iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas,
+          alfombras_aseguradas)
          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                 $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)`,
+                 $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)`,
                 [ficha.id, accesibilidad.rampas_fijas ?? false, accesibilidad.piso_antirresbalante ?? false,
                 accesibilidad.alfombras_sueltas ?? false, accesibilidad.ascensores ?? false,
                 accesibilidad.ascensores ? (accesibilidad.num_ascensores ? parseInt(accesibilidad.num_ascensores, 10) : null) : null,
@@ -994,7 +995,8 @@ exports.createFicha = async (req, res) => {
                 accesibilidad.sillas_apoyabrazos ?? false, accesibilidad.mesas_sin_obstaculos ?? false,
                 accesibilidad.pisos_podotactiles ?? false, accesibilidad.alto_contraste_visual ?? false,
                 accesibilidad.pictogramas_universales ?? false, accesibilidad.iluminacion_homogenea ?? false,
-                accesibilidad.alarmas_duales ?? false, accesibilidad.rutas_evacuacion_anchas ?? false]
+                accesibilidad.alarmas_duales ?? false, accesibilidad.rutas_evacuacion_anchas ?? false,
+                accesibilidad.alfombras_aseguradas ?? false]
             );
         }
 
@@ -1426,9 +1428,10 @@ exports.saveAccesibilidad = async (req, res) => {
               lavamanos_suspendidos, griferia_palanca, boton_emergencia,
               sillas_apoyabrazos, mesas_sin_obstaculos,
               pisos_podotactiles, alto_contraste_visual, pictogramas_universales,
-              iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas)
+              iluminacion_homogenea, alarmas_duales, rutas_evacuacion_anchas,
+              alfombras_aseguradas)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
-                     $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30)
+                     $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31)
              ON CONFLICT (ficha_id) DO UPDATE SET
                rampas_fijas=$2, piso_antirresbalante=$3, alfombras_sueltas=$4, ascensores=$5,
                num_ascensores=$6, pasamanos=$7, escaleras_antirresbalantes=$8, banos_geriatricos=$9,
@@ -1440,6 +1443,7 @@ exports.saveAccesibilidad = async (req, res) => {
                sillas_apoyabrazos=$23, mesas_sin_obstaculos=$24,
                pisos_podotactiles=$25, alto_contraste_visual=$26, pictogramas_universales=$27,
                iluminacion_homogenea=$28, alarmas_duales=$29, rutas_evacuacion_anchas=$30,
+               alfombras_aseguradas=$31,
                updated_at=NOW()
              RETURNING *`,
             [fichaId, a.rampas_fijas ?? false, a.piso_antirresbalante ?? false, a.alfombras_sueltas ?? false,
@@ -1455,7 +1459,8 @@ exports.saveAccesibilidad = async (req, res) => {
              a.sillas_apoyabrazos ?? false, a.mesas_sin_obstaculos ?? false,
              a.pisos_podotactiles ?? false, a.alto_contraste_visual ?? false,
              a.pictogramas_universales ?? false, a.iluminacion_homogenea ?? false,
-             a.alarmas_duales ?? false, a.rutas_evacuacion_anchas ?? false]
+             a.alarmas_duales ?? false, a.rutas_evacuacion_anchas ?? false,
+             a.alfombras_aseguradas ?? false]
         );
         res.json({ message: 'Accesibilidad guardada.', data: r.rows[0] });
     } catch (err) {

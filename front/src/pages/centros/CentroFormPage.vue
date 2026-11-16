@@ -464,12 +464,12 @@
                             <q-card-section>
                                 <div class="row q-col-gutter-md">
                                     <div class="col-12 col-md-3">
-                                        <div class="text-caption q-mb-xs">Capacidad total de residentes *</div>
+                                        <div class="text-caption text-weight-bold q-mb-xs">Capacidad total de residentes *</div>
                                         <q-input v-model.number="cap.capacidad_total_residente"
                                             outlined dense type="number" min="0" />
                                     </div>
                                     <div class="col-12 col-md-3">
-                                        <div class="text-caption q-mb-xs">Residentes actuales</div>
+                                        <div class="text-caption text-weight-bold q-mb-xs">Residentes actuales</div>
                                         <q-input :model-value="totalPoblacion"
                                             outlined dense type="number" min="0" readonly disable>
                                             <template #append>
@@ -482,7 +482,7 @@
                                         <q-toggle v-model="cap.atencion_ambulatoria" label="Presta este servicio" />
                                     </div>
                                     <div class="col-12 col-md-3" v-if="cap.atencion_ambulatoria">
-                                        <div class="text-caption q-mb-xs">Cupos ambulatorios</div>
+                                        <div class="text-caption text-weight-bold q-mb-xs">Cupos ambulatorios</div>
                                         <q-input v-model.number="cap.num_atencion_ambulatoria" outlined dense type="number" min="0" />
                                     </div>
                                 </div>
@@ -614,7 +614,7 @@
                             <q-input v-model.number="infra.personas_por_habitacion" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">
-                            <div class="text-caption q-mb-xs">Nro. de sanitarios</div>
+                            <div class="text-caption q-mb-xs">Sanitarios por habitación</div>
                             <q-input v-model.number="infra.num_sanitarios" outlined dense type="number" min="0" />
                         </div>
                         <div class="col-12 col-sm-6 col-md-3">

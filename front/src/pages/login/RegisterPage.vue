@@ -110,8 +110,8 @@
           <p class="text-caption text-weight-medium q-mb-xs">Datos de contacto del usuario</p>
           <div class="row q-col-gutter-sm">
             <div class="col-12 col-sm-6">
-              <q-input filled v-model="telefono" label="N° de Teléfono" mask="(####) ###-####" unmasked-value
-                :rules="[val => !!val || 'Requerido']">
+              <q-input filled v-model="telefono" label="N° de Teléfono (opcional)" mask="(####) ###-####"
+                unmasked-value>
                 <template v-slot:prepend>
                   <q-icon name="phone" />
                 </template>
@@ -503,8 +503,8 @@ const onRifFileSelected = async (event) => {
 };
 
 const validarDatosYContinuar = () => {
-  if (!telefono.value || !celular.value) {
-    Notify.create({ message: "Complete los números de teléfono y celular del usuario.", color: "negative", position: "top", timeout: 4000 });
+  if (!celular.value) {
+    Notify.create({ message: "Complete el número de celular del usuario.", color: "negative", position: "top", timeout: 4000 });
     return;
   }
   if (!tipoRif.value) {
@@ -550,7 +550,7 @@ const passwordRequirements = computed(() => [
   { label: "Al menos una minúscula", met: /[a-z]/.test(password.value) },
   { label: "Al menos un número", met: /[0-9]/.test(password.value) },
   { label: "No más de dos caracteres iguales consecutivos", met: !/(.)\1{2,}/.test(password.value) },
-  { label: "Al menos un carácter especial (#$%&/@.-)", met: /[$#%&/@.-]/.test(password.value) },
+  { label: "Al menos un carácter especial (#$%&/*@.-)", met: /[.$#%&/*@-]/.test(password.value) },
 ]);
 
 const handleCompletarRegistro = async () => {

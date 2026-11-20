@@ -27,9 +27,10 @@
             icon="person_add" @click="$router.push('/registro')" />
           <q-separator class="q-my-md" />
           <div class="row q-gutter-sm justify-center">
-            <q-btn flat label="LEER RIF" color="secondary" icon="badge" @click="leerRIF" :loading="rifLoading" />
+            <q-btn flat label="LEER RIF" color="secondary" icon="badge" @click="leerRIF" :loading="rifLoading"
+              v-if="false" />
             <q-btn flat label="LEER CEDULA" color="primary" icon="credit_card" @click="leerCedula"
-              :loading="cedulaLoading" />
+              :loading="cedulaLoading" v-if="false" />
           </div>
         </template>
 

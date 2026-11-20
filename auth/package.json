@@ -3,7 +3,8 @@
     "version":  "1.0.0",
     "main":  "index.js",
     "scripts":  {
-                    "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1"
+                    "test":  "echo \"Error: no test specified\" \u0026\u0026 exit 1",
+                    "maildev": "npx -y maildev@2 --smtp 1025 --web 1080"
                 },
     "keywords":  [
 

@@ -14,7 +14,8 @@
             <q-space />
             <q-btn v-if="canEdit" icon="edit" label="Editar" flat color="primary"
                 @click="$router.push(`/admin/centros/${centroId}/editar`)" />
-            <q-btn v-if="canDelete" icon="delete" label="Eliminar" flat color="negative"
+            <!-- Oculto temporalmente (rehabilitable): no eliminar el código -->
+            <q-btn v-if="false && canDelete" icon="delete" label="Eliminar" flat color="negative"
                 @click="confirmarEliminar" />
         </div>
 
@@ -25,8 +26,9 @@
             <q-tabs v-model="tab" align="left" class="q-mb-md">
                 <q-tab name="resumen" label="Resumen" icon="info" />
                 <q-tab name="ficha" label="Ficha Actual" icon="assignment" />
-                <q-tab name="historial" label="Historial" icon="history" />
-                <q-tab name="acceso" label="Acceso" icon="people" v-if="canManageAccess" />
+                <!-- Ocultos temporalmente (rehabilitables): no eliminar el código -->
+                <q-tab name="historial" label="Historial" icon="history" v-if="false" />
+                <q-tab name="acceso" label="Acceso" icon="people" v-if="false && canManageAccess" />
             </q-tabs>
 
             <q-tab-panels v-model="tab" animated>
@@ -278,6 +280,9 @@
                                         <q-chip v-if="ficha.servicios.otros" color="positive" text-color="white"
                                             dense>Otros{{ ficha.servicios.otros_descripcion ? ': ' +
                                             ficha.servicios.otros_descripcion : '' }}</q-chip>
+                                        <!-- Servicios adicionales del catálogo (persistidos en ficha_servicios.extras) -->
+                                        <q-chip v-for="s in serviciosExtras" :key="s.codigo" color="positive"
+                                            text-color="white" dense>{{ s.label }}</q-chip>
                                         <span v-if="!tieneServicios" class="text-grey text-body2">Ningún servicio
                                             registrado</span>
                                     </div>
@@ -363,186 +368,227 @@
                                 <q-card flat bordered>
                                     <q-card-section>
                                     <div class="row q-col-gutter-md">
-                                        <div class="col-12 col-md-5">
+                                        <div class="col-12 col-md-6">
                                             <table style="width:100%; border-collapse:collapse">
                                                 <tr>
-                                                    <td class="text-caption text-grey"
-                                                        style="width:55%;padding:2px 4px">Estado inmueble</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Estado inmueble</td>
+                                                    <td class="text-body2" style="padding:4px">{{
                                                         ficha.infraestructura.estado_inmueble_nombre || '—' }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Nro.
-                                                        dormitorios</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Nro. dormitorios</td>
+                                                    <td class="text-body2" style="padding:4px">{{
                                                         ficha.infraestructura.num_dormitorios ?? '—' }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">
-                                                        Dormitorios adecuados</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.dormitorios_adecuados ? 'Sí' : 'No' }}
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Dormitorios adecuados</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.dormitorios_adecuados ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.dormitorios_adecuados ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Nro.
-                                                        sanitarios</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Nro. sanitarios</td>
+                                                    <td class="text-body2" style="padding:4px">{{
                                                         ficha.infraestructura.num_sanitarios ?? '—' }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">
-                                                        Sanitarios adecuados</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.sanitarios_adecuados ? 'Sí' : 'No' }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Sanitarios adecuados</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.sanitarios_adecuados ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.sanitarios_adecuados ? 'Sí' : 'No'" />
+                                                    </td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área de cocina</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.tiene_area_cocina ? 'Sí' : 'No' }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Área de cocina</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.tiene_area_cocina ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.tiene_area_cocina ? 'Sí' : 'No'" />
+                                                    </td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Áreas de atención médica/enfermería</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.areas_atencion_medica ? 'Sí' : 'No' }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Áreas de atención médica/enfermería</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.areas_atencion_medica ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.areas_atencion_medica ? 'Sí' : 'No'" />
+                                                    </td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Áreas verdes</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
-                                                        ficha.infraestructura.areas_verdes ? 'Sí' : 'No' }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Áreas verdes</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.areas_verdes ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.areas_verdes ? 'Sí' : 'No'" />
+                                                    </td>
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.area_total_m2 != null">
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área total (m²)</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.area_total_m2 }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Área total (m²)</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.area_total_m2 }}</td>
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.area_construida_m2 != null">
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Área construida (m²)</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.area_construida_m2 }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Área construida (m²)</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.area_construida_m2 }}</td>
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.tamano_habitaciones_m2 != null">
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Tamaño de habitaciones (m²)</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.tamano_habitaciones_m2 }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Tamaño de habitaciones (m²)</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.tamano_habitaciones_m2 }}</td>
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.personas_por_habitacion != null">
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Personas por habitación</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.personas_por_habitacion }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Personas por habitación</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.personas_por_habitacion }}</td>
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.banos_por_habitacion != null">
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Baños por habitación</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{ ficha.infraestructura.banos_por_habitacion }}</td>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Baños por habitación</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.banos_por_habitacion }}</td>
                                                 </tr>
                                                 <tr>
-                                                    <td class="text-caption text-grey" style="padding:2px 4px">Cap.
-                                                        comedor</td>
-                                                    <td class="text-body2" style="padding:2px 4px">{{
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Cap. comedor</td>
+                                                    <td class="text-body2" style="padding:4px">{{
                                                         ficha.infraestructura.capacidad_comedor_pct != null ?
                                                         ficha.infraestructura.capacidad_comedor_pct + '%' : '—' }}</td>
                                                 </tr>
                                             </table>
                                         </div>
-                                        <div class="col-12 col-md-7">
-                                            <div class="text-caption text-grey q-mb-xs">Servicios básicos</div>
-                                            <div class="row q-gutter-xs q-mb-sm">
-                                                <q-chip
-                                                    :color="ficha.infraestructura.luz_electrica ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.luz_electrica ? 'white' : 'grey-7'"
-                                                    dense>Luz eléctrica</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.agua_potable ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.agua_potable ? 'white' : 'grey-7'"
-                                                    dense>Agua potable</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.agua_servidas ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.agua_servidas ? 'white' : 'grey-7'"
-                                                    dense>Aguas servidas</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.deposito_basura ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.deposito_basura ? 'white' : 'grey-7'"
-                                                    dense>Depósito basura</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.sistema_seguridad ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.sistema_seguridad ? 'white' : 'grey-7'"
-                                                    dense>Seguridad</q-chip>
-                                            </div>
-
-                                            <div class="text-caption text-grey q-mb-xs">Áreas e instalaciones</div>
-                                            <div class="row q-gutter-xs">
-                                                <q-chip
-                                                    :color="ficha.infraestructura.areas_atencion_medica ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.areas_atencion_medica ? 'white' : 'grey-7'"
-                                                    dense>Atención médica / enfermería</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.areas_verdes ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.areas_verdes ? 'white' : 'grey-7'"
-                                                    dense>Áreas verdes</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.tiene_area_cocina ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.tiene_area_cocina ? 'white' : 'grey-7'"
-                                                    dense>Cocina</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.tiene_comedor ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.tiene_comedor ? 'white' : 'grey-7'"
-                                                    dense>Comedor</q-chip>
-                                                <q-chip v-if="ficha.infraestructura.tiene_comedor && ficha.infraestructura.capacidad_comedor_pct != null"
-                                                    color="primary" text-color="white" dense>Cap. comedor: {{ ficha.infraestructura.capacidad_comedor_pct }}%</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'white' : 'grey-7'"
-                                                    dense>Farmacia / almacén clínico</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.acepta_mascotas ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.acepta_mascotas ? 'white' : 'grey-7'"
-                                                    dense>Aceptan mascotas</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.gerogranjas ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.gerogranjas ? 'white' : 'grey-7'"
-                                                    dense>Gerogranjas</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.residuos_separados ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.residuos_separados ? 'white' : 'grey-7'"
-                                                    dense>Residuos separados</q-chip>
-                                            </div>
-
-                                            <div class="text-caption text-grey q-mb-xs q-mt-sm">Seguridad y energía</div>
-                                            <div class="row q-gutter-xs">
-                                                <q-chip
-                                                    :color="ficha.infraestructura.iluminacion_emergencia ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.iluminacion_emergencia ? 'white' : 'grey-7'"
-                                                    dense>Iluminación de emergencia</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.senalizacion_clara ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.senalizacion_clara ? 'white' : 'grey-7'"
-                                                    dense>Señalización clara</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.prevencion_incendios ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.prevencion_incendios ? 'white' : 'grey-7'"
-                                                    dense>Prevención de incendios</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.sistemas_ventilacion ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.sistemas_ventilacion ? 'white' : 'grey-7'"
-                                                    dense>Sistemas de ventilación</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.aire_acondicionado ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.aire_acondicionado ? 'white' : 'grey-7'"
-                                                    dense>Aire acondicionado</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.normativa_visible ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.normativa_visible ? 'white' : 'grey-7'"
-                                                    dense>Normativa visible</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.planta_electrica ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.planta_electrica ? 'white' : 'grey-7'"
-                                                    dense>Planta eléctrica</q-chip>
-                                                <q-chip
-                                                    :color="ficha.infraestructura.planta_electrica_panel_solar ? 'positive' : 'grey-4'"
-                                                    :text-color="ficha.infraestructura.planta_electrica_panel_solar ? 'white' : 'grey-7'"
-                                                    dense>Panel solar</q-chip>
-                                                <q-chip v-if="ficha.infraestructura.planta_electrica_tipo_nombre"
-                                                    color="primary" text-color="white" dense>
-                                                    Tipo: {{ ficha.infraestructura.planta_electrica_tipo_nombre }}
-                                                </q-chip>
-                                            </div>
-
+                                        <div class="col-12 col-md-6">
+                                            <table style="width:100%; border-collapse:collapse">
+                                                <tr>
+                                                    <td colspan="2" class="text-caption text-grey text-weight-medium" style="padding:4px">Servicios básicos</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Luz eléctrica</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.luz_electrica ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.luz_electrica ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Agua potable</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.agua_potable ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.agua_potable ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Aguas servidas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.agua_servidas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.agua_servidas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Depósito basura</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.deposito_basura ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.deposito_basura ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" class="text-caption text-grey text-weight-medium q-pt-md" style="padding:4px">Áreas e instalaciones</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Comedor</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.tiene_comedor ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.tiene_comedor ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Farmacia / almacén clínico</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.tiene_farmacia_almacen_clinico ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Aceptan mascotas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.acepta_mascotas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.acepta_mascotas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Gerogranjas</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.gerogranjas ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.gerogranjas ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Residuos separados</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.residuos_separados ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.residuos_separados ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td colspan="2" class="text-caption text-grey text-weight-medium q-pt-md" style="padding:4px">Seguridad y energía</td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Sistema de seguridad</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.sistema_seguridad ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.sistema_seguridad ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Iluminación de emergencia</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.iluminacion_emergencia ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.iluminacion_emergencia ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Señalización clara</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.senalizacion_clara ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.senalizacion_clara ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Prevención de incendios</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.prevencion_incendios ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.prevencion_incendios ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Sistemas de ventilación</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.sistemas_ventilacion ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.sistemas_ventilacion ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Aire acondicionado</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.aire_acondicionado ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.aire_acondicionado ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Normativa visible</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.normativa_visible ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.normativa_visible ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Planta eléctrica</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.planta_electrica ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.planta_electrica ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.planta_electrica && ficha.infraestructura.planta_electrica_panel_solar">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Panel solar</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge color="positive" label="Sí" />
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.planta_electrica && ficha.infraestructura.planta_electrica_tipo_nombre">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Tipo de planta</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.planta_electrica_tipo_nombre }}</td>
+                                                </tr>
+                                            </table>
                                             <div v-if="ficha.infraestructura.descripcion_otros" class="q-mt-sm">
                                                 <div class="text-caption text-grey">Observaciones adicionales</div>
                                                 <div class="text-body2">{{ ficha.infraestructura.descripcion_otros }}</div>
@@ -786,22 +832,32 @@
                         </q-expansion-item>
 
                         <!-- Documentos (solo tipos activos en el catálogo) -->
-                        <q-expansion-item v-if="documentosActivos.length" icon="folder" label="Documentos"
+                        <q-expansion-item v-if="documentosVisibles.length" icon="folder" label="Documentos"
                             class="q-mb-sm">
                             <q-card flat bordered>
                                 <q-card-section>
-                                    <div v-for="d in documentosActivos" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
+                                    <div v-for="d in documentosVisibles" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
                                         <div class="col-12 col-md-5 text-body2 text-weight-medium">
                                             {{ labelTipoDoc(d.tipo_documento) }}
                                         </div>
-                                        <div class="col-auto">
+                                        <div class="col-auto" v-if="!esRifRow(d)">
                                             <q-chip dense :color="d.tiene_original ? 'positive' : 'grey-4'"
                                                 :text-color="d.tiene_original ? 'white' : 'grey-7'">Original</q-chip>
                                             <q-chip dense :color="d.tiene_copia ? 'positive' : 'grey-4'"
                                                 :text-color="d.tiene_copia ? 'white' : 'grey-7'">Copia</q-chip>
                                         </div>
                                         <div class="col-12 col-md-5">
-                                            <div v-if="d.tiene_archivo || d.archivo_nombre" class="row items-center q-gutter-xs">
+                                            <!-- RIF precargado del autorregistro: vive en centros.rif_archivo -->
+                                            <div v-if="d.es_rif_precargado" class="row items-center q-gutter-xs">
+                                                <q-chip dense color="green-1" text-color="green-8" icon="verified">
+                                                    Cargado en el registro
+                                                </q-chip>
+                                                <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                                    @click="verRifPrecargado" title="Abrir en nueva pestaña" />
+                                                <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                                    @click="descargarRifPrecargado" title="Descargar RIF" />
+                                            </div>
+                                            <div v-else-if="d.tiene_archivo || d.archivo_nombre" class="row items-center q-gutter-xs">
                                                 <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf">
                                                     <span class="ellipsis" style="max-width: 150px" :title="d.archivo_nombre || 'Documento PDF'">
                                                         {{ d.archivo_nombre || 'Documento PDF' }}
@@ -925,7 +981,7 @@ import { LocalStorage, Notify, useQuasar } from 'quasar';
 
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
-import { fichasService } from 'src/services/centros.service';
+import { centrosService, fichasService } from 'src/services/centros.service';
 
 const route = useRoute();
 const router = useRouter();
@@ -947,11 +1003,26 @@ function labelTipoDoc(tipo) {
 }
 
 // Solo documentos cuyo tipo esté activo en el catálogo (los inactivos no se muestran)
+// Comparación insensible a mayúsculas: los códigos del catálogo pueden haber cambiado
+// de capitalización respecto a lo guardado (ej: 'BOMBEROS' vs 'bomberos')
 const documentosActivos = computed(() => {
     const docs = ficha.value?.documentos;
     if (!docs?.length) return [];
-    const activos = new Set(catalogosStore.opcionesDocumentos.map(d => d.tipo_documento));
-    return docs.filter(d => activos.has(d.tipo_documento));
+    const activos = new Set(catalogosStore.opcionesDocumentos.map(d => String(d.tipo_documento || '').trim().toLowerCase()));
+    return docs.filter(d => activos.has(String(d.tipo_documento || '').trim().toLowerCase()));
+});
+
+const esRifRow = (d) => String(d.tipo_documento || '').trim().toLowerCase() === 'rif';
+
+// Documentos a mostrar: si el RIF está precargado (centros.rif_archivo), la fila RIF de
+// ficha_documentos (sin archivo) se sustituye por una fila sintética con ver/descargar
+const documentosVisibles = computed(() => {
+    const docs = documentosActivos.value;
+    if (!centro.value?.rif_archivo) return docs;
+    return [
+        { id: '__rif_precargado__', tipo_documento: 'rif', es_rif_precargado: true, tiene_archivo: true },
+        ...docs.filter(d => !esRifRow(d)),
+    ];
 });
 
 function formatFileSize(bytes) {
@@ -1017,6 +1088,53 @@ async function descargarDocumentoPdf(d) {
     }
 }
 
+// ── RIF precargado (centros.rif_archivo) ──
+async function verRifPrecargado() {
+    // Abrir ventana de inmediato para evitar que el navegador bloquee el popup
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+        newWindow.document.title = 'RIF';
+        newWindow.document.body.innerHTML = `
+            <div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#555;">
+                <p>Cargando documento...</p>
+            </div>
+        `;
+    }
+    try {
+        const res = await centrosService.getRifArchivo(centroId.value);
+        const url = URL.createObjectURL(res.data);
+        if (newWindow) {
+            newWindow.location.href = url;
+        } else {
+            window.open(url, '_blank');
+        }
+    } catch (err) {
+        if (newWindow) newWindow.close();
+        console.error(err);
+        Notify.create({ type: 'negative', message: 'Error al abrir el RIF.' });
+    }
+}
+
+async function descargarRifPrecargado() {
+    try {
+        const res = await centrosService.getRifArchivo(centroId.value, true);
+        const url = URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        // Nombre desde Content-Disposition; el backend lo define como RIF.<ext>
+        const cd = res.headers?.['content-disposition'] || '';
+        const m = cd.match(/filename="?([^";]+)"?/);
+        a.download = m ? decodeURIComponent(m[1]) : 'RIF.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+        console.error(err);
+        $q.notify({ type: 'negative', message: 'Error al descargar el RIF.' });
+    }
+}
+
 function openPdfInNewTab() {
     if (pdfViewerUrl.value) {
         window.open(pdfViewerUrl.value, '_blank');
@@ -1046,9 +1164,27 @@ const ficha = computed(() => centrosStore.ficha);
 const tieneServicios = computed(() => {
     const s = ficha.value?.servicios;
     if (!s) return false;
-    return ['farmacia', 'evaluacion_nutricional', 'actividades_recreativas',
+    const fijos = ['farmacia', 'evaluacion_nutricional', 'actividades_recreativas',
         'servicio_emergencia', 'servicio_funerario', 'medicos',
         'lavanderia', 'barberia_peluqueria', 'otros'].some(k => s[k]);
+    return fijos || serviciosExtras.value.length > 0;
+});
+
+// Servicios adicionales del catálogo guardados en ficha_servicios.extras (jsonb,
+// { codigo: boolean }). Se rotulan con el nombre del catálogo; si el código ya no
+// existe en el catálogo, se muestra el código "humanizado".
+const serviciosExtras = computed(() => {
+    const extras = ficha.value?.servicios?.extras;
+    if (!extras || typeof extras !== 'object') return [];
+    const cat = catalogosStore.serviciosCatalogo || [];
+    return Object.entries(extras)
+        .filter(([, v]) => v)
+        .map(([codigo]) => {
+            const found = cat.find(c => String(c.codigo) === String(codigo));
+            const label = found?.nombre
+                || String(codigo).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            return { codigo, label };
+        });
 });
 
 // Población de la última fecha de corte

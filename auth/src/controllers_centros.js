@@ -528,7 +528,8 @@ exports.updateCentro = async (req, res) => {
         tipo_establecimiento, tipo_establecimiento_descripcion,
         tipo_clasificacion, estado_centro,
         latitud, longitud,
-        foto_base64
+        foto_base64,
+        propietarios, representantes, telefonos, correos
     } = req.body;
 
     // Validar tamaño de foto si se envía
@@ -548,6 +549,8 @@ exports.updateCentro = async (req, res) => {
         // Construir la actualización de foto_base64:
         // Si se envía explícitamente (incluso null), se actualiza; si no viene en el body, se conserva
         const updateFoto = 'foto_base64' in req.body;
+
+        await client.query('BEGIN');
 
         const result = await client.query(
             `UPDATE public.centros SET
@@ -569,8 +572,79 @@ exports.updateCentro = async (req, res) => {
                 latitud, longitud, foto_base64 ?? null, updateFoto, id]
         );
 
+        if (!result.rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ error: 'Centro no encontrado.' });
+        }
+
+        // ── Reemplazar personas y contacto SOLO si vienen explícitas en el body ──
+        // (estrategia reemplazar: soft-delete de las existentes + insertar las enviadas)
+        const now = new Date().toISOString();
+
+        if (Array.isArray(propietarios)) {
+            await client.query(
+                'UPDATE public.centro_propietarios SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL',
+                [now, id]
+            );
+            for (const prop of propietarios) {
+                if (!prop || !String(prop.cedula_nro || '').trim()) continue;
+                await client.query(
+                    `INSERT INTO public.centro_propietarios (centro_id, nombre, cedula_tipo, cedula_nro, es_principal)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [id, prop.nombre, prop.cedula_tipo || 'V', prop.cedula_nro, prop.es_principal || false]
+                );
+            }
+        }
+
+        if (Array.isArray(representantes)) {
+            await client.query(
+                'UPDATE public.centro_representantes SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL',
+                [now, id]
+            );
+            for (const rep of representantes) {
+                if (!rep || !String(rep.cedula_nro || '').trim()) continue;
+                await client.query(
+                    `INSERT INTO public.centro_representantes (centro_id, nombre, cedula_tipo, cedula_nro, cargo)
+                     VALUES ($1, $2, $3, $4, $5)`,
+                    [id, rep.nombre, rep.cedula_tipo || 'V', rep.cedula_nro, rep.cargo || null]
+                );
+            }
+        }
+
+        if (Array.isArray(telefonos)) {
+            await client.query(
+                'UPDATE public.centro_telefonos SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL',
+                [now, id]
+            );
+            for (const tel of telefonos) {
+                if (!tel || !String(tel.telefono || '').trim()) continue;
+                await client.query(
+                    `INSERT INTO public.centro_telefonos (centro_id, telefono, tipo)
+                     VALUES ($1, $2, $3)`,
+                    [id, tel.telefono, tel.tipo || 'general']
+                );
+            }
+        }
+
+        if (Array.isArray(correos)) {
+            await client.query(
+                'UPDATE public.centro_correos SET deleted_at = $1 WHERE centro_id = $2 AND deleted_at IS NULL',
+                [now, id]
+            );
+            for (const cor of correos) {
+                if (!cor || !String(cor.correo || '').trim()) continue;
+                await client.query(
+                    `INSERT INTO public.centro_correos (centro_id, correo, tipo)
+                     VALUES ($1, $2, $3)`,
+                    [id, cor.correo, cor.tipo || 'general']
+                );
+            }
+        }
+
+        await client.query('COMMIT');
         res.json({ message: 'Centro actualizado.', centro: result.rows[0] });
     } catch (err) {
+        await client.query('ROLLBACK');
         res.status(500).json({ error: 'Error al actualizar el centro', detail: err.message });
     } finally {
         client.release();
@@ -1256,22 +1330,41 @@ exports.saveServicios = async (req, res) => {
             return res.status(403).json({ error: 'Sin acceso.' });
         }
 
+        // Columnas fijas de ficha_servicios; todo lo demás del body
+        // (servicios adicionales del catálogo) se persiste en la columna extras (jsonb)
+        const CAMPOS_FIJOS = new Set([
+            'farmacia', 'evaluacion_nutricional', 'actividades_recreativas',
+            'servicio_emergencia', 'servicio_funerario',
+            'medicos', 'medicos_descripcion', 'lavanderia', 'lavanderia_descripcion',
+            'barberia_peluqueria', 'otros', 'otros_descripcion',
+            'id', 'ficha_id', 'created_at', 'updated_at', 'deleted_at', 'extras'
+        ]);
+        const extras = {};
+        for (const [k, v] of Object.entries(s || {})) {
+            if (!CAMPOS_FIJOS.has(k) && typeof v !== 'object' && v !== null) {
+                extras[k] = v;
+            }
+        }
+        const extrasJson = Object.keys(extras).length ? extras : null;
+
         const r = await client.query(
 
             `INSERT INTO public.ficha_servicios
              (ficha_id, farmacia, evaluacion_nutricional, actividades_recreativas, servicio_emergencia,
               servicio_funerario, medicos, medicos_descripcion, lavanderia, lavanderia_descripcion,
-              barberia_peluqueria, otros, otros_descripcion)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+              barberia_peluqueria, otros, otros_descripcion, extras)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb)
              ON CONFLICT (ficha_id) DO UPDATE SET
                farmacia=$2, evaluacion_nutricional=$3, actividades_recreativas=$4,
                servicio_emergencia=$5, servicio_funerario=$6, medicos=$7,
                medicos_descripcion=$8, lavanderia=$9, lavanderia_descripcion=$10,
-               barberia_peluqueria=$11, otros=$12, otros_descripcion=$13, updated_at=NOW()
+               barberia_peluqueria=$11, otros=$12, otros_descripcion=$13,
+               extras=COALESCE($14::jsonb, public.ficha_servicios.extras), updated_at=NOW()
              RETURNING *`,
             [fichaId, s.farmacia, s.evaluacion_nutricional, s.actividades_recreativas,
                 s.servicio_emergencia, s.servicio_funerario, s.medicos, s.medicos_descripcion,
-                s.lavanderia, s.lavanderia_descripcion, s.barberia_peluqueria, s.otros, s.otros_descripcion]
+                s.lavanderia, s.lavanderia_descripcion, s.barberia_peluqueria, s.otros, s.otros_descripcion,
+                extrasJson]
         );
         res.json({ message: 'Servicios guardados.', data: r.rows[0] });
     } catch (err) {
@@ -1481,16 +1574,24 @@ exports.saveDocumentos = async (req, res) => {
 
         const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
+        // Formatos de archivo permitidos (mimetype → extensión en disco)
+        const FORMATOS_PERMITIDOS = {
+            'application/pdf': '.pdf',
+            'image/png': '.png',
+            'image/jpeg': '.jpg',
+        };
+
         // Validaciones previas de formato y peso
         for (const doc of documentos) {
             if (doc.archivo_base64) {
-                // Verificar tipo MIME o cabecera base64
-                const isPdfMime = doc.archivo_mimetype === 'application/pdf';
-                const isPdfDataUrl = typeof doc.archivo_base64 === 'string' && doc.archivo_base64.startsWith('data:application/pdf');
+                // Verificar tipo MIME, data URL o cabecera base64 (PDF heredado sin data URL)
+                const isMimeValido = FORMATOS_PERMITIDOS.hasOwnProperty(doc.archivo_mimetype);
+                const isDataUrlValido = typeof doc.archivo_base64 === 'string'
+                    && /^data:(application\/pdf|image\/(png|jpeg));/i.test(doc.archivo_base64);
                 const isPdfHeader = typeof doc.archivo_base64 === 'string' && doc.archivo_base64.slice(0, 40).includes('JVBERi0');
-                if (!isPdfMime && !isPdfDataUrl && !isPdfHeader) {
+                if (!isMimeValido && !isDataUrlValido && !isPdfHeader) {
                     return res.status(400).json({
-                        error: `El documento "${doc.tipo_documento_label || doc.tipo_documento}" debe ser un archivo en formato PDF.`
+                        error: `El documento "${doc.tipo_documento_label || doc.tipo_documento}" debe ser un archivo en formato PDF, PNG, JPG o JPEG.`
                     });
                 }
 
@@ -1507,20 +1608,27 @@ exports.saveDocumentos = async (req, res) => {
         await client.query('BEGIN');
 
         for (const doc of documentos) {
+            // Normalizar el código de documento (la restricción única es sensible a mayúsculas)
+            const tipoDoc = String(doc.tipo_documento || '').trim().toLowerCase();
             const eliminar = !!doc.eliminar_archivo;
             const tieneNuevo = Boolean(doc.archivo_base64);
 
-            // Escribir archivo a disco si es nuevo
+            // Escribir archivo a disco si es nuevo (extensión según el formato real)
             let archivoRuta = null;
             if (tieneNuevo) {
-                archivoRuta = writeFileToDisk(fichaId, doc.tipo_documento, doc.archivo_base64);
+                let extension = FORMATOS_PERMITIDOS[doc.archivo_mimetype];
+                if (!extension && typeof doc.archivo_nombre === 'string') {
+                    const m = doc.archivo_nombre.toLowerCase().match(/\.(pdf|png|jpe?g)$/);
+                    if (m) extension = m[1] === 'pdf' ? '.pdf' : `.${m[1].replace('jpeg', 'jpg')}`;
+                }
+                archivoRuta = writeFileToDisk(fichaId, tipoDoc, doc.archivo_base64, extension || '.pdf');
             }
 
             // Si se elimina, borrar archivo previo del disco
             if (eliminar) {
                 const prevDoc = await client.query(
-                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2',
-                    [fichaId, doc.tipo_documento]
+                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND LOWER(tipo_documento) = LOWER($2)',
+                    [fichaId, tipoDoc]
                 );
                 if (prevDoc.rows.length && prevDoc.rows[0].archivo_ruta) {
                     deleteFileFromDisk(prevDoc.rows[0].archivo_ruta);
@@ -1530,8 +1638,8 @@ exports.saveDocumentos = async (req, res) => {
             // Si se sube un nuevo archivo, borrar el anterior del disco
             if (tieneNuevo) {
                 const prevDoc = await client.query(
-                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND tipo_documento = $2',
-                    [fichaId, doc.tipo_documento]
+                    'SELECT archivo_ruta FROM public.ficha_documentos WHERE ficha_id = $1 AND LOWER(tipo_documento) = LOWER($2)',
+                    [fichaId, tipoDoc]
                 );
                 if (prevDoc.rows.length && prevDoc.rows[0].archivo_ruta) {
                     deleteFileFromDisk(prevDoc.rows[0].archivo_ruta);
@@ -1562,14 +1670,14 @@ exports.saveDocumentos = async (req, res) => {
                        ELSE public.ficha_documentos.archivo_tamano 
                    END,
                    archivo_mimetype = CASE 
-                       WHEN $10::boolean = TRUE THEN 'application/pdf' 
+                       WHEN $10::boolean = TRUE THEN NULL 
                        WHEN $11::boolean = TRUE THEN EXCLUDED.archivo_mimetype 
                        ELSE public.ficha_documentos.archivo_mimetype 
                    END,
                    updated_at = NOW()`,
                 [
                     fichaId,
-                    doc.tipo_documento,
+                    tipoDoc,
                     doc.tiene_original || false,
                     doc.tiene_copia || false,
                     doc.descripcion || null,

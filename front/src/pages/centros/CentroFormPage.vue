@@ -195,14 +195,12 @@
                                 </div>
                                 <div class="text-caption text-grey-6">
                                     <q-icon name="info" size="xs" />
-                                    "Obtener mi ubicación actual" usa el GPS/WiFi del dispositivo · "Geocodificar" convierte la
-                                    dirección en coordenadas
-                                    (OpenStreetMap, sin costo)
+                                    "Obtener mi ubicación actual" usa el GPS/WiFi/RED del dispositivo; debe dar autorización cuando el dispositivo se lo indique
                                 </div>
                             </div>
 
                             <div class="col-12 col-md-4">
-                                <div class="text-caption q-mb-xs">Latitud (decimal) *</div>
+                                <div class="text-caption q-mb-xs">Latitud (decimal)</div>
                                 <q-input v-model.number="datos.latitud" outlined dense
                                     type="number" step="0.0000001" :rules="[
                                         v => v !== null && v !== '' && v !== undefined || 'Requerido',
@@ -214,7 +212,7 @@
                                 </q-input>
                             </div>
                             <div class="col-12 col-md-4">
-                                <div class="text-caption q-mb-xs">Longitud (decimal) *</div>
+                                <div class="text-caption q-mb-xs">Longitud (decimal)</div>
                                 <q-input v-model.number="datos.longitud" outlined dense
                                     type="number" step="0.0000001" :rules="[
                                         v => v !== null && v !== '' && v !== undefined || 'Requerido',
@@ -574,7 +572,7 @@
                         :count="tabFieldCount('infraestructura_accesibilidad')" />
 
                     <!-- ── Sección colapsable 1 ▸ Infraestructura ─────────────── -->
-                    <q-expansion-item v-model="seccionInfraAbierta" default-opened header-class="text-weight-bold">
+                    <q-expansion-item v-model="seccionInfraAbierta" header-class="text-weight-bold">
                         <template #header>
                             <q-item-section avatar>
                                 <q-icon name="foundation" :color="savedTabs.infraestructura ? 'positive' : 'primary'" />
@@ -759,7 +757,7 @@
                         </div>
                         <template v-if="infra.tanque_agua">
                             <div class="col-12 col-sm-6 col-md-3">
-                                <div class="text-caption q-mb-xs">Capacidad del tanque</div>
+                                <div class="text-caption q-mb-xs">Capacidad del tanque en litros</div>
                                 <q-input v-model.number="infra.capacidad_tanque" outlined dense type="number" min="0" />
                             </div>
                             <div class="col-12 col-sm-6 col-md-3">
@@ -891,7 +889,7 @@
                     </q-expansion-item>
 
                     <!-- ── Sección colapsable 2 ▸ Accesibilidad ───────────────── -->
-                    <q-expansion-item v-model="seccionAccAbierta" default-opened header-class="text-weight-bold">
+                    <q-expansion-item v-model="seccionAccAbierta" header-class="text-weight-bold">
                         <template #header>
                             <q-item-section avatar>
                                 <q-icon name="accessible" :color="savedTabs.accesibilidad ? 'positive' : 'primary'" />
@@ -1002,7 +1000,7 @@
                                     :model-value="!!serv[s.field]"
                                     @update:model-value="val => serv[s.field] = val"
                                     :label="serv[s.field] ? 'Sí' : 'No'" />
-                                <template v-if="s.desc && serv[s.field]">
+                                <template v-if="s.desc && serv[s.field] && s.field !== 'lavanderia'">
                                     <div class="text-caption q-mb-xs q-mt-xs">Especifique</div>
                                     <q-input v-model="serv[s.desc]" outlined dense />
                                 </template>
@@ -1027,18 +1025,18 @@
 
                     <div class="text-caption text-grey-7 q-mb-sm">
                         <q-icon name="info" color="primary" class="q-mr-xs" />
-                        Puede subir los documentos escaneados en formato <strong>PDF</strong> (máximo <strong>10 MB</strong> por archivo).
+                        Puede subir los documentos escaneados en formato <strong>PDF, PNG, JPG o JPEG</strong> (máximo <strong>10 MB</strong> por archivo).
                     </div>
 
                     <q-table :rows="docs" :columns="colsDocs" flat bordered dense hide-bottom :pagination="{ rowsPerPage: 0 }">
                         <template #body="{ row }">
                             <tr>
                                 <td class="text-weight-medium">{{ row.tipo_documento_label }}</td>
-                                <td v-if="!esRifPrecargado(row)" class="text-center" style="width: 100px">
+                                <td v-if="!esFilaRif(row)" class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_original" dense color="positive" />
                                 </td>
                                 <td v-else class="text-center text-caption text-grey-5" style="width: 100px">—</td>
-                                <td v-if="!esRifPrecargado(row)" class="text-center" style="width: 100px">
+                                <td v-if="!esFilaRif(row)" class="text-center" style="width: 100px">
                                     <q-toggle v-model="row.tiene_copia" dense color="info" />
                                 </td>
                                 <td v-else class="text-center text-caption text-grey-5" style="width: 100px">—</td>
@@ -1089,7 +1087,7 @@
                                     <div v-else class="row items-center">
                                         <input
                                             type="file"
-                                            accept="application/pdf,.pdf"
+                                            accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
                                             :id="'file-upload-' + row.tipo_documento"
                                             style="display: none"
                                             @change="onDocFileSelected($event, row)"
@@ -1103,7 +1101,7 @@
                                             label="Subir PDF"
                                             @click="triggerFileUpload(row.tipo_documento)"
                                         />
-                                        <span class="text-caption text-grey-5 q-ml-sm">PDF (máx. 10MB)</span>
+                                        <span class="text-caption text-grey-5 q-ml-sm">PDF, PNG, JPG (máx. 10MB)</span>
                                     </div>
                                 </td>
                                 <td>
@@ -1155,7 +1153,7 @@ const InnerProgress = defineComponent({
     setup(props) {
         return () => h('div', { class: 'q-mb-md' }, [
             h('div', { class: 'row items-center justify-between text-caption text-grey q-mb-xs' }, [
-                h('span', 'Campos diligenciados en esta sección'),
+                
                 h('span', `${props.count?.filled ?? 0} / ${props.count?.total ?? 0}`)
             ]),
             h('q-linear-progress', {
@@ -1252,8 +1250,8 @@ const steps = [
 ];
 
 // ── Secciones colapsables del tab fusionado (ambas abiertas por defecto) ─────
-const seccionInfraAbierta = ref(true);
-const seccionAccAbierta = ref(true);
+const seccionInfraAbierta = ref(false);
+const seccionAccAbierta = ref(false);
 
 const savedTabs = ref({
     datos: false, poblacion: false,
@@ -1273,7 +1271,34 @@ function getStepProgressColor(index) {
     return '#2e7d32'; // última: verde (Documentos)
 }
 function tabEnabled(name) { return savedTabs.value.datos; }
+
+// ── Bloqueo del tab DATOS DEL CENTRO: campos obligatorios ────────────────────
+// Sin estos datos no se puede guardar/actualizar ni cambiar a otra tab.
+const camposObligatoriosDatos = computed(() => {
+    const faltantes = [];
+    if (!datos.value.tipo_solicitud) faltantes.push('Registro / Autorización');
+    if (!datos.value.tipo_establecimiento) faltantes.push('Tipo de Establecimiento');
+    if (!datos.value.tipo_clasificacion) faltantes.push('Tipo de Clasificación');
+    if (!estadoSel.value) faltantes.push('Estado');
+    if (!municipioSel.value) faltantes.push('Municipio');
+    if (!datos.value.parroquia_id) faltantes.push('Parroquia');
+    if (!datos.value.propietarios.length) faltantes.push('Al menos 1 Responsable/Encargado');
+    if (!datos.value.representantes.length) faltantes.push('Al menos 1 Representante Legal');
+    if (!datos.value.foto_base64) faltantes.push('La foto de fachada del recinto');
+    return faltantes;
+});
+function avisarCamposFaltantesDatos() {
+    Notify.create({
+        type: 'warning', icon: 'warning', timeout: 6000,
+        message: `No puede avanzar: complete primero los siguientes datos del centro: ${camposObligatoriosDatos.value.join(', ')}.`
+    });
+}
 async function goToTab(name) {
+    // Bloqueo: no se puede abandonar el tab DATOS DEL CENTRO si faltan campos obligatorios
+    if (activeTab.value === 'datos' && name !== 'datos' && camposObligatoriosDatos.value.length) {
+        avisarCamposFaltantesDatos();
+        return;
+    }
     // Bloqueo: no se puede abandonar Población y Capacidad si el acumulado de
     // residentes excede la Capacidad Total de Residentes
     if (activeTab.value === 'poblacion' && name !== 'poblacion' && capacidadExcedida.value) {
@@ -1295,6 +1320,11 @@ async function goToTab(name) {
     if (tabEnabled(name) || name === 'datos') activeTab.value = name;
 }
 function nextTab() {
+    // Bloqueo: no se puede avanzar desde DATOS DEL CENTRO si faltan campos obligatorios
+    if (activeTab.value === 'datos' && camposObligatoriosDatos.value.length) {
+        avisarCamposFaltantesDatos();
+        return;
+    }
     const idx = steps.findIndex(s => s.name === activeTab.value);
     if (idx < steps.length - 1) activeTab.value = steps[idx + 1].name;
 }
@@ -1598,9 +1628,11 @@ function base64PuroDesdeDataUrl(dataUrl) {
 }
 
 function syncDocsFromCatalog() {
-    const existing = new Map(docs.value.map(d => [d.tipo_documento, d]));
+    // Clave insensible a mayúsculas/minúsculas: los códigos del catálogo pueden
+    // haberse editado (ej: 'BOMBEROS' vs 'bomberos' ya guardado en ficha_documentos)
+    const existing = new Map(docs.value.map(d => [String(d.tipo_documento || '').trim().toLowerCase(), d]));
     docs.value = catalogosStore.opcionesDocumentos.map(catDoc => {
-        const prev = existing.get(catDoc.tipo_documento);
+        const prev = existing.get(String(catDoc.tipo_documento || '').trim().toLowerCase());
         return {
             id: prev ? prev.id : undefined,
             tipo_documento: catDoc.tipo_documento,
@@ -1636,7 +1668,7 @@ const colsDocs = [
     { name: 'doc', label: 'Documento', field: 'tipo_documento_label', align: 'left' },
     { name: 'original', label: 'Tiene Original', field: 'tiene_original', align: 'center' },
     { name: 'copia', label: 'Tiene Copia', field: 'tiene_copia', align: 'center' },
-    { name: 'archivo', label: 'Archivo Digital (PDF máx. 10MB)', field: 'archivo_nombre', align: 'left' },
+    { name: 'archivo', label: 'Archivo Digital (PDF/PNG/JPG máx. 10MB)', field: 'archivo_nombre', align: 'left' },
     { name: 'nota', label: 'Nota', field: 'descripcion', align: 'left' },
 ];
 
@@ -1984,6 +2016,11 @@ async function saveDatos() {
         const valid = await formDatosRef.value.validate();
         if (!valid) return Notify.create({ type: 'warning', message: 'Complete los campos obligatorios.' });
     }
+    // Bloqueo: campos obligatorios del tab DATOS DEL CENTRO
+    if (camposObligatoriosDatos.value.length) {
+        avisarCamposFaltantesDatos();
+        return;
+    }
     // Los Nombres de responsables y representantes sólo provienen de la consulta de identidad
     const sinNombres = [
         ...datos.value.propietarios.map((p, i) => ({ persona: p, etiqueta: `Responsable/Encargado ${i + 1}` })),
@@ -2022,7 +2059,7 @@ async function saveDatos() {
             });
             centroId.value = cRes.data.centro.id;
         } else {
-            // Actualizar centro
+            // Actualizar centro (incluye personas y contacto; el backend las reemplaza)
             await (await import('src/services/centros.service')).centrosService.update(centroId.value, {
                 nombre_establecimiento: datos.value.nombre_establecimiento,
                 parroquia_id: datos.value.parroquia_id,
@@ -2034,6 +2071,10 @@ async function saveDatos() {
                 latitud: datos.value.latitud,
                 longitud: datos.value.longitud,
                 foto_base64: datos.value.foto_base64,
+                propietarios: datos.value.propietarios,
+                representantes: datos.value.representantes,
+                telefonos: datos.value.telefonos,
+                correos: datos.value.correos,
             });
         }
 
@@ -2239,13 +2280,14 @@ function onDocFileSelected(event, row) {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validar formato PDF
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-    if (!isPdf) {
+    // Validar formato: PDF, PNG, JPG o JPEG
+    const mimesPermitidos = ['application/pdf', 'image/png', 'image/jpeg'];
+    const extPermitida = /\.(pdf|png|jpe?g)$/i.test(file.name);
+    if (!mimesPermitidos.includes(file.type) && !extPermitida) {
         Notify.create({
             type: 'negative',
             icon: 'warning',
-            message: 'Solo se permiten archivos en formato PDF.'
+            message: 'Sólo se permiten archivos en formato PDF, PNG, JPG o JPEG.'
         });
         return;
     }
@@ -2266,7 +2308,12 @@ function onDocFileSelected(event, row) {
         row.archivo_base64 = e.target.result;
         row.archivo_nombre = file.name;
         row.archivo_tamano = file.size;
-        row.archivo_mimetype = 'application/pdf';
+        // MIME real del archivo; si el navegador no lo informa, deducir por extensión
+        const ext = file.name.toLowerCase();
+        row.archivo_mimetype = file.type
+            || (ext.endsWith('.png') ? 'image/png'
+                : (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) ? 'image/jpeg'
+                : 'application/pdf');
         row.tiene_archivo = true;
         row.nuevo_archivo = true;
         row.eliminar_archivo = false;
@@ -2403,10 +2450,12 @@ function getDocsPayload() {
         .filter(d => !esRifPrecargado(d) || !d.nuevo_archivo) // RIF precargado nunca lleva archivo aquí
         .map(d => ({
             id: d.id,
-            tipo_documento: d.tipo_documento,
+            // Normalizado a minúsculas: la restricción única (ficha_id, tipo_documento)
+            // es sensible a mayúsculas y así evitamos duplicados con registros previos
+            tipo_documento: String(d.tipo_documento || '').trim().toLowerCase(),
             tipo_documento_label: d.tipo_documento_label,
-            tiene_original: esRifPrecargado(d) ? false : (d.tiene_original || false),
-            tiene_copia: esRifPrecargado(d) ? false : (d.tiene_copia || false),
+            tiene_original: esFilaRif(d) ? false : (d.tiene_original || false),
+            tiene_copia: esFilaRif(d) ? false : (d.tiene_copia || false),
             descripcion: d.descripcion || null,
             archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
             archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
@@ -2548,6 +2597,10 @@ async function saveAll() {
                     latitud: datos.value.latitud,
                     longitud: datos.value.longitud,
                     foto_base64: datos.value.foto_base64,
+                    propietarios: datos.value.propietarios,
+                    representantes: datos.value.representantes,
+                    telefonos: datos.value.telefonos,
+                    correos: datos.value.correos,
                 }).then(() => { savedTabs.value.datos = true; })
             );
             tareas.push(
@@ -2748,7 +2801,8 @@ onMounted(async () => {
                 }
             }
             if (ficha.servicios) {
-                Object.assign(serv.value, ficha.servicios);
+                // extras: servicios adicionales del catálogo persistidos en ficha_servicios.extras (jsonb)
+                Object.assign(serv.value, ficha.servicios, ficha.servicios.extras || {});
                 // Coercionar booleanos: pg puede devolver null para campos no guardados
                 listaServicios.value.forEach(s => {
                     if (typeof serv.value[s.field] !== 'boolean') {
@@ -2825,8 +2879,10 @@ onMounted(async () => {
             // Sección fusionada ▸ Población y Capacidad: completa solo si existen ambos datos
             if (ficha.capacidad && ficha.poblacion?.length) { savedTabs.value.poblacion = true; }
             if (ficha.documentos?.length) {
+                // Coincidencia insensible a mayúsculas/minúsculas entre lo guardado y el catálogo
                 ficha.documentos.forEach(d => {
-                    const row = docs.value.find(r => r.tipo_documento === d.tipo_documento);
+                    const row = docs.value.find(r =>
+                        String(r.tipo_documento || '').trim().toLowerCase() === String(d.tipo_documento || '').trim().toLowerCase());
                     if (row) Object.assign(row, d);
                 });
                 savedTabs.value.documentos = allDocsHaveFile.value;

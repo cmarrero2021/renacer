@@ -122,7 +122,177 @@ const extractRifFromLine = (line) => {
   m = line.match(/\b(\d)(\d{9})\s+([A-Z][A-Z&.\s]{2,})/);
   if (m) return { rif: `${digitoAPrefijo(m[1])}-${m[2]}`, rest: m[3] };
 
+  // Formato nuevo (RIF Digital v2.0): "RIF: G200171774" puede quedar solo en la
+  // línea; el nombre va en las líneas siguientes, no al lado del número.
+  m = line.match(/\bRIF\s*[:.]?\s*([JVGEP])\s*[-.\s]?\s*(\d{8})\s*[-.\s]?\s*(\d)(?!\d)/);
+  if (m) return { rif: `${m[1]}-${m[2]}${m[3]}`, rest: '' };
+
   return null;
+};
+
+// ─── Parser del formato nuevo de RIF (SENIAT "RIF Digital v2.0") ───
+// Estructura: "RIF: G200171774" en su propia línea (el nombre ya no va al lado
+// del número), nombre en la(s) línea(s) siguiente(s), y "DOMICILIO FISCAL:" con
+// la dirección debajo. El OCR puede mal leer el prefijo (G→6, 3→E, etc.); usamos
+// tryParseRifPrefix() para corregirlo. Las basuras comunes se filtran con
+// BASURA_RIF_NUEVO. Las líneas suelen venir entrelazadas de las dos columnas.
+tryParseRifPrefix = (line) => {
+  // Intento 1: coincidir con la etiqueta RIF y capturar el número completo.
+  // El OCR puede leer la letra como dígito (G→6). El dígito check puede aparecer
+  // o no (a veces va seguido de FECHA/OTROS textos). Hacemos todo opcional para ser tolerantes.
+  let m = line.match(/RIF\s*[:.]?\s*([A-Z0-9])?\s*(\d{8,10})?\s*(\d)?/i);
+  if (!m) return null;
+
+  // m[1] = letra o dígito que OCR capturó (puede ser "6" en lugar de "G")
+  // m[2] = número de 8-10 dígitos
+  // m[3] = dígito check (puede ser undefined si va seguido de FECHA u otros textos)
+  let letra = m[1] ? m[1].toUpperCase() : null;
+  const numero = m[2] ? m[2] : null;
+  const digito = m[3] ? m[3] : null;
+
+  // Validar/mapear la letra: debe ser J, V, G, E o P.
+  // Si el OCR capturó un dígito (ej. "6" en lugar de "G"), usar el mapa inverso
+  // con el dígito check si está disponible; si no, probar las posiciones conocidas del número.
+  if (letra && !/[JVGEP]/.test(letra)) {
+    const invMap = { '6': 'G', '3': 'E', '9': 'P', '1': 'J', '7': 'J' };
+    // Intentar con el dígito check primero
+    if (digito && invMap[digito]) {
+      letra = invMap[digito];
+    } else {
+      // Sin dígito check: probar las primeras posiciones del número contra el mapa
+      const prefijoMap = { '6': 'G', '3': 'E', '9': 'P', '1': 'J', '7': 'J' };
+      if (numero) {
+        // Probar posición 0 y la última posición (dígito check potencial)
+        for (const pos of [0, numero.length - 1]) {
+          const d = numero.charAt(pos);
+          if (prefijoMap[d]) { letra = prefijoMap[d]; break; }
+        }
+      }
+    }
+  }
+
+  // Si aun no tenemos una letra válida, abortar
+  if (!letra || !/[JVGEP]/.test(letra)) return null;
+
+  return { letra, numero, digito };
+};
+
+// Estructuras de expresión regular para el formato nuevo
+const RIF_NUEVO_RX = /\bRIF\s*[:.]?\s*([JVGEP])\s*[-.\s]?\s*(\d{8})\s*[-.\s]?\s*(\d)(?!\d)/;
+const RIF_SOLO_RX = /^\s*([JVGEP])\s*[-.\s]?\s*(\d{8})\s*[-.\s]?\s*(\d)(?!\d)\s*$/;
+const RIF_LINEA_RX = /^\s*([JVGEP])\s*[-.\s]?\s*(\d{8})\s*[-.\s]?\s*(\d)(?!\d)/;
+
+const BASURA_RIF_NUEVO = [
+  /\d{2}\/\d{2}\/\d{4}/g,                                     // fechas
+  /\b(N[°º*]?\s*)?COMPROBANTE\s*:?\s*[A-Z0-9]*/gi,            // N° COMPROBANTE: ...
+  /\b\d{9,12}-[A-Z][A-Z0-9]{1,5}\b/g,                         // serial (firma autorizada)
+  /FECHA\s+DE\s+INSCRIPCI[OÓ]N/gi,
+  /[ÚU]LTIMA\s+ACTUALIZACI[OÓ]N/gi,
+  /FECHA\s+DE\s+VENCIMIENTO/gi,
+  /\b(GERENCIA|SEDE)\s+REGIONAL.*$/gi,                        // bloque de la oficina SENIAT
+  /\bTRIBUTOS\s+INTERNOS.*$/gi,
+  /\bDIVISI[OÓ]N\s+DE\s+CONTRIBUYENTES.*$/gi
+];
+
+const RIF_NUEVO_STOP = /^(DOMICILIO|DATOS\s+DE|GERENCIA|DIVISI|IDENTIFICACI|REGISTRO\s+[ÚU]NICO|FIRMA|CI?RMA|DOCUMENTO|CONDICI|SERVICIO\s+NACIONAL|ADMINISTRACI|ECONOMI|VENEZUELA|SENIAT|SENIAIT|MA\s+AUTORIZADA|AUTORIZADA|N?[°º*]?\s*COMPROBANTE|FECHA|[ÚU]LTIMA|SERIAL|CONDICI[OÓ]N)/;
+
+const VOCABULARIO_OFICINA = /\b(GERENCIA|SEDE\s+REGIONAL|TRIBUTOS\s+INTERNOS|DIVISI[OÓ]N\s+DE\s+CONTRIBUYENTES|CONTRIBUYENTES\s+ESPECIALES)\b/;
+
+const DIRECCION_START = /^(CALLE|AVENIDA|AVDA\.?|AV\b|URB\.?|URBANIZACI|EDIF\.?|EDIFICIO|RESID\.?|RESIDENCIA|SECTOR|ESQ\.?|ESQUINA|CARR\.?|CARRETERA|VEREDA|PARQUE|ZONA\s+INDUSTRIAL|POL[IÍ]GONO|CENTRO\s+COMERCIAL|C\.?\s?C\.?|LOCAL|QUINTA|CASA|TORRE|GALP[OÓ]N|ANEXO|KM\b|TERMINAL|ESTACI[OÓ]N|PUERTO|AEROPUERTO|DISTRITO|CIUDAD|PISO|SOLAR|TERRENO|TPS)/;
+
+const limpiarLineaRifNuevo = (linea) => {
+  let s = linea;
+  for (const rx of BASURA_RIF_NUEVO) s = s.replace(rx, ' ');
+  return s.replace(/[^A-ZÁÉÍÓÚÑÜ0-9&.,#/\-\s]/g, ' ').replace(/\s+/g, ' ').trim();
+};
+
+const parseRifNuevoFormato = (text) => {
+  const out = { rif: '', nombre: '', domicilioFiscal: '' };
+  if (!text) return out;
+
+  const lineas = text.toUpperCase().replace(/\r/g, '').split('\n')
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  // Localizar la línea donde aparece el RIF (con etiqueta, solo, o a inicio de línea)
+  // Estrategia 1: tryParseRifPrefix (tolerante a OCR-malread como G→6)
+  // Estrategia 2: regex originales con [JVGEP]
+  // Estrategia 3: patrón relajado - cualquier línea con "RIF:" y número de 8+ dígitos
+  let idxRif = -1;
+  let mRif = null;
+  for (let i = 0; i < lineas.length; i++) {
+    // Estrategia 1
+    const pref = tryParseRifPrefix(lineas[i]);
+    if (pref) {
+      mRif = pref;
+      idxRif = i;
+      break;
+    }
+    // Estrategia 2
+    mRif = lineas[i].match(RIF_NUEVO_RX) || lineas[i].match(RIF_SOLO_RX) || lineas[i].match(RIF_LINEA_RX);
+    if (mRif) { idxRif = i; break; }
+    // Estrategia 3: fallback permisivo - busca "RIF:" seguido de númerosaunque la letra no sea J/V/G/E/P
+    const relaxedMatch = lineas[i].match(/RIF\s*[:.]?\s*[\dA-Z]\s*(\d{8,10})/i);
+    if (relaxedMatch) {
+      mRif = { letra: 'G', numero: relaxedMatch[1], digito: null }; // sin dígito check si OCR no lo capturó
+      idxRif = i;
+      break;
+    }
+  }
+  if (!mRif) return out;
+  // mRif puede ser un array de regex (mRif[1], mRif[2], mRif[3]) u objeto { letra, numero, digito }
+  let letra, numero, digito;
+  if (Array.isArray(mRif)) {
+    letra = mRif[1];
+    numero = mRif[2];
+    digito = mRif[3];
+  } else {
+    // objeto del fallback de estrategia 3
+    letra = mRif.letra;
+    numero = mRif.numero;
+    digito = mRif.digito;
+  }
+  // Construir el RIF: solo añadir el dígito check si existe y es un dígito
+  const digitoStr = digito ? String(digito) : '';
+  out.rif = `${letra}-${numero}${digitoStr}`;
+
+  // Recorrer desde la línea del RIF: nombre hasta topar con la dirección
+  // (o con la etiqueta DOMICILIO FISCAL), y de ahí en adelante la dirección.
+  const nombrePartes = [];
+  const dirPartes = [];
+  let modo = 'nombre';
+
+  for (let i = idxRif; i < lineas.length && modo !== 'fin'; i++) {
+    let linea = lineas[i];
+    if (i === idxRif) linea = linea.replace(RIF_NUEVO_RX, ' ').replace(RIF_SOLO_RX, ' ').replace(RIF_LINEA_RX, ' ');
+
+    const tieneFecha = /\d{2}\/\d{2}\/\d{4}/.test(linea);
+    const tieneSerial = /\d{9,12}-[A-Z][A-Z0-9]{1,5}/.test(linea);
+    const esStop = RIF_NUEVO_STOP.test(linea);
+    const esDireccion = DIRECCION_START.test(linea);
+
+    if (modo === 'nombre') {
+      // Una línea que inicia con tipo/torre/calle/etc. marca el comienzo de la
+      // dirección (la etiqueta DOMICILIO FISCAL a veces no sale en el OCR),
+      // pero sólo si ya recolectamos algo del nombre.
+      if (i !== idxRif && esDireccion && nombrePartes.length > 0) { modo = 'direccion'; i--; continue; }
+      if (esStop) {
+        if (/^DOMICILIO/.test(linea)) modo = 'direccion';
+        continue;
+      }
+      if (i !== idxRif && (tieneFecha || tieneSerial)) continue;
+      const parte = limpiarLineaRifNuevo(linea);
+      if (parte && parte.length >= 3 && !VOCABULARIO_OFICINA.test(parte)) nombrePartes.push(parte);
+    } else {
+      if (i !== idxRif && (esStop || tieneFecha || tieneSerial) && !/^DOMICILIO/.test(linea)) { modo = 'fin'; break; }
+      const parte = limpiarLineaRifNuevo(linea).replace(/^DOMICILIO\s*FISCAL\s*[.:]?\s*/, '');
+      if (parte && parte.length >= 10) dirPartes.push(parte);
+    }
+  }
+
+  out.nombre = nombrePartes.join(' ').trim();
+  out.domicilioFiscal = dirPartes.join(' ').trim();
+  return out;
 };
 
 // ─── Parser de texto OCR de RIF ───
@@ -217,12 +387,36 @@ const extractRifData = async (fileBuffer, isPdf) => {
   if (!rifData.rif || !rifData.nombre) {
     const source = isPdf ? await renderPdfPage(fileBuffer, 1, 2) : fileBuffer;
     const ocrText = await ocrBuffer(source, !isPdf);
+    console.log('[DEBUG2] isPdf:', isPdf, '||ocrText length:', ocrText?.length || 0, '||rifData.rif:', rifData.rif, '||rifData.nombre:', rifData.nombre);
     if (ocrText) {
+      console.log('[DEBUG2] ocrText preview:', ocrText.substring(0, 200));
       const ocrData = parseRifText(ocrText);
       for (const k of Object.keys(rifData)) {
         if (!rifData[k] && ocrData[k]) rifData[k] = ocrData[k];
       }
+      // Intento 2b: si aún falta nombre o dirección, prueba el parser del formato nuevo (RIF Digital v2.0)
+      if (!rifData.nombre || !rifData.domicilioFiscal) {
+        console.log('[DEBUG2] Entering parseRifNuevoFormato fallback...');
+        const nuevo = parseRifNuevoFormato(ocrText);
+        console.log('[DEBUG2] parseRifNuevoFormato result:', JSON.stringify(nuevo));
+        if (nuevo.rif) { console.log('[DEBUG] parseRifNuevoFormato gave rif:', nuevo.rif); rifData.rif = nuevo.rif; }
+        if (nuevo.nombre && !rifData.nombre) { console.log('[DEBUG] parseRifNuevoFormato gave nombre:', nuevo.nombre); rifData.nombre = nuevo.nombre; }
+        if (nuevo.domicilioFiscal && !rifData.domicilioFiscal) { console.log('[DEBUG] parseRifNuevoFormato gave domicilio:', nuevo.domicilioFiscal); rifData.domicilioFiscal = nuevo.domicilioFiscal; }
+        // Fallback: si el parser nuevo no capturó nada pero ya teníamos RIF de la etapa 1/2, intenta extraer nombre por banda
+        if (!rifData.nombre && rifData.rif) {
+          console.log('[DEBUG] Trying band-scan fallback for nombre...');
+          const imgSource = await renderPdfPage(fileBuffer, 1, 3);
+          const image = await Jimp.read(imgSource);
+          const band = await scanBandsForRif(image);
+          if (band) {
+            if (band.rif) rifData.rif = band.rif;
+            if (band.nombre && !rifData.nombre) rifData.nombre = band.nombre;
+          }
+        }
+      }
       metodo = isPdf ? 'ocr' : 'ocr-imagen';
+    } else {
+      console.log('[DEBUG2] ocrText is empty/falsy, skipping OCR stage');
     }
   }
 

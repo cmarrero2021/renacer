@@ -34,7 +34,7 @@ const IDENTIFICACION_API_TIMEOUT = parseInt(process.env.IDENTIFICACION_API_TIMEO
 // - Al menos una minúscula y una mayúscula
 // - Al menos un número
 // - No más de dos caracteres iguales consecutivos
-// - Al menos un carácter especial de: #$%&/@.-
+// - Al menos un carácter especial de: #$%&/*@.-
 // ============================================================
 const validateRegistroPassword = (password) => {
   const errors = [];
@@ -54,8 +54,8 @@ const validateRegistroPassword = (password) => {
   if (/(.)\1{2,}/.test(pwd)) {
     errors.push('La contraseña no debe contener más de dos caracteres iguales consecutivos.');
   }
-  if (!/[$#%&/@.-]/.test(pwd)) {
-    errors.push('La contraseña debe contener al menos uno de los siguientes caracteres especiales: #$%&/@.-');
+  if (!/[$#%&/*@.\-]/.test(pwd)) {
+    errors.push('La contraseña debe contener al menos uno de los siguientes caracteres especiales: #$%&/*@.-');
   }
   return errors;
 };
@@ -414,7 +414,7 @@ exports.consultarIdentidad = async (req, res) => {
 // Body: {
 //   identidad: { cedula, primer_nombre, segundo_nombre, primer_apellido,
 //                segundo_apellido, sexo, nacionalidad, fecha_nacimiento },
-//   telefono, celular,
+//   telefono (opcional), celular,
 //   password,
 //   centro: { tipo_rif, numero_rif, nombre, direccion, telefono, correo }
 // }
@@ -450,10 +450,8 @@ exports.completarRegistro = async (req, res) => {
 
     // ============================================
     // 2. Validaciones de los teléfonos del usuario
+    //    (el teléfono fijo es opcional; el celular es requerido)
     // ============================================
-    if (!telefono || !String(telefono).trim()) {
-      return res.status(400).json({ error: 'El número de teléfono del usuario es requerido.' });
-    }
     if (!celular || !String(celular).trim()) {
       return res.status(400).json({ error: 'El número de celular del usuario es requerido.' });
     }
@@ -616,7 +614,7 @@ exports.completarRegistro = async (req, res) => {
         hashedPassword,
         identidad.sexo ? String(identidad.sexo).toUpperCase() : null,
         identidad.fecha_nacimiento || null,
-        String(telefono).trim(),
+        String(telefono || '').trim() || null,
         String(celular).trim(),
         centroId,
       ]

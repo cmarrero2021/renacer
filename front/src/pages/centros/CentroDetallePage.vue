@@ -17,8 +17,9 @@
             <!-- Oculto temporalmente (rehabilitable): no eliminar el código -->
             <q-btn v-if="false && canDelete" icon="delete" label="Eliminar" flat color="negative"
                 @click="confirmarEliminar" />
+            <q-btn icon="picture_as_pdf" label="PDF" flat color="primary"
+                @click="generarPdfPrinterFriendly" />
         </div>
-
 
         <q-inner-loading :showing="centrosStore.loading" label="Cargando..." />
 
@@ -63,6 +64,8 @@
                                     <p class="text-subtitle1 text-weight-bold q-mb-sm">
                                         <q-icon name="business" /> Datos del Centro
                                     </p>
+                                </q-card-section>
+                                <q-card-section>
                                     <table style="width:100%; border-collapse:collapse">
                                         <tr>
                                             <td class="text-caption text-grey" style="width:45%;padding:2px 4px">RIF
@@ -166,37 +169,100 @@
                     </div>
 
                     <div v-else>
+                        <!-- ── 1. Titularidad y Contacto del Centro (centro_propietarios, centro_representantes, centro_telefonos, centro_correos) ── -->
+                        <div class="row q-col-gutter-md q-mb-md">
+                            <div class="col-12 col-md-4">
+                                <q-card flat bordered class="fit">
+                                    <q-card-section>
+                                        <p class="text-subtitle1 text-weight-bold q-mb-sm">
+                                            <q-icon name="person" color="primary" /> Propietario(s)
+                                        </p>
+                                        <div v-for="p in centro.propietarios" :key="p.id" class="q-mb-xs text-body2">
+                                            {{ p.cedula_tipo }}-{{ p.cedula_nro }} — {{ p.nombre }}
+                                            <q-badge v-if="p.es_principal" color="primary" label="Principal" class="q-ml-xs" />
+                                        </div>
+                                        <div v-if="!centro.propietarios?.length" class="text-grey text-body2">Sin propietarios</div>
+                                    </q-card-section>
+                                </q-card>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <q-card flat bordered class="fit">
+                                    <q-card-section>
+                                        <p class="text-subtitle1 text-weight-bold q-mb-sm">
+                                            <q-icon name="badge" color="primary" /> Representante(s) Legal(es)
+                                        </p>
+                                        <div v-for="r in centro.representantes" :key="r.id" class="q-mb-xs text-body2">
+                                            {{ r.cedula_tipo }}-{{ r.cedula_nro }} — {{ r.nombre }}
+                                            <span class="text-grey-7" v-if="r.cargo"> ({{ r.cargo }})</span>
+                                        </div>
+                                        <div v-if="!centro.representantes?.length" class="text-grey text-body2">Sin representantes</div>
+                                    </q-card-section>
+                                </q-card>
+                            </div>
+
+                            <div class="col-12 col-md-4">
+                                <q-card flat bordered class="fit">
+                                    <q-card-section>
+                                        <p class="text-subtitle1 text-weight-bold q-mb-sm">
+                                            <q-icon name="contact_phone" color="primary" /> Contacto (Teléfonos y Correos)
+                                        </p>
+                                        <div v-for="t in centro.telefonos" :key="t.id" class="text-body2">
+                                            📞 {{ t.telefono }} <span class="text-caption text-grey">({{ t.tipo }})</span>
+                                        </div>
+                                        <div v-for="c in centro.correos" :key="c.id" class="text-body2">
+                                            ✉ {{ c.correo }} <span class="text-caption text-grey">({{ c.tipo }})</span>
+                                        </div>
+                                        <div v-if="!centro.telefonos?.length && !centro.correos?.length" class="text-grey text-body2">Sin contacto</div>
+                                    </q-card-section>
+                                </q-card>
+                            </div>
+                        </div>
+
+                        <!-- ── 2. Datos de la Ficha, Capacidad y Población ── -->
                         <div class="row q-col-gutter-md q-mb-md">
                             <!-- Datos básicos -->
                             <div class="col-12 col-md-4">
                                 <q-card flat bordered>
                                     <q-card-section>
-                                        <p class="text-subtitle1 text-weight-bold q-mb-sm"><q-icon name="event_note" />
+                                        <p class="text-subtitle1 text-weight-bold q-mb-sm"><q-icon name="event_note" color="primary" />
                                             Datos de la Ficha</p>
                                         <table style="width:100%; border-collapse:collapse">
                                             <tr>
-                                                <td class="text-caption text-grey" style="padding:2px 4px">Tipo de
-                                                    Solicitud</td>
-                                                <td class="text-body2" style="padding:2px 4px">{{
-                                                    labelSolicitud(ficha.tipo_solicitud) }}</td>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">RIF</td>
+                                                <td class="text-body2 text-weight-bold" style="padding:2px 4px">{{ centro.rif || '—' }}</td>
+                                            </tr>
+                                            <tr v-if="centro.nro_registro_mercantil">
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Reg. Mercantil</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ centro.nro_registro_mercantil }}</td>
                                             </tr>
                                             <tr>
-                                                <td class="text-caption text-grey" style="padding:2px 4px">Fecha
-                                                    Solicitud</td>
-                                                <td class="text-body2" style="padding:2px 4px">{{
-                                                    formatDate(ficha.fecha_solicitud) }}</td>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Tipo de Solicitud</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ labelSolicitud(ficha.tipo_solicitud) }}</td>
+                                            </tr>
+                                            <tr v-if="ficha.nro_registro_nacional">
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Nro. Reg. Nacional</td>
+                                                <td class="text-body2 text-weight-bold" style="padding:2px 4px">{{ ficha.nro_registro_nacional }}</td>
                                             </tr>
                                             <tr>
-                                                <td class="text-caption text-grey" style="padding:2px 4px">Fecha
-                                                    Fundación</td>
-                                                <td class="text-body2" style="padding:2px 4px">{{
-                                                    formatDate(ficha.fecha_fundacion) }}</td>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Fecha Solicitud</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ formatDate(ficha.fecha_solicitud) }}</td>
                                             </tr>
                                             <tr>
-                                                <td class="text-caption text-grey" style="padding:2px 4px">Dirección
-                                                </td>
-                                                <td class="text-body2" style="padding:2px 4px">{{ ficha.direccion || '—'
-                                                    }}</td>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Fecha Fundación</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ formatDate(ficha.fecha_fundacion) }}</td>
+                                            </tr>
+                                            <tr v-if="ficha.costo_mensual != null">
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Costo Mensual</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ Number(ficha.costo_mensual).toLocaleString('es-VE') }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Versión Ficha</td>
+                                                <td class="text-body2" style="padding:2px 4px">v{{ ficha.version || 1 }}</td>
+                                            </tr>
+                                            <tr>
+                                                <td class="text-caption text-grey" style="padding:2px 4px">Dirección</td>
+                                                <td class="text-body2" style="padding:2px 4px">{{ ficha.direccion || '—' }}</td>
                                             </tr>
                                         </table>
                                     </q-card-section>
@@ -296,8 +362,16 @@
                                 <q-card-section>
                                     <div class="row q-col-gutter-md">
                                         <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Médicos</div>{{
+                                            <div class="text-caption text-grey">Médicos Generales</div>{{
                                             ficha.personal.num_medicos ?? 0 }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2" v-if="ficha.personal.num_medicos_geriatra != null">
+                                            <div class="text-caption text-grey">Médicos Geriatras</div>{{
+                                            ficha.personal.num_medicos_geriatra }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2" v-if="ficha.personal.num_medicos_psiquiatra != null">
+                                            <div class="text-caption text-grey">Médicos Psiquiatras</div>{{
+                                            ficha.personal.num_medicos_psiquiatra }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Gerontólogos</div>{{
@@ -309,27 +383,27 @@
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Enfermeros</div>{{
-                                            ficha.personal.num_enfermeros }}
-                                        </div>
-                                        <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Cuidadores</div>{{
-                                            ficha.personal.num_cuidadores }}
-                                        </div>
-                                        <div class="col-6 col-md-3 text-body2">
-                                            <div class="text-caption text-grey">Camareros</div>{{
-                                            ficha.personal.num_camareros }}
+                                            ficha.personal.num_enfermeros ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Aux. Enfermería</div>{{
-                                            ficha.personal.num_auxiliares_enfermeria }}
+                                            ficha.personal.num_auxiliares_enfermeria ?? 0 }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2">
+                                            <div class="text-caption text-grey">Cuidadores</div>{{
+                                            ficha.personal.num_cuidadores ?? 0 }}
+                                        </div>
+                                        <div class="col-6 col-md-3 text-body2">
+                                            <div class="text-caption text-grey">Camareros</div>{{
+                                            ficha.personal.num_camareros ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Serv. Generales</div>{{
-                                            ficha.personal.num_servicios_generales }}
+                                            ficha.personal.num_servicios_generales ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Cocina y comedor</div>{{
-                                            ficha.personal.num_personal_cocina }}
+                                            ficha.personal.num_personal_cocina ?? 0 }}
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">Resp. de farmacia</div>{{
@@ -341,7 +415,19 @@
                                         </div>
                                         <div class="col-6 col-md-3 text-body2">
                                             <div class="text-caption text-grey">No Adscritos</div>{{
-                                            ficha.personal.num_personal_no_adscrito }}
+                                            ficha.personal.num_personal_no_adscrito ?? 0 }}
+                                            <span v-if="ficha.personal.descripcion_no_adscrito" class="text-caption text-grey block">
+                                                ({{ ficha.personal.descripcion_no_adscrito }})
+                                            </span>
+                                        </div>
+                                        <div class="col-12 col-md-6 text-body2" v-if="ficha.personal.posee_expediente_curricular != null">
+                                            <span class="text-caption text-grey q-mr-sm">Posee expediente curricular:</span>
+                                            <q-badge :color="ficha.personal.posee_expediente_curricular ? 'positive' : 'grey-5'"
+                                                :label="ficha.personal.posee_expediente_curricular ? 'Sí' : 'No'" />
+                                        </div>
+                                        <div class="col-12 text-body2" v-if="ficha.personal.otros_personal">
+                                            <span class="text-caption text-grey q-mr-sm">Otros tipos de personal:</span>
+                                            <span>{{ ficha.personal.descripcion_otros_personal || 'Registrado' }}</span>
                                         </div>
                                     </div>
                                 </q-card-section>
@@ -406,6 +492,13 @@
                                                             :label="ficha.infraestructura.tiene_area_cocina ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
+                                                <tr v-if="ficha.infraestructura.tiene_area_cocina">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Cocina adecuada</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.cocina_adecuada ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.cocina_adecuada ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
                                                 <tr>
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Áreas de atención médica/enfermería</td>
                                                     <td class="text-body2" style="padding:4px">
@@ -436,9 +529,25 @@
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Personas por habitación</td>
                                                     <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.personas_por_habitacion }}</td>
                                                 </tr>
+                                                <tr v-if="ficha.infraestructura.camas_por_habitacion != null">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Camas por habitación</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.camas_por_habitacion }}</td>
+                                                </tr>
                                                 <tr v-if="ficha.infraestructura.banos_por_habitacion != null">
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Baños por habitación</td>
                                                     <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.banos_por_habitacion }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.banos_completos != null">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Baños completos</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.banos_completos }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.banos_sin_ducha != null">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Baños sin ducha</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.banos_sin_ducha }}</td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.cant_tinas != null">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Cantidad de tinas</td>
+                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.cant_tinas }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Cap. comedor</td>
@@ -479,6 +588,20 @@
                                                     <td class="text-body2" style="padding:4px">
                                                         <q-badge :color="ficha.infraestructura.deposito_basura ? 'positive' : 'grey-5'"
                                                             :label="ficha.infraestructura.deposito_basura ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Tanque de agua</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.tanque_agua ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.tanque_agua ? ('Sí' + (ficha.infraestructura.capacidad_tanque ? ' (' + ficha.infraestructura.capacidad_tanque + 'L)' : '')) : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr v-if="ficha.infraestructura.tanque_agua">
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Bomba de agua</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.bomba_agua ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.bomba_agua ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -530,10 +653,53 @@
                                                     </td>
                                                 </tr>
                                                 <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Cámaras de seguridad</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.tiene_camaras ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.tiene_camaras ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Control de acceso / salida</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <span class="q-mr-xs">Acceso: <q-badge :color="ficha.infraestructura.control_acceso ? 'positive' : 'grey-5'" :label="ficha.infraestructura.control_acceso ? 'Sí' : 'No'" /></span>
+                                                        <span>Salida: <q-badge :color="ficha.infraestructura.control_salida ? 'positive' : 'grey-5'" :label="ficha.infraestructura.control_salida ? 'Sí' : 'No'" /></span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Alarma de emergencia</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.alarma_emergencia ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.alarma_emergencia ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Botones de emergencia</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <span class="q-mr-xs">Habitaciones: <q-badge :color="ficha.infraestructura.boton_emergencia_habitaciones ? 'positive' : 'grey-5'" :label="ficha.infraestructura.boton_emergencia_habitaciones ? 'Sí' : 'No'" /></span>
+                                                        <span class="q-mr-xs">Baños: <q-badge :color="ficha.infraestructura.boton_emergencia_banio ? 'positive' : 'grey-5'" :label="ficha.infraestructura.boton_emergencia_banio ? 'Sí' : 'No'" /></span>
+                                                        <span>Pasillos: <q-badge :color="ficha.infraestructura.boton_emergencia_pasillos ? 'positive' : 'grey-5'" :label="ficha.infraestructura.boton_emergencia_pasillos ? 'Sí' : 'No'" /></span>
+                                                    </td>
+                                                </tr>
+                                                <tr>
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Iluminación de emergencia</td>
                                                     <td class="text-body2" style="padding:4px">
                                                         <q-badge :color="ficha.infraestructura.iluminacion_emergencia ? 'positive' : 'grey-5'"
                                                             :label="ficha.infraestructura.iluminacion_emergencia ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Iluminación adecuada</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.iluminacion_adecuada ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.iluminacion_adecuada ? 'Sí' : 'No'" />
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="text-caption text-grey" style="width:60%;padding:4px">Ventilación adecuada</td>
+                                                    <td class="text-body2" style="padding:4px">
+                                                        <q-badge :color="ficha.infraestructura.ventilacion_adecuada ? 'positive' : 'grey-5'"
+                                                            :label="ficha.infraestructura.ventilacion_adecuada ? 'Sí' : 'No'" />
                                                     </td>
                                                 </tr>
                                                 <tr>
@@ -839,6 +1005,7 @@
                                     <div v-for="d in documentosVisibles" :key="d.id" class="row items-center q-py-xs q-col-gutter-sm" style="border-bottom: 1px solid #f0f0f0">
                                         <div class="col-12 col-md-5 text-body2 text-weight-medium">
                                             {{ labelTipoDoc(d.tipo_documento) }}
+                                            <div v-if="d.descripcion" class="text-caption text-grey-7">{{ d.descripcion }}</div>
                                         </div>
                                         <div class="col-auto" v-if="!esRifRow(d)">
                                             <q-chip dense :color="d.tiene_original ? 'positive' : 'grey-4'"
@@ -975,18 +1142,627 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch, } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { LocalStorage, Notify, useQuasar } from 'quasar';
-
+import { jsPDF } from 'jspdf';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
 import { centrosService, fichasService } from 'src/services/centros.service';
 
+// autoTable no está instalado – se usa renderizado manual de tablas en el PDF
+let autoTable = null;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Inicialización de stores, route, y datos reactivos del componente
+// ──────────────────────────────────────────────────────────────────────────
 const route = useRoute();
 const router = useRouter();
 const centrosStore = useCentrosStore();
 const catalogosStore = useCatalogosStore();
+
+const centroId = computed(() => route.params.id);
+const tab = ref('resumen');
+const centro = computed(() => centrosStore.current);
+const ficha = computed(() => centrosStore.ficha);
+
+// Cuando esté listo autoTable, lo asignamos
+const formatDateVue = (d) => {
+  if (!d) return '—';
+  const dt = new Date(d);
+  return isNaN(dt) ? d : dt.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+};
+
+// ─── PDF Printer Friendly ──────────────────────────────────────────────
+const generarPdfPrinterFriendly = async () => {
+  const centroData = centro.value;
+  const fichaData = ficha.value;
+  if (!centroData) return;
+  if (!fichaData && !centroData.foto_base64) {
+    Notify.create({ type: 'warning', message: 'No hay datos suficientes para generar el PDF.' });
+    return;
+  }
+
+  // Cargar imagen del cintillo institucional (/img/cintillo.png)
+  let cintilloBase64 = null;
+  for (const url of ['/img/cintillo.png', 'img/cintillo.png']) {
+    try {
+      const res = await fetch(url);
+      if (res.ok) {
+        const blob = await res.blob();
+        cintilloBase64 = await new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result);
+          reader.onerror = () => resolve(null);
+          reader.readAsDataURL(blob);
+        });
+        if (cintilloBase64) break;
+      }
+    } catch {
+      // continuar con siguiente ruta
+    }
+  }
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4'
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth(); // 210
+  const pageHeight = doc.internal.pageSize.getHeight(); // 297
+  const marginLeft = 14;
+  const marginRight = 14;
+  const contentWidth = pageWidth - marginLeft - marginRight; // 182
+  const topMargin = 25; // Debajo del encabezado con cintillo
+  const bottomMargin = 14;
+  const maxY = pageHeight - bottomMargin;
+
+  // ─── Encabezado en cada página ───
+  const headerImgHeight = 11; // 1868 x 113 px -> 182 / 16.53 = ~11 mm
+  const dibujarEncabezado = (pageNumber, totalPages) => {
+    if (cintilloBase64) {
+      try {
+        doc.addImage(cintilloBase64, 'PNG', marginLeft, 6, contentWidth, headerImgHeight);
+      } catch (err) {
+        console.warn('No se pudo insertar el cintillo en el PDF:', err);
+      }
+    } else {
+      // Fallback si la imagen no está disponible
+      doc.setFillColor(0, 51, 102);
+      doc.rect(marginLeft, 6, contentWidth, 10, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.text(
+        'REPÚBLICA BOLIVARIANA DE VENEZUELA - MINISTERIO PARA LA ATENCIÓN DEL ADULTO MAYOR',
+        pageWidth / 2,
+        12.5,
+        { align: 'center' }
+      );
+    }
+
+    // Línea separadora suave bajo el cintillo
+    doc.setDrawColor(210, 215, 225);
+    doc.setLineWidth(0.4);
+    doc.line(marginLeft, 19.5, pageWidth - marginRight, 19.5);
+  };
+
+  // ─── Pie de página en cada página ───
+  const dibujarPiePagina = (pageNumber, totalPages, fechaHora) => {
+    const yFooter = pageHeight - 9;
+    doc.setDrawColor(210, 215, 225);
+    doc.setLineWidth(0.3);
+    doc.line(marginLeft, yFooter - 3, pageWidth - marginRight, yFooter - 3);
+
+    doc.setTextColor(110, 115, 125);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.text('RENACER - Registro Nacional de Centros de Atención al Adulto Mayor', marginLeft, yFooter + 1);
+    doc.text(`Página ${pageNumber} de ${totalPages}   ·   Emisión: ${fechaHora}`, pageWidth - marginRight, yFooter + 1, { align: 'right' });
+  };
+
+  // ─── Control de salto de página automático ───
+  let currentY = topMargin;
+  const checkPageBreak = (neededHeight) => {
+    if (currentY + neededHeight > maxY) {
+      doc.addPage();
+      currentY = topMargin;
+    }
+  };
+
+  // ─── Helpers para dibujar bloques de contenido ───
+  const drawSectionHeader = (title) => {
+    checkPageBreak(11);
+    currentY += 1.5;
+    doc.setFillColor(242, 245, 249);
+    doc.rect(marginLeft, currentY, contentWidth, 5.5, 'F');
+    doc.setFillColor(0, 51, 102); // Barra izquierda azul
+    doc.rect(marginLeft, currentY, 2.5, 5.5, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(0, 51, 102);
+    doc.text(title.toUpperCase(), marginLeft + 5, currentY + 3.8);
+    currentY += 7.5;
+  };
+
+  const drawKeyValueGrid = (items, cols = 2) => {
+    const colWidth = contentWidth / cols;
+    const rowHeight = 4.2;
+    const numRows = Math.ceil(items.length / cols);
+    checkPageBreak(numRows * rowHeight + 2);
+
+    doc.setFontSize(6.8);
+    for (let r = 0; r < numRows; r++) {
+      const yLine = currentY + r * rowHeight;
+      if (r % 2 === 1) {
+        doc.setFillColor(249, 250, 252);
+        doc.rect(marginLeft, yLine - 3.2, contentWidth, rowHeight, 'F');
+      }
+      for (let c = 0; c < cols; c++) {
+        const idx = r * cols + c;
+        if (idx < items.length) {
+          const item = items[idx];
+          const xCol = marginLeft + c * colWidth;
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(90, 95, 105);
+          doc.text(`${item.label}:`, xCol + 2, yLine);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(20, 25, 35);
+          const labelW = doc.getTextWidth(`${item.label}: `);
+          const xVal = xCol + 2 + Math.max(labelW, 36);
+          const maxValW = colWidth - Math.max(labelW, 36) - 4;
+          const valStr = String(item.value ?? '—');
+          const truncVal = doc.splitTextToSize(valStr, maxValW)[0] || '—';
+          doc.text(truncVal, xVal, yLine);
+        }
+      }
+    }
+    currentY += numRows * rowHeight + 2;
+  };
+
+  const drawFullRow = (label, value) => {
+    doc.setFontSize(6.8);
+    doc.setFont('helvetica', 'bold');
+    const labelW = doc.getTextWidth(`${label}: `);
+    const maxValW = contentWidth - Math.max(labelW, 36) - 4;
+    const splitLines = doc.splitTextToSize(String(value || '—'), maxValW);
+    const blockHeight = Math.max(splitLines.length * 3.5, 4.5);
+    checkPageBreak(blockHeight + 1);
+
+    doc.setTextColor(90, 95, 105);
+    doc.text(`${label}:`, marginLeft + 2, currentY);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(20, 25, 35);
+    doc.text(splitLines, marginLeft + 2 + Math.max(labelW, 36), currentY);
+    currentY += blockHeight + 1;
+  };
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // CUERPO DEL REPORTE
+  // ══════════════════════════════════════════════════════════════════════════
+
+  // 1. Título principal del centro
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(0, 51, 102);
+  const nombreCentro = centroData?.nombre_establecimiento || 'Centro de Atención';
+  doc.text(nombreCentro.toUpperCase(), marginLeft, currentY);
+  currentY += 4.5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 105, 115);
+  const estadoBadge = (centroData?.estado_centro || 'activo').toUpperCase();
+  const subtitulo = `RIF: ${centroData?.rif || '—'}   ·   Estado: ${estadoBadge}   ·   ${labelTipo(centroData?.tipo_establecimiento)}   ·   ${labelClasif(centroData?.tipo_clasificacion)}`;
+  doc.text(subtitulo, marginLeft, currentY);
+  currentY += 5;
+
+  // 2. Datos Generales del Centro
+  drawSectionHeader('Datos Generales del Centro');
+  const infoGeneral = [
+    { label: 'RIF', value: centroData?.rif || '—' },
+    { label: 'Nro. Reg. Mercantil', value: centroData?.nro_registro_mercantil || '—' },
+    { label: 'Tipo Establecimiento', value: labelTipo(centroData?.tipo_establecimiento) },
+    { label: 'Clasificación', value: labelClasif(centroData?.tipo_clasificacion) },
+    { label: 'Estado', value: centroData?.estado || '—' },
+    { label: 'Municipio', value: centroData?.municipio || '—' },
+    { label: 'Parroquia', value: centroData?.parroquia || '—' },
+    { label: 'Estado del Centro', value: estadoBadge },
+  ];
+  drawKeyValueGrid(infoGeneral, 2);
+
+  if (centroData?.direccion_corta || fichaData?.direccion) {
+    drawFullRow('Dirección', centroData?.direccion_corta || fichaData?.direccion);
+  }
+
+  // 3. Fotografía del Centro (si existe)
+  if (centroData?.foto_base64) {
+    checkPageBreak(40);
+    drawSectionHeader('Fotografía del Centro');
+    try {
+      let fotoData = centroData.foto_base64;
+      if (!fotoData.startsWith('data:')) {
+        fotoData = `data:image/jpeg;base64,${fotoData}`;
+      }
+      doc.addImage(fotoData, 'JPEG', marginLeft + 2, currentY, 55, 30);
+      doc.setDrawColor(210, 215, 225);
+      doc.setLineWidth(0.3);
+      doc.rect(marginLeft + 2, currentY, 55, 30);
+      currentY += 33;
+    } catch (err) {
+      console.warn('Error al incluir foto en PDF:', err);
+    }
+  }
+
+  // 4. Propietarios y Representantes
+  const hayPropietarios = Boolean(centroData?.propietarios?.length);
+  const hayRepresentantes = Boolean(centroData?.representantes?.length);
+  if (hayPropietarios || hayRepresentantes) {
+    drawSectionHeader('Propietarios y Representantes Legales');
+    if (hayPropietarios) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(60, 65, 75);
+      doc.text('Propietario(s):', marginLeft + 2, currentY);
+      currentY += 3.5;
+      centroData.propietarios.forEach((p) => {
+        checkPageBreak(4);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(20, 25, 35);
+        const cedula = `${p.cedula_tipo}-${p.cedula_nro}`;
+        const principalTag = p.es_principal ? ' (Principal)' : '';
+        doc.text(`• ${cedula} — ${p.nombre}${principalTag}`, marginLeft + 5, currentY);
+        currentY += 3.5;
+      });
+      currentY += 1;
+    }
+    if (hayRepresentantes) {
+      checkPageBreak(4);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(60, 65, 75);
+      doc.text('Representante(s) Legal(es):', marginLeft + 2, currentY);
+      currentY += 3.5;
+      centroData.representantes.forEach((r) => {
+        checkPageBreak(4);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(20, 25, 35);
+        const cedula = `${r.cedula_tipo}-${r.cedula_nro}`;
+        const cargo = r.cargo ? ` (${r.cargo})` : '';
+        doc.text(`• ${cedula} — ${r.nombre}${cargo}`, marginLeft + 5, currentY);
+        currentY += 3.5;
+      });
+      currentY += 1;
+    }
+  }
+
+  // 5. Contacto
+  const hayTelefonos = Boolean(centroData?.telefonos?.length);
+  const hayCorreos = Boolean(centroData?.correos?.length);
+  if (hayTelefonos || hayCorreos) {
+    drawSectionHeader('Información de Contacto');
+    const itemsContacto = [];
+    if (hayTelefonos) {
+      const tels = centroData.telefonos.map(t => `${t.telefono} (${t.tipo || 'tel'})`).join(', ');
+      itemsContacto.push({ label: 'Teléfonos', value: tels });
+    }
+    if (hayCorreos) {
+      const emails = centroData.correos.map(c => `${c.correo} (${c.tipo || 'email'})`).join(', ');
+      itemsContacto.push({ label: 'Correos', value: emails });
+    }
+    drawKeyValueGrid(itemsContacto, 1);
+  }
+
+  // 6. Ficha Actual (si existe)
+  if (fichaData) {
+    // 6.1 Datos de la Ficha
+    drawSectionHeader('Datos de la Ficha Técnica Actual (fichas_establecimiento)');
+    const fichaInfo = [
+      { label: 'Tipo de Solicitud', value: labelSolicitud(fichaData.tipo_solicitud) },
+      { label: 'Nro. Reg. Nacional', value: fichaData.nro_registro_nacional || '—' },
+      { label: 'Fecha Solicitud', value: formatDateVue(fichaData.fecha_solicitud) },
+      { label: 'Fecha Fundación', value: formatDateVue(fichaData.fecha_fundacion) },
+      { label: 'Costo Mensual', value: fichaData.costo_mensual != null ? Number(fichaData.costo_mensual).toLocaleString('es-VE') : '—' },
+      { label: 'Versión Ficha', value: `v${fichaData.version || 1}` },
+      { label: 'ID Ficha', value: fichaData.id ? String(fichaData.id) : '—' },
+    ];
+    drawKeyValueGrid(fichaInfo, 2);
+    if (fichaData.direccion) {
+      drawFullRow('Dirección Ficha', fichaData.direccion);
+    }
+
+    // 6.2 Capacidad
+    if (fichaData.capacidad) {
+      drawSectionHeader('Capacidad Instalada y Atención (ficha_capacidad)');
+      const cap = fichaData.capacidad;
+      const capInfo = [
+        { label: 'Cap. Total Residentes', value: cap.capacidad_total_residente ?? '—' },
+        { label: 'Residentes Actuales', value: cap.capacidad_actual_residente ?? '—' },
+        { label: 'Atención Ambulatoria', value: cap.atencion_ambulatoria ? 'Sí' : 'No' },
+        { label: 'Cupos Ambulatorios', value: cap.atencion_ambulatoria ? (cap.num_atencion_ambulatoria ?? '—') : 'N/A' },
+      ];
+      drawKeyValueGrid(capInfo, 2);
+    }
+
+    // 6.3 Población
+    if (fichaData.poblacion?.length) {
+      const fechaCorte = fichaData.poblacion[0]?.fecha_corte ? formatDateVue(fichaData.poblacion[0].fecha_corte) : '—';
+      drawSectionHeader(`Población Atendida (ficha_poblacion · Fecha de corte: ${fechaCorte})`);
+
+      const cols = [
+        { label: 'Modalidad', width: 44, align: 'left' },
+        { label: 'Categoría', width: 44, align: 'left' },
+        { label: 'Fem.', width: 28, align: 'center' },
+        { label: 'Masc.', width: 28, align: 'center' },
+        { label: 'Total', width: 34, align: 'center' },
+      ];
+
+      // Cabecera de la tabla
+      checkPageBreak(6 + (fichaData.poblacion.length + 1) * 4);
+      doc.setFillColor(0, 51, 102);
+      doc.rect(marginLeft, currentY, contentWidth, 4.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.8);
+      doc.setTextColor(255, 255, 255);
+
+      let xOffset = marginLeft;
+      cols.forEach((col) => {
+        if (col.align === 'center') {
+          doc.text(col.label, xOffset + col.width / 2, currentY + 3.2, { align: 'center' });
+        } else {
+          doc.text(col.label, xOffset + 2, currentY + 3.2);
+        }
+        xOffset += col.width;
+      });
+      currentY += 4.5;
+
+      // Filas
+      doc.setFontSize(6.8);
+      let totalFem = 0;
+      let totalMasc = 0;
+      let totalGral = 0;
+
+      fichaData.poblacion.forEach((r, idx) => {
+        checkPageBreak(4);
+        if (idx % 2 === 1) {
+          doc.setFillColor(248, 249, 251);
+          doc.rect(marginLeft, currentY, contentWidth, 4, 'F');
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(20, 25, 35);
+
+        const femVal = Number(r.femenino) || 0;
+        const mascVal = Number(r.masculino) || 0;
+        const totVal = Number(r.total) || 0;
+        totalFem += femVal;
+        totalMasc += mascVal;
+        totalGral += totVal;
+
+        let colX = marginLeft;
+        doc.text(String(r.modalidad || '—'), colX + 2, currentY + 2.8);
+        colX += cols[0].width;
+        doc.text(String(r.categoria || '—'), colX + 2, currentY + 2.8);
+        colX += cols[1].width;
+        doc.text(String(r.femenino ?? '0'), colX + cols[2].width / 2, currentY + 2.8, { align: 'center' });
+        colX += cols[2].width;
+        doc.text(String(r.masculino ?? '0'), colX + cols[3].width / 2, currentY + 2.8, { align: 'center' });
+        colX += cols[3].width;
+        doc.text(String(r.total ?? '0'), colX + cols[4].width / 2, currentY + 2.8, { align: 'center' });
+
+        currentY += 4;
+      });
+
+      // Fila de total acumulado
+      checkPageBreak(4.5);
+      doc.setFillColor(235, 240, 248);
+      doc.rect(marginLeft, currentY, contentWidth, 4.5, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 51, 102);
+      doc.text('TOTAL GENERAL', marginLeft + 2, currentY + 3.2);
+      let totColX = marginLeft + cols[0].width + cols[1].width;
+      doc.text(String(totalFem), totColX + cols[2].width / 2, currentY + 3.2, { align: 'center' });
+      totColX += cols[2].width;
+      doc.text(String(totalMasc), totColX + cols[3].width / 2, currentY + 3.2, { align: 'center' });
+      totColX += cols[3].width;
+      doc.text(String(totalGral), totColX + cols[4].width / 2, currentY + 3.2, { align: 'center' });
+      currentY += 6;
+    }
+
+    // 6.4 Servicios Prestados
+    if (fichaData.servicios) {
+      drawSectionHeader('Servicios Prestados (ficha_servicios)');
+      const s = fichaData.servicios;
+      const sItems = [
+        { label: 'Farmacia', value: s.farmacia ? 'Sí' : 'No' },
+        { label: 'Eval. Nutricional', value: s.evaluacion_nutricional ? 'Sí' : 'No' },
+        { label: 'Act. Recreativas', value: s.actividades_recreativas ? 'Sí' : 'No' },
+        { label: 'Serv. Emergencia', value: s.servicio_emergencia ? 'Sí' : 'No' },
+        { label: 'Serv. Funerario', value: s.servicio_funerario ? 'Sí' : 'No' },
+        { label: 'Barbería / Peluq.', value: s.barberia_peluqueria ? 'Sí' : 'No' },
+        { label: 'Servicio Médico', value: s.medicos ? ('Sí' + (s.medicos_descripcion ? `: ${s.medicos_descripcion}` : '')) : 'No' },
+        { label: 'Lavandería', value: s.lavanderia ? ('Sí' + (s.lavanderia_descripcion ? `: ${s.lavanderia_descripcion}` : '')) : 'No' },
+      ];
+      if (s.otros) {
+        sItems.push({ label: 'Otros Servicios', value: s.otros_descripcion || 'Sí' });
+      }
+      // Servicios adicionales del catálogo
+      if (serviciosExtras.value?.length) {
+        serviciosExtras.value.forEach(se => {
+          sItems.push({ label: se.label, value: 'Sí' });
+        });
+      }
+      drawKeyValueGrid(sItems, 2);
+    }
+
+    // 6.5 Personal / Talento Humano
+    if (fichaData.personal) {
+      drawSectionHeader('Personal y Talento Humano (ficha_personal)');
+      const p = fichaData.personal;
+      const pItems = [
+        { label: 'Médicos Generales', value: p.num_medicos ?? 0 },
+        { label: 'Médicos Geriatras', value: p.num_medicos_geriatra ?? 0 },
+        { label: 'Médicos Psiquiatras', value: p.num_medicos_psiquiatra ?? 0 },
+        { label: 'Gerontólogos', value: p.num_gerontologos ?? 0 },
+        { label: 'Psicólogos', value: p.num_psicologos ?? 0 },
+        { label: 'Enfermeros', value: p.num_enfermeros ?? 0 },
+        { label: 'Aux. Enfermería', value: p.num_auxiliares_enfermeria ?? 0 },
+        { label: 'Cuidadores', value: p.num_cuidadores ?? 0 },
+        { label: 'Camareros', value: p.num_camareros ?? 0 },
+        { label: 'Serv. Generales', value: p.num_servicios_generales ?? 0 },
+        { label: 'Personal de Cocina', value: p.num_personal_cocina ?? 0 },
+        { label: 'Resp. Farmacia', value: p.num_responsables_farmacia ?? 0 },
+        { label: 'Seguridad', value: p.num_personal_seguridad ?? 0 },
+        { label: 'Personal No Adscrito', value: p.num_personal_no_adscrito ?? 0 },
+        { label: 'Expediente Curricular', value: p.posee_expediente_curricular ? 'Sí' : 'No' },
+        { label: 'Otros Personal', value: p.otros_personal ? (p.descripcion_otros_personal || 'Sí') : 'No' },
+      ];
+      drawKeyValueGrid(pItems, 2);
+      if (p.descripcion_no_adscrito) {
+        drawFullRow('Detalle Personal No Adscrito', p.descripcion_no_adscrito);
+      }
+    }
+
+    // 6.6 Infraestructura
+    if (fichaData.infraestructura) {
+      drawSectionHeader('Infraestructura del Inmueble (ficha_infraestructura)');
+      const inf = fichaData.infraestructura;
+      const infItems = [
+        { label: 'Estado Inmueble', value: inf.estado_inmueble_nombre || '—' },
+        { label: 'Tipo de Planta', value: inf.planta_electrica_tipo_nombre || inf.tipo_planta_nombre || '—' },
+        { label: 'Área Total (m²)', value: inf.area_total_m2 ?? '—' },
+        { label: 'Área Constr. (m²)', value: inf.area_construida_m2 ?? '—' },
+        { label: 'Tamaño Habitac. (m²)', value: inf.tamano_habitaciones_m2 ?? '—' },
+        { label: 'Personas / Habit.', value: inf.personas_por_habitacion ?? '—' },
+        { label: 'Camas / Habit.', value: inf.camas_por_habitacion ?? '—' },
+        { label: 'Baños / Habit.', value: inf.banos_por_habitacion ?? '—' },
+        { label: 'Nro. Dormitorios', value: inf.num_dormitorios ?? '—' },
+        { label: 'Dormit. Adecuados', value: inf.dormitorios_adecuados ? 'Sí' : 'No' },
+        { label: 'Nro. Sanitarios', value: inf.num_sanitarios ?? '—' },
+        { label: 'Sanitar. Adecuados', value: inf.sanitarios_adecuados ? 'Sí' : 'No' },
+        { label: 'Baños Completos', value: inf.banos_completos ?? '—' },
+        { label: 'Baños sin Ducha', value: inf.banos_sin_ducha ?? '—' },
+        { label: 'Cantidad Tinas', value: inf.cant_tinas ?? '—' },
+        { label: 'Área de Cocina', value: inf.tiene_area_cocina ? 'Sí' : 'No' },
+        { label: 'Cocina Adecuada', value: inf.cocina_adecuada ? 'Sí' : 'No' },
+        { label: 'Comedor', value: inf.tiene_comedor ? 'Sí' : 'No' },
+        { label: 'Capacidad Comedor', value: inf.capacidad_comedor_pct != null ? `${inf.capacidad_comedor_pct}%` : '—' },
+        { label: 'Atención Médica', value: inf.areas_atencion_medica ? 'Sí' : 'No' },
+        { label: 'Áreas Verdes', value: inf.areas_verdes ? 'Sí' : 'No' },
+        { label: 'Farmacia / Depósito', value: inf.tiene_farmacia_almacen_clinico ? 'Sí' : 'No' },
+        { label: 'Aceptan Mascotas', value: inf.acepta_mascotas ? 'Sí' : 'No' },
+        { label: 'Gerogranjas', value: inf.gerogranjas ? 'Sí' : 'No' },
+        { label: 'Residuos Separados', value: inf.residuos_separados ? 'Sí' : 'No' },
+        { label: 'Luz Eléctrica', value: inf.luz_electrica ? 'Sí' : 'No' },
+        { label: 'Agua Potable', value: inf.agua_potable ? 'Sí' : 'No' },
+        { label: 'Aguas Servidas', value: inf.agua_servidas ? 'Sí' : 'No' },
+        { label: 'Depósito Basura', value: inf.deposito_basura ? 'Sí' : 'No' },
+        { label: 'Tanque de Agua', value: inf.tanque_agua ? (`Sí${inf.capacidad_tanque ? ` (${inf.capacidad_tanque}L)` : ''}`) : 'No' },
+        { label: 'Bomba de Agua', value: inf.bomba_agua ? 'Sí' : 'No' },
+        { label: 'Sistema Seguridad', value: inf.sistema_seguridad ? 'Sí' : 'No' },
+        { label: 'Cámaras Seguridad', value: inf.tiene_camaras ? 'Sí' : 'No' },
+        { label: 'Control Acceso/Sal.', value: `Acceso: ${inf.control_acceso ? 'Sí' : 'No'} | Salida: ${inf.control_salida ? 'Sí' : 'No'}` },
+        { label: 'Alarma Emergencia', value: inf.alarma_emergencia ? 'Sí' : 'No' },
+        { label: 'Botones Emergencia', value: `Habit: ${inf.boton_emergencia_habitaciones ? 'Sí' : 'No'} | Baño: ${inf.boton_emergencia_banio ? 'Sí' : 'No'} | Pasillo: ${inf.boton_emergencia_pasillos ? 'Sí' : 'No'}` },
+        { label: 'Iluminac. Emergencia', value: inf.iluminacion_emergencia ? 'Sí' : 'No' },
+        { label: 'Iluminación Adecuada', value: inf.iluminacion_adecuada ? 'Sí' : 'No' },
+        { label: 'Ventilación Adecuada', value: inf.ventilacion_adecuada ? 'Sí' : 'No' },
+        { label: 'Sistemas Ventilación', value: inf.sistemas_ventilacion ? 'Sí' : 'No' },
+        { label: 'Aire Acondicionado', value: inf.aire_acondicionado ? 'Sí' : 'No' },
+        { label: 'Prevención Incendios', value: inf.prevencion_incendios ? 'Sí' : 'No' },
+        { label: 'Señalización Clara', value: inf.senalizacion_clara ? 'Sí' : 'No' },
+        { label: 'Normativa Visible', value: inf.normativa_visible ? 'Sí' : 'No' },
+        { label: 'Planta Eléctrica', value: inf.planta_electrica ? 'Sí' : 'No' },
+        { label: 'Panel Solar', value: inf.planta_electrica_panel_solar ? 'Sí' : 'No' },
+      ];
+      drawKeyValueGrid(infItems, 2);
+      if (inf.descripcion_otros) {
+        drawFullRow('Observaciones Infraestructura', inf.descripcion_otros);
+      }
+    }
+
+    // 6.7 Accesibilidad
+    if (fichaData.accesibilidad) {
+      drawSectionHeader('Accesibilidad y Barreras Arquitectónicas (ficha_accesibilidad)');
+      const acc = fichaData.accesibilidad;
+      const accItems = [
+        { label: 'Rampas de Acceso', value: acc.rampas_fijas ? 'Sí' : 'No' },
+        { label: 'Marquesinas Acceso', value: acc.marquesinas_acceso ? 'Sí' : 'No' },
+        { label: 'Estacionam. Reservados', value: acc.estacionamientos_reservados ? 'Sí' : 'No' },
+        { label: 'Pasamanos', value: acc.pasamanos ? 'Sí' : 'No' },
+        { label: 'Pasamanos Dobles', value: acc.pasamanos_dobles ? 'Sí' : 'No' },
+        { label: 'Piso Antideslizante', value: acc.piso_antirresbalante ? 'Sí' : 'No' },
+        { label: 'Pasillos Accesibles', value: acc.pasillos_accesibles_sillas ? 'Sí' : 'No' },
+        { label: 'Zonas de Descanso', value: acc.zonas_descanso ? 'Sí' : 'No' },
+        { label: 'Escaleras Antirresb.', value: acc.escaleras_antirresbalantes ? 'Sí' : 'No' },
+        { label: 'Ascensores', value: acc.ascensores ? (`Sí (${acc.num_ascensores || 1})`) : 'No' },
+        { label: 'Alfombras Sueltas', value: acc.alfombras_sueltas ? 'Sí' : 'No' },
+        { label: 'Alfombras Aseguradas', value: acc.alfombras_aseguradas ? 'Sí' : 'No' },
+        { label: 'Pisos Podotáctiles', value: acc.pisos_podotactiles ? 'Sí' : 'No' },
+        { label: 'Baños Geriátricos', value: acc.banos_geriatricos ? 'Sí' : 'No' },
+        { label: 'Barras de Apoyo', value: acc.barras_apoyo ? 'Sí' : 'No' },
+        { label: 'Inodoros Elevados', value: acc.inodoros_elevados ? 'Sí' : 'No' },
+        { label: 'Duchas a Ras de Suelo', value: acc.duchas_ras_suelo ? 'Sí' : 'No' },
+        { label: 'Lavamanos Suspendidos', value: acc.lavamanos_suspendidos ? 'Sí' : 'No' },
+        { label: 'Grifería de Palanca', value: acc.griferia_palanca ? 'Sí' : 'No' },
+        { label: 'Botón Emergenc. Baño', value: acc.boton_emergencia ? 'Sí' : 'No' },
+        { label: 'Sillas con Apoyabrazos', value: acc.sillas_apoyabrazos ? 'Sí' : 'No' },
+        { label: 'Mesas sin Obstáculos', value: acc.mesas_sin_obstaculos ? 'Sí' : 'No' },
+        { label: 'Alto Contraste Visual', value: acc.alto_contraste_visual ? 'Sí' : 'No' },
+        { label: 'Pictogramas Univ.', value: acc.pictogramas_universales ? 'Sí' : 'No' },
+        { label: 'Iluminación Homogénea', value: acc.iluminacion_homogenea ? 'Sí' : 'No' },
+        { label: 'Señales Accesibles', value: acc.senales_accesibles ? 'Sí' : 'No' },
+        { label: 'Alarmas Duales', value: acc.alarmas_duales ? 'Sí' : 'No' },
+        { label: 'Rutas Evacuac. Anchas', value: acc.rutas_evacuacion_anchas ? 'Sí' : 'No' },
+        { label: 'Timbres Emergencia', value: acc.timbres_emergencia ? 'Sí' : 'No' },
+      ];
+      drawKeyValueGrid(accItems, 2);
+    }
+
+    // 6.8 Documentación Consignada
+    const docs = fichaData.documentos || [];
+    if (docs.length || centroData?.rif_archivo) {
+      drawSectionHeader('Documentación Consignada (ficha_documentos)');
+      const docItems = [];
+      if (centroData?.rif_archivo) {
+        docItems.push({ label: 'RIF (Cargado en registro)', value: 'Archivo Digital' });
+      }
+      docs.forEach(d => {
+        const estatus = [
+          d.tiene_original ? 'Original' : null,
+          d.tiene_copia ? 'Copia' : null,
+          d.tiene_archivo || d.archivo_nombre ? 'Digital' : null,
+        ].filter(Boolean).join(' / ') || 'Registrado';
+        const desc = d.descripcion ? ` - ${d.descripcion}` : '';
+        docItems.push({ label: labelTipoDoc(d.tipo_documento), value: `${estatus}${desc}` });
+      });
+      drawKeyValueGrid(docItems, 2);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // APLICAR ENCABEZADO Y PIE A TODAS LAS PÁGINAS GENERADAS
+  // ══════════════════════════════════════════════════════════════════════════
+  const totalPagesActual = doc.getNumberOfPages();
+  const fechaHoraTexto = `${new Date().toLocaleDateString('es-VE')} ${new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' })}`;
+
+  for (let i = 1; i <= totalPagesActual; i++) {
+    doc.setPage(i);
+    dibujarEncabezado(i, totalPagesActual);
+    dibujarPiePagina(i, totalPagesActual, fechaHoraTexto);
+  }
+
+  // Guardar documento
+  const filename = `RENACER_${centroData?.rif || 'centro'}_${Date.now()}.pdf`;
+  doc.save(filename);
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Método expuesto al template / outside
+// ──────────────────────────────────────────────────────────────────────────
 
 // ── PDF Viewer y Gestión de Archivos ──
 const pdfViewerOpen = ref(false);
@@ -1153,12 +1929,6 @@ function downloadCurrentPdf() {
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 }
-
-const centroId = computed(() => route.params.id);
-
-const tab = ref('resumen');
-const centro = computed(() => centrosStore.current);
-const ficha = computed(() => centrosStore.ficha);
 
 // Servicios con al menos uno activo
 const tieneServicios = computed(() => {

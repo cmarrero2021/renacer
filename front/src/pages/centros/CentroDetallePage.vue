@@ -1242,10 +1242,12 @@ const generarPdfPrinterFriendly = async () => {
       );
     }
 
-    // Línea separadora suave bajo el cintillo
-    doc.setDrawColor(210, 215, 225);
-    doc.setLineWidth(0.4);
-    doc.line(marginLeft, 19.5, pageWidth - marginRight, 19.5);
+    // Texto RENACER - alineado a la izquierda, debajo del cintillo
+    /*doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(0, 51, 102);
+    doc.text('RENACER - Registro Nacional de Centros de Atención al Adulto Mayor', marginLeft, 20);
+    */
   };
 
   // ─── Pie de página en cada página ───

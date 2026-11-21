@@ -151,12 +151,13 @@ tryParseRifPrefix = (line) => {
   const digito = m[3] ? m[3] : null;
 
   // Validar/mapear la letra: debe ser J, V, G, E o P.
-  // Si el OCR capturó un dígito (ej. "6" en lugar de "G"), usar el mapa inverso
-  // con el dígito check si está disponible; si no, probar las posiciones conocidas del número.
+  // Si el OCR capturó un dígito (ej. "6" en lugar de "G"), usar el mapa inverso.
   if (letra && !/[JVGEP]/.test(letra)) {
     const invMap = { '6': 'G', '3': 'E', '9': 'P', '1': 'J', '7': 'J' };
-    // Intentar con el dígito check primero
-    if (digito && invMap[digito]) {
+    if (invMap[letra]) {
+      // La letra fue mal leída como dígito (G→6, E→3, etc.): convertir directo.
+      letra = invMap[letra];
+    } else if (digito && invMap[digito]) {
       letra = invMap[digito];
     } else {
       // Sin dígito check: probar las primeras posiciones del número contra el mapa
@@ -184,7 +185,7 @@ const RIF_LINEA_RX = /^\s*([JVGEP])\s*[-.\s]?\s*(\d{8})\s*[-.\s]?\s*(\d)(?!\d)/;
 
 const BASURA_RIF_NUEVO = [
   /\d{2}\/\d{2}\/\d{4}/g,                                     // fechas
-  /\b(N[°º*]?\s*)?COMPROBANTE\s*:?\s*[A-Z0-9]*/gi,            // N° COMPROBANTE: ...
+  /\b(N[°º*"”'’]?\s*)?COMPROBANTE\s*:?\s*[A-Z0-9€$¢©®ª]*/gi,  // N° COMPROBANTE: ...
   /\b\d{9,12}-[A-Z][A-Z0-9]{1,5}\b/g,                         // serial (firma autorizada)
   /FECHA\s+DE\s+INSCRIPCI[OÓ]N/gi,
   /[ÚU]LTIMA\s+ACTUALIZACI[OÓ]N/gi,
@@ -196,7 +197,7 @@ const BASURA_RIF_NUEVO = [
 
 const RIF_NUEVO_STOP = /^(DOMICILIO|DATOS\s+DE|GERENCIA|DIVISI|IDENTIFICACI|REGISTRO\s+[ÚU]NICO|FIRMA|CI?RMA|DOCUMENTO|CONDICI|SERVICIO\s+NACIONAL|ADMINISTRACI|ECONOMI|VENEZUELA|SENIAT|SENIAIT|MA\s+AUTORIZADA|AUTORIZADA|N?[°º*]?\s*COMPROBANTE|FECHA|[ÚU]LTIMA|SERIAL|CONDICI[OÓ]N)/;
 
-const VOCABULARIO_OFICINA = /\b(GERENCIA|SEDE\s+REGIONAL|TRIBUTOS\s+INTERNOS|DIVISI[OÓ]N\s+DE\s+CONTRIBUYENTES|CONTRIBUYENTES\s+ESPECIALES)\b/;
+const VOCABULARIO_OFICINA = /\b(GERENCIA|SEDE\s+REGIONAL|TRIBUTOS\s+INTERNOS|DIVISI[OÓ]N\s+DE\s+CONTRIBUYENTES|CONTRIBUYENTES\s+ESPECIALES|LIBERTADOR)\b/;
 
 const DIRECCION_START = /^(CALLE|AVENIDA|AVDA\.?|AV\b|URB\.?|URBANIZACI|EDIF\.?|EDIFICIO|RESID\.?|RESIDENCIA|SECTOR|ESQ\.?|ESQUINA|CARR\.?|CARRETERA|VEREDA|PARQUE|ZONA\s+INDUSTRIAL|POL[IÍ]GONO|CENTRO\s+COMERCIAL|C\.?\s?C\.?|LOCAL|QUINTA|CASA|TORRE|GALP[OÓ]N|ANEXO|KM\b|TERMINAL|ESTACI[OÓ]N|PUERTO|AEROPUERTO|DISTRITO|CIUDAD|PISO|SOLAR|TERRENO|TPS)/;
 
@@ -264,7 +265,13 @@ const parseRifNuevoFormato = (text) => {
 
   for (let i = idxRif; i < lineas.length && modo !== 'fin'; i++) {
     let linea = lineas[i];
-    if (i === idxRif) linea = linea.replace(RIF_NUEVO_RX, ' ').replace(RIF_SOLO_RX, ' ').replace(RIF_LINEA_RX, ' ');
+    if (i === idxRif) {
+      linea = linea.replace(RIF_NUEVO_RX, ' ').replace(RIF_SOLO_RX, ' ').replace(RIF_LINEA_RX, ' ');
+      // Relajado: cubre la etiqueta RIF cuando el OCR mal leyó el prefijo
+      // (ej. "RIF: 6200171774" en lugar de "RIF: G200171774"), que no casa
+      // con los regex estrictos de arriba.
+      linea = linea.replace(/\bRIF\s*[:.]?\s*[A-Z0-9]?\s*\d{8,10}\s*\d?/i, ' ');
+    }
 
     const tieneFecha = /\d{2}\/\d{2}\/\d{4}/.test(linea);
     const tieneSerial = /\d{9,12}-[A-Z][A-Z0-9]{1,5}/.test(linea);
@@ -282,7 +289,10 @@ const parseRifNuevoFormato = (text) => {
       }
       if (i !== idxRif && (tieneFecha || tieneSerial)) continue;
       const parte = limpiarLineaRifNuevo(linea);
-      if (parte && parte.length >= 3 && !VOCABULARIO_OFICINA.test(parte)) nombrePartes.push(parte);
+      // El nombre no contiene números: descartar series largas de dígitos que
+      // el OCR mezcla (fechas sin barras, residuos de comprobante, etc.).
+      const parteLimpia = parte.replace(/\d{4,}/g, ' ').replace(/\s+/g, ' ').trim();
+      if (parteLimpia && parteLimpia.length >= 3 && !VOCABULARIO_OFICINA.test(parteLimpia)) nombrePartes.push(parteLimpia);
     } else {
       if (i !== idxRif && (esStop || tieneFecha || tieneSerial) && !/^DOMICILIO/.test(linea)) { modo = 'fin'; break; }
       const parte = limpiarLineaRifNuevo(linea).replace(/^DOMICILIO\s*FISCAL\s*[.:]?\s*/, '');

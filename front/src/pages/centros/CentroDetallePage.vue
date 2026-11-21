@@ -321,7 +321,7 @@
 
                         <!-- Servicios -->
                         <q-expansion-item v-if="ficha.servicios" icon="medical_services" label="Servicios Prestados"
-                            default-opened class="q-mb-sm">
+                            class="q-mb-sm">
                             <q-card flat bordered>
                                 <q-card-section>
                                     <div class="row q-gutter-sm">
@@ -434,11 +434,11 @@
                         <!-- ── Infraestructura y Accesibilidad ▸ secciones colapsables ── -->
                         <q-expansion-item v-if="ficha.infraestructura || ficha.accesibilidad"
                             icon="foundation" label="Infraestructura y Accesibilidad"
-                            default-opened header-class="text-weight-bold" class="q-mb-sm">
+                            header-class="text-weight-bold" class="q-mb-sm">
 
                             <!-- Sub-sección colapsable ▸ Infraestructura -->
                             <q-expansion-item v-if="ficha.infraestructura"
-                                default-opened header-class="text-weight-bold">
+                                header-class="text-weight-bold">
                                 <template #header>
                                     <q-item-section avatar>
                                         <q-icon name="foundation" color="primary" />
@@ -763,7 +763,7 @@
 
                             <!-- Sub-sección colapsable ▸ Accesibilidad -->
                             <q-expansion-item v-if="ficha.accesibilidad"
-                                default-opened header-class="text-weight-bold">
+                                header-class="text-weight-bold">
                                 <template #header>
                                     <q-item-section avatar>
                                         <q-icon name="accessible" color="primary" />

@@ -1120,6 +1120,26 @@
             </q-tab-panels>
         </q-card>
 
+        <!-- Modal de finalización del registro -->
+        <q-dialog v-model="finalizacionRegistroOpen" persistent>
+            <q-card class="column no-wrap" style="width: 560px; max-width: 92vw;">
+                <q-card-section class="text-center q-pb-none">
+                    <q-icon name="celebration" color="positive" size="64px" />
+                </q-card-section>
+                <q-card-section class="text-center">
+                    <p class="text-body1 q-mb-none">
+                        FELICIDADES, HA CULMINADO EL REGISTRO DEL CENTRO
+                        <strong>{{ datos.nombre_establecimiento }}</strong>
+                        EN EL REGISTRO NACIONAL DE CENTROS DE ATENCIÓN AL ADULTO MAYOR; PRESIONE EL BOTÓN
+                        CONTINUAR PARA SER REDIRIGIDO A LA FICHA DEL CENTRO
+                    </p>
+                </q-card-section>
+                <q-card-actions align="center" class="q-pb-lg">
+                    <q-btn unelevated color="primary" label="CONTINUAR" @click="continuarDesdeFinalizacion" />
+                </q-card-actions>
+            </q-card>
+        </q-dialog>
+
         <!-- Modal Visor de PDF -->
         <q-dialog v-model="pdfViewerOpen" maximized>
             <q-card class="column full-height">
@@ -1194,10 +1214,16 @@ function verFichaCentro() {
     if (centroId.value) router.push(`/admin/centros/${centroId.value}`);
 }
 
+function continuarDesdeFinalizacion() {
+    finalizacionRegistroOpen.value = false;
+    verFichaCentro();
+}
+
 // ── IDs persistentes ──────────────────────────────────────────────────────────
 const centroId = ref(route.params.id || null);
 const fichaId = ref(null);
 const saving = ref(false);
+const finalizacionRegistroOpen = ref(false);
 const $q = useQuasar();
 
 // ── Foto del Establecimiento ──────────────────────────────────────────────────
@@ -2545,8 +2571,7 @@ async function saveDocumentos() {
         savedTabs.value.documentos = allDocsHaveFile.value;
 
         if (allDocsHaveFile.value) {
-            Notify.create({ type: 'positive', message: '¡Ficha completada exitosamente! Todos los documentos PDF fueron adjuntados.' });
-            router.push(`/admin/centros/${centroId.value}`);
+            finalizacionRegistroOpen.value = true;
         } else {
             const contables = docs.value.filter(d => !esRifPrecargado(d) && !d.tiene_archivo && !d.archivo_nombre && !d.nuevo_archivo);
             const faltantes = contables.length;

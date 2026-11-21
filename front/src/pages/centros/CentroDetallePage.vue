@@ -1956,8 +1956,8 @@ const serviciosExtras = computed(() => {
         .filter(([, v]) => v)
         .map(([codigo]) => {
             const found = cat.find(c => String(c.codigo) === String(codigo));
-            const label = found?.nombre
-                || toTitleCase(String(codigo).replace(/_/g, ' '));
+            const label = toTitleCase(found?.nombre
+                || String(codigo).replace(/_/g, ' '));
             return { codigo, label };
         });
     });

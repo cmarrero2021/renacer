@@ -2037,6 +2037,38 @@ async function onMunicipioCambio(id) {
 }
 
 // ── Guardado de cada sección ──────────────────────────────────────────────────
+function buildCentroPayload() {
+    const rifCompleto = datos.value.rif_numero
+        ? (datos.value.rif_numero.includes('-') ? datos.value.rif_numero : `${datos.value.rif_tipo}-${datos.value.rif_numero}`)
+        : null;
+
+    return {
+        nombre_establecimiento: datos.value.nombre_establecimiento,
+        parroquia_id: datos.value.parroquia_id,
+        rif: rifCompleto,
+        nro_registro_mercantil: datos.value.nro_registro_mercantil,
+        tipo_establecimiento: datos.value.tipo_establecimiento,
+        tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
+        tipo_clasificacion: datos.value.tipo_clasificacion,
+        latitud: datos.value.latitud,
+        longitud: datos.value.longitud,
+        foto_base64: datos.value.foto_base64,
+        propietarios: datos.value.propietarios,
+        representantes: datos.value.representantes,
+        telefonos: datos.value.telefonos,
+        correos: datos.value.correos,
+    };
+}
+
+function buildFichaBasePayload() {
+    return {
+        fecha_solicitud: toISO(datos.value.fecha_solicitud),
+        tipo_solicitud: datos.value.tipo_solicitud || null,
+        fecha_fundacion: toISO(datos.value.fecha_fundacion),
+        direccion: datos.value.direccion || null,
+    };
+}
+
 async function saveDatos() {
     if (formDatosRef.value) {
         const valid = await formDatosRef.value.validate();
@@ -2061,56 +2093,17 @@ async function saveDatos() {
     }
     saving.value = true;
     try {
-        const rifCompleto = datos.value.rif_numero
-            ? (datos.value.rif_numero.includes('-') ? datos.value.rif_numero : `${datos.value.rif_tipo}-${datos.value.rif_numero}`)
-            : null;
-
         if (!centroId.value) {
             // Crear centro
-            const cRes = await (await import('src/services/centros.service')).centrosService.create({
-                nombre_establecimiento: datos.value.nombre_establecimiento,
-                parroquia_id: datos.value.parroquia_id,
-                rif: rifCompleto,
-                nro_registro_mercantil: datos.value.nro_registro_mercantil,
-                tipo_establecimiento: datos.value.tipo_establecimiento,
-                tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
-                tipo_clasificacion: datos.value.tipo_clasificacion,
-                latitud: datos.value.latitud,
-                longitud: datos.value.longitud,
-                foto_base64: datos.value.foto_base64 || null,
-                propietarios: datos.value.propietarios,
-                representantes: datos.value.representantes,
-                telefonos: datos.value.telefonos,
-                correos: datos.value.correos,
-            });
+            const cRes = await centrosService.create(buildCentroPayload());
             centroId.value = cRes.data.centro.id;
         } else {
             // Actualizar centro (incluye personas y contacto; el backend las reemplaza)
-            await (await import('src/services/centros.service')).centrosService.update(centroId.value, {
-                nombre_establecimiento: datos.value.nombre_establecimiento,
-                parroquia_id: datos.value.parroquia_id,
-                rif: rifCompleto,
-                nro_registro_mercantil: datos.value.nro_registro_mercantil,
-                tipo_establecimiento: datos.value.tipo_establecimiento,
-                tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
-                tipo_clasificacion: datos.value.tipo_clasificacion,
-                latitud: datos.value.latitud,
-                longitud: datos.value.longitud,
-                foto_base64: datos.value.foto_base64,
-                propietarios: datos.value.propietarios,
-                representantes: datos.value.representantes,
-                telefonos: datos.value.telefonos,
-                correos: datos.value.correos,
-            });
+            await centrosService.update(centroId.value, buildCentroPayload());
         }
 
         // Crear o actualizar ficha base (fechas a ISO)
-        const fichaPayload = {
-            fecha_solicitud: toISO(datos.value.fecha_solicitud),
-            tipo_solicitud: datos.value.tipo_solicitud || null,
-            fecha_fundacion: toISO(datos.value.fecha_fundacion),
-            direccion: datos.value.direccion || null,
-        };
+        const fichaPayload = buildFichaBasePayload();
 
         if (!fichaId.value) {
             const fRes = await fichasService.create(centroId.value, fichaPayload);
@@ -2513,6 +2506,21 @@ async function saveDocumentos() {
         // ── Guardar SOLO secciones con datos reales y no guardadas aún ──
         const pendientes = [];
 
+        // "Guardar y Finalizar" también persiste el tab Datos del Centro:
+        // el usuario puede regresar/editarlo y finalizar directamente desde Documentos.
+        const tareasDatos = [];
+        if (centroId.value) {
+            tareasDatos.push(
+                centrosService.update(centroId.value, buildCentroPayload())
+            );
+        }
+        tareasDatos.push(
+            fichasService.update(fichaId.value, buildFichaBasePayload())
+        );
+        pendientes.push(
+            Promise.all(tareasDatos).then(() => { savedTabs.value.datos = true; })
+        );
+
         const hasCapacidad = cap.value.capacidad_total_residente != null
             || cap.value.capacidad_actual_residente != null
             || cap.value.atencion_ambulatoria;
@@ -2607,34 +2615,12 @@ async function saveAll() {
 
         // 1. Guardar Datos Centro y Ficha Base
         if (centroId.value) {
-            const rifCompleto = datos.value.rif_numero
-                ? (datos.value.rif_numero.includes('-') ? datos.value.rif_numero : `${datos.value.rif_tipo}-${datos.value.rif_numero}`)
-                : null;
             tareas.push(
-                centrosService.update(centroId.value, {
-                    nombre_establecimiento: datos.value.nombre_establecimiento,
-                    parroquia_id: datos.value.parroquia_id,
-                    rif: rifCompleto,
-                    nro_registro_mercantil: datos.value.nro_registro_mercantil,
-                    tipo_establecimiento: datos.value.tipo_establecimiento,
-                    tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
-                    tipo_clasificacion: datos.value.tipo_clasificacion,
-                    latitud: datos.value.latitud,
-                    longitud: datos.value.longitud,
-                    foto_base64: datos.value.foto_base64,
-                    propietarios: datos.value.propietarios,
-                    representantes: datos.value.representantes,
-                    telefonos: datos.value.telefonos,
-                    correos: datos.value.correos,
-                }).then(() => { savedTabs.value.datos = true; })
+                centrosService.update(centroId.value, buildCentroPayload())
+                    .then(() => { savedTabs.value.datos = true; })
             );
             tareas.push(
-                fichasService.update(fichaId.value, {
-                    fecha_solicitud: toISO(datos.value.fecha_solicitud),
-                    tipo_solicitud: datos.value.tipo_solicitud || null,
-                    fecha_fundacion: toISO(datos.value.fecha_fundacion),
-                    direccion: datos.value.direccion || null,
-                })
+                fichasService.update(fichaId.value, buildFichaBasePayload())
             );
         }
 

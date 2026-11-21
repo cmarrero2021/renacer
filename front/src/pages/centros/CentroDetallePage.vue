@@ -336,16 +336,13 @@
                                         <q-chip v-if="ficha.servicios.servicio_funerario" color="positive"
                                             text-color="white" dense>Funerario</q-chip>
                                         <q-chip v-if="ficha.servicios.medicos" color="positive" text-color="white"
-                                            dense>Médicos{{ ficha.servicios.medicos_descripcion ? ': ' +
-                                            ficha.servicios.medicos_descripcion : '' }}</q-chip>
+                                            dense>Médicos{{ ficha.servicios.medicos_descripcion ? ': ' + toTitleCase(ficha.servicios.medicos_descripcion) : '' }}</q-chip>
                                         <q-chip v-if="ficha.servicios.lavanderia" color="positive" text-color="white"
-                                            dense>Lavandería{{ ficha.servicios.lavanderia_descripcion ? ': ' +
-                                            ficha.servicios.lavanderia_descripcion : '' }}</q-chip>
+                                            dense>Lavandería{{ ficha.servicios.lavanderia_descripcion ? ': ' + toTitleCase(ficha.servicios.lavanderia_descripcion) : '' }}</q-chip>
                                         <q-chip v-if="ficha.servicios.barberia_peluqueria" color="positive"
                                             text-color="white" dense>Barbería/Peluquería</q-chip>
                                         <q-chip v-if="ficha.servicios.otros" color="positive" text-color="white"
-                                            dense>Otros{{ ficha.servicios.otros_descripcion ? ': ' +
-                                            ficha.servicios.otros_descripcion : '' }}</q-chip>
+                                            dense>Otros{{ ficha.servicios.otros_descripcion ? ': ' + toTitleCase(ficha.servicios.otros_descripcion) : '' }}</q-chip>
                                         <!-- Servicios adicionales del catálogo (persistidos en ficha_servicios.extras) -->
                                         <q-chip v-for="s in serviciosExtras" :key="s.codigo" color="positive"
                                             text-color="white" dense>{{ s.label }}</q-chip>
@@ -417,7 +414,7 @@
                                             <div class="text-caption text-grey">No Adscritos</div>{{
                                             ficha.personal.num_personal_no_adscrito ?? 0 }}
                                             <span v-if="ficha.personal.descripcion_no_adscrito" class="text-caption text-grey block">
-                                                ({{ ficha.personal.descripcion_no_adscrito }})
+                                                ({{ toTitleCase(ficha.personal.descripcion_no_adscrito) }})
                                             </span>
                                         </div>
                                         <div class="col-12 col-md-6 text-body2" v-if="ficha.personal.posee_expediente_curricular != null">
@@ -427,7 +424,7 @@
                                         </div>
                                         <div class="col-12 text-body2" v-if="ficha.personal.otros_personal">
                                             <span class="text-caption text-grey q-mr-sm">Otros tipos de personal:</span>
-                                            <span>{{ ficha.personal.descripcion_otros_personal || 'Registrado' }}</span>
+                                            <span>{{ toTitleCase(ficha.personal.descripcion_otros_personal) || 'Registrado' }}</span>
                                         </div>
                                     </div>
                                 </q-card-section>
@@ -458,8 +455,7 @@
                                             <table style="width:100%; border-collapse:collapse">
                                                 <tr>
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Estado inmueble</td>
-                                                    <td class="text-body2" style="padding:4px">{{
-                                                        ficha.infraestructura.estado_inmueble_nombre || '—' }}</td>
+                                                    <td class="text-body2" style="padding:4px">{{ toTitleCase(ficha.infraestructura.estado_inmueble_nombre) || '—' }}</td>
                                                 </tr>
                                                 <tr>
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Nro. dormitorios</td>
@@ -752,12 +748,12 @@
                                                 </tr>
                                                 <tr v-if="ficha.infraestructura.planta_electrica && ficha.infraestructura.planta_electrica_tipo_nombre">
                                                     <td class="text-caption text-grey" style="width:60%;padding:4px">Tipo de planta</td>
-                                                    <td class="text-body2" style="padding:4px">{{ ficha.infraestructura.planta_electrica_tipo_nombre }}</td>
+                                                    <td class="text-body2" style="padding:4px">{{ toTitleCase(ficha.infraestructura.planta_electrica_tipo_nombre) }}</td>
                                                 </tr>
                                             </table>
                                             <div v-if="ficha.infraestructura.descripcion_otros" class="q-mt-sm">
                                                 <div class="text-caption text-grey">Observaciones adicionales</div>
-                                                <div class="text-body2">{{ ficha.infraestructura.descripcion_otros }}</div>
+                                                <div class="text-body2">{{ toTitleCase(ficha.infraestructura.descripcion_otros) }}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1173,6 +1169,12 @@ const formatDateVue = (d) => {
   return isNaN(dt) ? d : dt.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 };
 
+// Convierte a "primera en mayúsculas, resto minúsculas"
+const toTitleCase = (str) => {
+  if (!str) return str;
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
 // ─── PDF Printer Friendly ──────────────────────────────────────────────
 const generarPdfPrinterFriendly = async () => {
   const centroData = centro.value;
@@ -1285,7 +1287,7 @@ const generarPdfPrinterFriendly = async () => {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
     doc.setTextColor(0, 51, 102);
-    doc.text(title.toUpperCase(), marginLeft + 5, currentY + 3.8);
+    doc.text(toTitleCase(title), marginLeft + 5, currentY + 3.8);
     currentY += 7.5;
   };
 
@@ -1309,14 +1311,14 @@ const generarPdfPrinterFriendly = async () => {
           const xCol = marginLeft + c * colWidth;
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(90, 95, 105);
-          doc.text(`${item.label}:`, xCol + 2, yLine);
+          doc.text(toTitleCase(`${item.label}:`), xCol + 2, yLine);
 
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(20, 25, 35);
-          const labelW = doc.getTextWidth(`${item.label}: `);
+          const labelW = doc.getTextWidth(toTitleCase(`${item.label}: `));
           const xVal = xCol + 2 + Math.max(labelW, 36);
           const maxValW = colWidth - Math.max(labelW, 36) - 4;
-          const valStr = String(item.value ?? '—');
+          const valStr = toTitleCase(String(item.value ?? '—'));
           const truncVal = doc.splitTextToSize(valStr, maxValW)[0] || '—';
           doc.text(truncVal, xVal, yLine);
         }
@@ -1328,14 +1330,15 @@ const generarPdfPrinterFriendly = async () => {
   const drawFullRow = (label, value) => {
     doc.setFontSize(6.8);
     doc.setFont('helvetica', 'bold');
-    const labelW = doc.getTextWidth(`${label}: `);
+    const labelW = doc.getTextWidth(toTitleCase(`${label}: `));
     const maxValW = contentWidth - Math.max(labelW, 36) - 4;
-    const splitLines = doc.splitTextToSize(String(value || '—'), maxValW);
+    const valStr = toTitleCase(String(value || '—'));
+    const splitLines = doc.splitTextToSize(valStr, maxValW);
     const blockHeight = Math.max(splitLines.length * 3.5, 4.5);
     checkPageBreak(blockHeight + 1);
 
     doc.setTextColor(90, 95, 105);
-    doc.text(`${label}:`, marginLeft + 2, currentY);
+    doc.text(toTitleCase(`${label}:`), marginLeft + 2, currentY);
 
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(20, 25, 35);
@@ -1944,7 +1947,7 @@ const tieneServicios = computed(() => {
 
 // Servicios adicionales del catálogo guardados en ficha_servicios.extras (jsonb,
 // { codigo: boolean }). Se rotulan con el nombre del catálogo; si el código ya no
-// existe en el catálogo, se muestra el código "humanizado".
+// existe en el catálogo, se muestra el código "humanizado" en title case.
 const serviciosExtras = computed(() => {
     const extras = ficha.value?.servicios?.extras;
     if (!extras || typeof extras !== 'object') return [];
@@ -1954,10 +1957,10 @@ const serviciosExtras = computed(() => {
         .map(([codigo]) => {
             const found = cat.find(c => String(c.codigo) === String(codigo));
             const label = found?.nombre
-                || String(codigo).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                || toTitleCase(String(codigo).replace(/_/g, ' '));
             return { codigo, label };
         });
-});
+    });
 
 // Población de la última fecha de corte
 const pobUltimaFecha = computed(() => {
@@ -2021,7 +2024,6 @@ function formatDate(d) {
     const dt = new Date(d);
     return isNaN(dt) ? d : dt.toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
-
 
 const showAddDialog = ref(false);
 const selectedUser = ref(null);

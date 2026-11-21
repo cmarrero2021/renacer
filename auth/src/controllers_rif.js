@@ -534,7 +534,7 @@ const guardarArchivoRif = async (centroId, archivoBase64, nombreArchivo) => {
 
     const nombre = String(nombreArchivo || 'rif.pdf').toLowerCase();
     const extMatch = nombre.match(/\.([a-z0-9]+)$/);
-    const ext = extMatch && ext.length === 2 ? extMatch[1] : 'pdf';
+    const ext = extMatch && extMatch.length === 2 ? extMatch[1] : 'pdf';
     const destPath = path.join(centroDocsPath, `rif.${ext}`);
     const buf = Buffer.from(archivoBase64, 'base64');
     fs.writeFileSync(destPath, buf);

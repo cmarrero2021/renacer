@@ -339,6 +339,24 @@ exports.consultarIdentidad = async (req, res) => {
     return res.status(400).json({ error: 'El número de cédula debe ser un número entero.' });
   }
 
+  // Verificar si el usuario ya está registrado ANTES de consultar la identidad:
+  // si la cédula ya existe en users, no se puede continuar con el registro.
+  try {
+    const usuarioExistente = await pool.query(
+      `SELECT id FROM users WHERE cedula = $1 AND deleted_at IS NULL LIMIT 1`,
+      [cedulaNum]
+    );
+    if (usuarioExistente.rows.length > 0) {
+      return res.status(409).json({
+        error: 'El usuario ya está registrado en el sistema. No puede continuar con el proceso de registro.',
+        yaRegistrado: true,
+      });
+    }
+  } catch (dbErr) {
+    console.error('Error al verificar si el usuario ya está registrado:', dbErr.message);
+    return res.status(500).json({ error: 'Error al verificar la cédula indicada.' });
+  }
+
   if (!IDENTIFICACION_API_TOKEN) {
     console.error('IDENTIFICACION_API_TOKEN no está configurado en el archivo .env');
     return res.status(500).json({ error: 'Servicio de identificación no configurado.' });

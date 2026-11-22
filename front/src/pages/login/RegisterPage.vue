@@ -75,6 +75,15 @@
           <q-btn v-if="!identidad" label="Consultar Identidad" class="q-mt-md full-width" color="primary"
             @click="handleConsultarIdentidad" :loading="loading" />
 
+          <!-- Usuario ya registrado: no se puede continuar con el registro -->
+          <q-banner v-if="usuarioYaRegistrado" class="bg-negative text-white q-mt-md" rounded dense>
+            <template v-slot:avatar>
+              <q-icon name="block" />
+            </template>
+            El usuario ya está registrado en el sistema. No puede continuar con el proceso de registro.
+            Si cree que se trata de un error, comuníquese con soporte mediante el correo renacer@minaamp.gob.ve.
+          </q-banner>
+
           <!-- Datos de identidad (solo lectura, rellenados por la API) -->
           <template v-if="identidad">
             <q-banner class="bg-positive text-white q-mt-md" rounded dense>
@@ -246,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { Notify } from "quasar";
 import { registroService } from "src/services/registro.service";
 
@@ -356,6 +365,7 @@ const handleVerifyCode = async () => {
 const nacionalidad = ref(null);
 const cedula = ref("");
 const identidad = ref(null);
+const usuarioYaRegistrado = ref(false);   // cédula ya existente en users → no puede continuar
 
 const opcionesNacionalidad = [
   { label: "V - Venezolano", value: "V" },
@@ -374,6 +384,7 @@ const handleConsultarIdentidad = async () => {
   }
 
   loading.value = true;
+  usuarioYaRegistrado.value = false;
   try {
     const response = await registroService.consultarIdentidad(registroToken.value, nacionalidad.value, cedulaNum);
     if (response.data.encontrado) {
@@ -384,7 +395,15 @@ const handleConsultarIdentidad = async () => {
     }
   } catch (error) {
     const data = error.response?.data;
-    if (error.response?.status === 401) {
+    if (error.response?.status === 409) {
+      // El usuario ya existe en la tabla users: no se puede continuar el registro.
+      identidad.value = null;
+      usuarioYaRegistrado.value = true;
+      Notify.create({
+        message: data?.error || "El usuario ya está registrado. No puede continuar con el proceso de registro.",
+        color: "negative", position: "top", timeout: 7000, icon: "block",
+      });
+    } else if (error.response?.status === 401) {
       Notify.create({ message: data?.error || "Sesión de registro expirada. Inicie nuevamente.", color: "negative", position: "top", timeout: 5000 });
       volverAlInicio();
     } else {
@@ -394,6 +413,9 @@ const handleConsultarIdentidad = async () => {
     loading.value = false;
   }
 };
+
+// Si el usuario cambia la cédula, se limpia el aviso de "ya registrado".
+watch(cedula, () => { usuarioYaRegistrado.value = false; });
 
 // ==========================================
 // PASO 4: Datos del usuario y del centro

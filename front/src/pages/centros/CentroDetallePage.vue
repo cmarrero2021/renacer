@@ -1355,8 +1355,19 @@ const generarPdfPrinterFriendly = async () => {
   doc.setFontSize(11);
   doc.setTextColor(0, 51, 102);
   const nombreCentro = centroData?.nombre_establecimiento || 'Centro de Atención';
-  doc.text(nombreCentro.toUpperCase(), marginLeft, currentY);
-  currentY += 4.5;
+  const nombreUpper = nombreCentro.toUpperCase();
+
+  // Si el nombre excede los 64 caracteres, se parte en varias líneas:
+  // el resto del contenido se desplaza hacia abajo automáticamente porque
+  // todo se posiciona con currentY.
+  const LIMITE_CARACTERES_TITULO = 64;
+  const tituloLines = nombreUpper.length > LIMITE_CARACTERES_TITULO
+    ? doc.splitTextToSize(nombreUpper, contentWidth)
+    : [nombreUpper];
+  const tituloLineHeight = 4.5;
+
+  doc.text(tituloLines, marginLeft, currentY);
+  currentY += tituloLines.length * tituloLineHeight;
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);

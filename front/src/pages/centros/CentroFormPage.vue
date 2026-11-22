@@ -178,7 +178,9 @@
                             </div>
                             <div class="col-12">
                                 <div class="text-caption q-mb-xs">b) Dirección completa (Av, Calle, Urb, N°) *</div>
-                                <q-input v-model="datos.direccion" readonly disabled outlined dense :rules="[v => !!v || 'Requerido']" />
+                                <q-input v-model="datos.direccion" outlined dense
+                                    placeholder="Precargada desde el RIF; puede editarla"
+                                    :rules="[v => !!v || 'Requerido']" />
                             </div>
 
                             <!-- Botones de geolocalización -->

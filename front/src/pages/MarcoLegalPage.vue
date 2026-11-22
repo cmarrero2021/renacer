@@ -2,8 +2,43 @@
     <q-page padding>
         <div class="text-h4 q-mb-md">Marco Legal</div>
 
-        <!-- Documentos descargables -->
+        <!-- Instructivos y documentos descargables -->
         <q-card class="q-mb-lg">
+            <q-card-section>
+                <div class="text-h6 q-mb-sm">
+                    <q-icon name="school" class="q-mr-sm" />Instructivos
+                </div>
+                <q-list separator>
+                    <q-item clickable tag="a" href="/documentos/Guia%20RENACER.pdf" target="_blank">
+                        <q-item-section avatar>
+                            <q-icon name="picture_as_pdf" color="red" />
+                        </q-item-section>
+                        <q-item-section>
+                            <q-item-label>Guía RENACER</q-item-label>
+                            <q-item-label caption>Instructivo de registro en RENACER</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                            <q-icon name="open_in_new" color="grey" />
+                        </q-item-section>
+                    </q-item>
+
+                    <q-item clickable tag="a" href="/documentos/Manual%20RENACER.pdf" target="_blank">
+                        <q-item-section avatar>
+                            <q-icon name="picture_as_pdf" color="red" />
+                        </q-item-section>
+                        <q-item-section>
+                            <q-item-label>Manual RENACER</q-item-label>
+                            <q-item-label caption>Manual de uso del sistema RENACER</q-item-label>
+                        </q-item-section>
+                        <q-item-section side>
+                            <q-icon name="open_in_new" color="grey" />
+                        </q-item-section>
+                    </q-item>
+                </q-list>
+            </q-card-section>
+
+            <q-separator />
+
             <q-card-section>
                 <div class="text-h6 q-mb-sm">
                     <q-icon name="description" class="q-mr-sm" />Documentos

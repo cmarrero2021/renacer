@@ -828,7 +828,7 @@ exports.getFichaActual = async (req, res) => {
         const ficha = fichaResult.rows[0];
 
         // Cargar tablas dependientes
-        const [documentos, servicios, personal, infraestructura, accesibilidad, capacidad, poblacion] = await Promise.all([
+        const [documentos, documentosPersonal, servicios, personal, infraestructura, accesibilidad, capacidad, poblacion] = await Promise.all([
             client.query(`
                 SELECT id, ficha_id, tipo_documento, tiene_original, tiene_copia, descripcion,
                        archivo_nombre, archivo_tamano, archivo_mimetype, archivo_ruta,
@@ -837,6 +837,17 @@ exports.getFichaActual = async (req, res) => {
                 FROM public.ficha_documentos
                 WHERE ficha_id = $1
                 ORDER BY id ASC
+            `, [ficha.id]),
+            client.query(`
+                SELECT d.id, d.ficha_id, d.rol_personal, d.tipo_documento_id, d.numero,
+                       t.codigo AS tipo_documento_codigo, t.nombre AS tipo_documento_nombre,
+                       d.archivo_nombre, d.archivo_tamano, d.archivo_mimetype, d.archivo_ruta,
+                       (d.archivo_ruta IS NOT NULL) AS tiene_archivo,
+                       d.created_at, d.updated_at
+                FROM public.ficha_documentos_personal d
+                JOIN public.tipo_documento_trabajador t ON t.id = d.tipo_documento_id
+                WHERE d.ficha_id = $1
+                ORDER BY d.rol_personal ASC, d.numero ASC, t.nombre ASC
             `, [ficha.id]),
             client.query('SELECT * FROM public.ficha_servicios WHERE ficha_id = $1', [ficha.id]),
             client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [ficha.id]),
@@ -858,6 +869,7 @@ exports.getFichaActual = async (req, res) => {
         res.json({
             ...ficha,
             documentos: documentos.rows,
+            documentos_personal: documentosPersonal.rows,
             servicios: servicios.rows[0] || null,
             personal: personal.rows[0] || null,
             infraestructura: infraestructura.rows[0] || null,
@@ -1738,6 +1750,282 @@ exports.descargarArchivoDocumento = async (req, res) => {
         return res.sendFile(absolutePath);
     } catch (err) {
         res.status(500).json({ error: 'Error al obtener el archivo del documento', detail: err.message });
+    } finally {
+        client.release();
+    }
+};
+
+// ============================================================
+// DOCUMENTOS POR TRABAJADOR (personal especializado)
+// Cada persona indicada en el tab PERSONAL (Personal Asistencial
+// y de Salud + Responsables de Farmacia) requiere 1 archivo por
+// cada tipo activo del catálogo tipo_documento_trabajador
+// (por ahora: Certificado de Salud y Resumen Curricular).
+// ============================================================
+
+// Rol de personal → campo de conteo en ficha_personal + etiqueta legible
+const ROLES_PERSONAL_DOCUMENTOS = {
+    medicos: { campo: 'num_medicos', label: 'Médicos' },
+    gerontologos: { campo: 'num_gerontologos', label: 'Gerontólogos' },
+    psicologos: { campo: 'num_psicologos', label: 'Psicólogos' },
+    enfermeros: { campo: 'num_enfermeros', label: 'Enfermeros' },
+    auxiliares_enfermeria: { campo: 'num_auxiliares_enfermeria', label: 'Auxiliares de Enfermería' },
+    cuidadores: { campo: 'num_cuidadores', label: 'Cuidadores' },
+    responsables_farmacia: { campo: 'num_responsables_farmacia', label: 'Responsables de Farmacia' },
+};
+
+/**
+ * Normaliza el rol de personal recibido (tolerante a mayúsculas/minúsculas y al
+ * prefijo "num_" del campo de conteo). Ej.: "NUM_MEDICOS" → "medicos".
+ * @returns {string|null} Clave canónica del rol, o null si no es válido.
+ */
+function normalizarRolPersonal(valor) {
+    const v = String(valor || '').trim().toLowerCase();
+    if (ROLES_PERSONAL_DOCUMENTOS[v]) return v;
+    const sinPrefijo = v.startsWith('num_') ? v.slice(4) : `num_${v}`;
+    return ROLES_PERSONAL_DOCUMENTOS[sinPrefijo] ? sinPrefijo : null;
+}
+
+exports.saveDocumentosPersonal = async (req, res) => {
+    const { fichaId } = req.params;
+    const { documentos = [] } = req.body;
+    const client = await pool.connect();
+    try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'write'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
+        // Formatos de archivo permitidos (mimetype → extensión en disco)
+        const FORMATOS_PERMITIDOS = {
+            'application/pdf': '.pdf',
+            'image/png': '.png',
+            'image/jpeg': '.jpg',
+        };
+
+        // Tipos activos del catálogo
+        const tiposResult = await client.query(
+            'SELECT id, codigo, nombre FROM public.tipo_documento_trabajador WHERE activo = TRUE AND deleted_at IS NULL'
+        );
+        const tiposPorId = new Map(tiposResult.rows.map(t => [t.id, t]));
+        const tiposPorCodigo = new Map(tiposResult.rows.map(t => [String(t.codigo).toLowerCase(), t]));
+
+        // Conteos vigentes del personal
+        const personalResult = await client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [fichaId]);
+        const personal = personalResult.rows[0] || {};
+
+        // Validaciones previas de coherencia, formato y peso
+        for (const doc of documentos) {
+            let tipo = tiposPorId.get(parseInt(doc.tipo_documento_id, 10));
+            if (!tipo && doc.tipo_documento_codigo) {
+                tipo = tiposPorCodigo.get(String(doc.tipo_documento_codigo).trim().toLowerCase());
+            }
+            if (!tipo) {
+                return res.status(400).json({ error: 'Tipo de documento de trabajador inválido o inactivo.' });
+            }
+            const tipoId = tipo.id;
+
+            // Normalizar el rol (tolerante a mayúsculas y al prefijo "num_")
+            const rolNormal = normalizarRolPersonal(doc.rol_personal);
+            if (!rolNormal) {
+                return res.status(400).json({ error: `Rol de personal no válido: "${doc.rol_personal}".` });
+            }
+            doc.rol_personal = rolNormal; // usar el valor canónico en el resto del flujo
+            const rolCfg = ROLES_PERSONAL_DOCUMENTOS[rolNormal];
+
+            const numero = parseInt(doc.numero, 10);
+            if (!Number.isInteger(numero) || numero < 1) {
+                return res.status(400).json({ error: `Número de persona inválido para "${tipo.nombre}".` });
+            }
+
+            const conteo = parseInt(personal[rolCfg.campo] ?? 0, 10) || 0;
+            if (numero > conteo) {
+                return res.status(400).json({
+                    error: `No existe la persona #${numero} en "${rolCfg.label}" (cantidad indicada: ${conteo}).`
+                });
+            }
+
+            if (doc.archivo_base64) {
+                const isMimeValido = FORMATOS_PERMITIDOS.hasOwnProperty(doc.archivo_mimetype);
+                const isDataUrlValido = typeof doc.archivo_base64 === 'string'
+                    && /^data:(application\/pdf|image\/(png|jpeg));/i.test(doc.archivo_base64);
+                const isPdfHeader = typeof doc.archivo_base64 === 'string' && doc.archivo_base64.slice(0, 40).includes('JVBERi0');
+                if (!isMimeValido && !isDataUrlValido && !isPdfHeader) {
+                    return res.status(400).json({
+                        error: `El documento "${tipo.nombre}" de ${rolCfg.label} #${numero} debe ser un archivo en formato PDF, PNG, JPG o JPEG.`
+                    });
+                }
+
+                const tamano = doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null;
+                if (tamano && tamano > MAX_FILE_SIZE) {
+                    return res.status(400).json({
+                        error: `El archivo "${doc.archivo_nombre || tipo.nombre}" supera el límite máximo permitido de 10 MB.`
+                    });
+                }
+            }
+        }
+
+        await client.query('BEGIN');
+
+        for (const doc of documentos) {
+            let tipo = tiposPorId.get(parseInt(doc.tipo_documento_id, 10));
+            if (!tipo && doc.tipo_documento_codigo) {
+                tipo = tiposPorCodigo.get(String(doc.tipo_documento_codigo).trim().toLowerCase());
+            }
+            const tipoId = tipo.id;
+            const numero = parseInt(doc.numero, 10);
+            const eliminar = !!doc.eliminar_archivo;
+            const tieneNuevo = Boolean(doc.archivo_base64);
+
+            // Escribir archivo a disco si es nuevo (nombre unívoco: {rol}_{tipo}_{numero}.ext)
+            let archivoRuta = null;
+            if (tieneNuevo) {
+                let extension = FORMATOS_PERMITIDOS[doc.archivo_mimetype];
+                if (!extension && typeof doc.archivo_nombre === 'string') {
+                    const m = doc.archivo_nombre.toLowerCase().match(/\.(pdf|png|jpe?g)$/);
+                    if (m) extension = m[1] === 'pdf' ? '.pdf' : `.${m[1].replace('jpeg', 'jpg')}`;
+                }
+                const nombreDisco = `${doc.rol_personal}_${tipo.codigo}_${numero}`;
+                archivoRuta = writeFileToDisk(fichaId, nombreDisco, doc.archivo_base64, extension || '.pdf');
+            }
+
+            // Localizar el registro previo por su clave única
+            const prevDoc = await client.query(
+                'SELECT id, archivo_ruta FROM public.ficha_documentos_personal WHERE ficha_id = $1 AND rol_personal = $2 AND tipo_documento_id = $3 AND numero = $4',
+                [fichaId, doc.rol_personal, tipoId, numero]
+            );
+            const prevRow = prevDoc.rows[0] || null;
+
+            // Si se elimina, borrar archivo previo del disco y quitar el registro
+            if (eliminar) {
+                if (prevRow) {
+                    if (prevRow.archivo_ruta) deleteFileFromDisk(prevRow.archivo_ruta);
+                    await client.query('DELETE FROM public.ficha_documentos_personal WHERE id = $1', [prevRow.id]);
+                }
+                continue;
+            }
+
+            // Si se sube un nuevo archivo, borrar el anterior del disco
+            if (tieneNuevo && prevRow && prevRow.archivo_ruta) {
+                deleteFileFromDisk(prevRow.archivo_ruta);
+            }
+
+            await client.query(
+                `INSERT INTO public.ficha_documentos_personal
+                 (ficha_id, rol_personal, tipo_documento_id, numero, archivo_ruta, archivo_nombre, archivo_tamano, archivo_mimetype)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+                 ON CONFLICT (ficha_id, rol_personal, tipo_documento_id, numero) DO UPDATE SET
+                   archivo_ruta = CASE
+                       WHEN $9::boolean = TRUE THEN EXCLUDED.archivo_ruta
+                       ELSE public.ficha_documentos_personal.archivo_ruta
+                   END,
+                   archivo_nombre = CASE
+                       WHEN $9::boolean = TRUE THEN EXCLUDED.archivo_nombre
+                       ELSE public.ficha_documentos_personal.archivo_nombre
+                   END,
+                   archivo_tamano = CASE
+                       WHEN $9::boolean = TRUE THEN EXCLUDED.archivo_tamano
+                       ELSE public.ficha_documentos_personal.archivo_tamano
+                   END,
+                   archivo_mimetype = CASE
+                       WHEN $9::boolean = TRUE THEN EXCLUDED.archivo_mimetype
+                       ELSE public.ficha_documentos_personal.archivo_mimetype
+                   END,
+                   updated_at = NOW()`,
+                [
+                    fichaId,
+                    doc.rol_personal,
+                    tipoId,
+                    numero,
+                    archivoRuta,
+                    doc.archivo_nombre || null,
+                    doc.archivo_tamano ? parseInt(doc.archivo_tamano, 10) : null,
+                    doc.archivo_mimetype || 'application/pdf',
+                    tieneNuevo
+                ]
+            );
+        }
+
+        // Purga de documentos sobrantes: conteo reducido o tipo inactivo
+        const todos = await client.query(
+            'SELECT id, rol_personal, tipo_documento_id, numero, archivo_ruta FROM public.ficha_documentos_personal WHERE ficha_id = $1',
+            [fichaId]
+        );
+        for (const row of todos.rows) {
+            const rolNormal = normalizarRolPersonal(row.rol_personal);
+            const rolCfg = rolNormal ? ROLES_PERSONAL_DOCUMENTOS[rolNormal] : null;
+            const conteo = rolCfg ? (parseInt(personal[rolCfg.campo] ?? 0, 10) || 0) : 0;
+            const vigente = rolCfg
+                && tiposPorId.has(row.tipo_documento_id)
+                && row.numero >= 1
+                && row.numero <= conteo;
+            if (!vigente) {
+                deleteFileFromDisk(row.archivo_ruta);
+                await client.query('DELETE FROM public.ficha_documentos_personal WHERE id = $1', [row.id]);
+            }
+        }
+
+        await client.query('COMMIT');
+
+        // Devolver los documentos vigentes (con id) para refrescar el formulario
+        const guardados = await client.query(`
+            SELECT d.id, d.rol_personal, d.tipo_documento_id, d.numero,
+                   t.codigo AS tipo_documento_codigo, t.nombre AS tipo_documento_nombre,
+                   d.archivo_nombre, d.archivo_tamano, d.archivo_mimetype,
+                   (d.archivo_ruta IS NOT NULL) AS tiene_archivo
+            FROM public.ficha_documentos_personal d
+            JOIN public.tipo_documento_trabajador t ON t.id = d.tipo_documento_id
+            WHERE d.ficha_id = $1
+            ORDER BY d.rol_personal ASC, d.numero ASC, t.nombre ASC
+        `, [fichaId]);
+
+        res.json({ message: 'Documentos del personal guardados exitosamente.', documentos: guardados.rows });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        res.status(500).json({ error: 'Error al guardar documentos del personal', detail: err.message });
+    } finally { client.release(); }
+};
+
+exports.descargarArchivoDocumentoPersonal = async (req, res) => {
+    const { fichaId, docId } = req.params;
+    const client = await pool.connect();
+    try {
+        const fichaCheck = await client.query('SELECT centro_id FROM public.fichas_establecimiento WHERE id = $1', [fichaId]);
+        if (!fichaCheck.rows.length) return res.status(404).json({ error: 'Ficha no encontrada.' });
+        if (!(await verifyCentroAccess(req.userId, fichaCheck.rows[0].centro_id, client, 'read'))) {
+            return res.status(403).json({ error: 'Sin acceso.' });
+        }
+
+        const r = await client.query(
+            `SELECT d.id, d.numero, d.archivo_ruta, d.archivo_nombre, d.archivo_tamano, d.archivo_mimetype,
+                    t.nombre AS tipo_documento_nombre
+             FROM public.ficha_documentos_personal d
+             JOIN public.tipo_documento_trabajador t ON t.id = d.tipo_documento_id
+             WHERE d.ficha_id = $1 AND d.id = $2`,
+            [fichaId, parseInt(docId, 10)]
+        );
+        if (!r.rows.length || !r.rows[0].archivo_ruta) {
+            return res.status(404).json({ error: 'El documento no tiene un archivo adjunto.' });
+        }
+
+        const doc = r.rows[0];
+        const absolutePath = getAbsoluteFilePath(doc.archivo_ruta);
+
+        if (!fs.existsSync(absolutePath)) {
+            return res.status(404).json({ error: 'El archivo no se encuentra en el servidor.' });
+        }
+
+        const filename = doc.archivo_nombre || `${doc.tipo_documento_nombre}_${doc.numero}.pdf`;
+        const disposition = req.query.download === '1' ? 'attachment' : 'inline';
+
+        res.setHeader('Content-Type', doc.archivo_mimetype || 'application/pdf');
+        res.setHeader('Content-Disposition', `${disposition}; filename="${encodeURIComponent(filename)}"`);
+        return res.sendFile(absolutePath);
+    } catch (err) {
+        res.status(500).json({ error: 'Error al obtener el archivo del documento del personal', detail: err.message });
     } finally {
         client.release();
     }

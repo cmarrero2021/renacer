@@ -1042,6 +1042,43 @@
                                 </q-card-section>
                             </q-card>
                         </q-expansion-item>
+
+                        <!-- Documentos por trabajador (personal especializado) -->
+                        <q-expansion-item v-if="documentosPersonal.length" icon="badge"
+                            label="Documentos del Personal" class="q-mb-sm">
+                            <q-card flat bordered>
+                                <q-card-section>
+                                    <div class="text-caption text-grey-7 q-mb-sm">
+                                        Certificados de salud y resúmenes curriculares del personal asistencial,
+                                        de salud y responsables de farmacia indicado en la ficha.
+                                    </div>
+                                    <div v-for="d in documentosPersonal" :key="d.id"
+                                        class="row items-center q-py-xs q-col-gutter-sm"
+                                        style="border-bottom: 1px solid #f0f0f0">
+                                        <div class="col-12 col-md-5 text-body2 text-weight-medium">
+                                            {{ etiquetaDocPersonal(d) }}
+                                        </div>
+                                        <div class="col-12 col-md-5">
+                                            <div class="row items-center q-gutter-xs">
+                                                <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf">
+                                                    <span class="ellipsis" style="max-width: 150px"
+                                                        :title="d.archivo_nombre || 'Documento PDF'">
+                                                        {{ d.archivo_nombre || 'Documento PDF' }}
+                                                    </span>
+                                                    <span v-if="d.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
+                                                        ({{ formatFileSize(d.archivo_tamano) }})
+                                                    </span>
+                                                </q-chip>
+                                                <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                                    @click="verDocumentoPersonalPdf(d)" title="Abrir en nueva pestaña" />
+                                                <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                                    @click="descargarDocumentoPersonalPdf(d)" title="Descargar PDF" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </q-card-section>
+                            </q-card>
+                        </q-expansion-item>
                     </div>
                 </q-tab-panel>
 
@@ -1757,6 +1794,19 @@ const generarPdfPrinterFriendly = async () => {
       });
       drawKeyValueGrid(docItems, 2);
     }
+
+    // 6.9 Documentación del Personal (por trabajador)
+    const docsPersonal = fichaData.documentos_personal || [];
+    if (docsPersonal.length) {
+      drawSectionHeader('Documentos del Personal (por trabajador)');
+      const itemsPersonal = docsPersonal.map(d => {
+        const rolLabel = LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal;
+        const etiqueta = `${d.tipo_documento_nombre || d.tipo_documento_codigo} — ${rolLabel} #${d.numero}`;
+        const estatus = d.tiene_archivo || d.archivo_nombre ? 'Archivo Digital' : 'Registrado';
+        return { label: etiqueta, value: estatus };
+      });
+      drawKeyValueGrid(itemsPersonal, 2);
+    }
   }
 
   // ══════════════════════════════════════════════════════════════════════════
@@ -1826,6 +1876,27 @@ function formatFileSize(bytes) {
     return mb.toFixed(1) + ' MB';
 }
 
+// ── Documentos por trabajador (personal especializado) ──
+const LABELS_ROLES_DOC_PERSONAL = {
+    medicos: 'Médicos',
+    gerontologos: 'Gerontólogos',
+    psicologos: 'Psicólogos',
+    enfermeros: 'Enfermeros',
+    auxiliares_enfermeria: 'Aux. Enfermería',
+    cuidadores: 'Cuidadores',
+    responsables_farmacia: 'Responsables de Farmacia',
+};
+
+// Etiqueta unívoca: "{Nombre del tipo} — {Rol} #{número de persona}"
+const etiquetaDocPersonal = (d) =>
+    `${d.tipo_documento_nombre || d.tipo_documento_codigo} — ${LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal} #${d.numero}`;
+
+const documentosPersonal = computed(() => {
+    const rows = ficha.value?.documentos_personal;
+    if (!Array.isArray(rows)) return [];
+    return rows.filter(d => d.tiene_archivo || d.archivo_nombre || d.archivo_ruta);
+});
+
 async function verDocumentoPdf(d) {
     if (!ficha.value?.id) return;
     // Abrir ventana de inmediato para evitar que el navegador bloquee el popup
@@ -1877,6 +1948,51 @@ async function descargarDocumentoPdf(d) {
             type: 'negative',
             message: 'Error al descargar el documento PDF.'
         });
+    }
+}
+
+// ── Documentos por trabajador (ficha_documentos_personal) ──
+async function verDocumentoPersonalPdf(d) {
+    if (!ficha.value?.id || !d.id) return;
+    const newWindow = window.open('', '_blank');
+    if (newWindow) {
+        newWindow.document.title = etiquetaDocPersonal(d);
+        newWindow.document.body.innerHTML = `
+            <div style="display:flex;justify-content:center;align-items:center;height:100vh;font-family:sans-serif;color:#555;">
+                <p>Cargando documento PDF...</p>
+            </div>
+        `;
+    }
+    try {
+        const res = await fichasService.getDocumentoPersonalArchivo(ficha.value.id, d.id);
+        const url = URL.createObjectURL(res.data);
+        if (newWindow) {
+            newWindow.location.href = url;
+        } else {
+            window.open(url, '_blank');
+        }
+    } catch (err) {
+        if (newWindow) newWindow.close();
+        console.error(err);
+        $q.notify({ type: 'negative', message: 'Error al abrir el documento del personal.' });
+    }
+}
+
+async function descargarDocumentoPersonalPdf(d) {
+    if (!ficha.value?.id || !d.id) return;
+    try {
+        const res = await fichasService.getDocumentoPersonalArchivo(ficha.value.id, d.id, true);
+        const url = URL.createObjectURL(res.data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = d.archivo_nombre || `${etiquetaDocPersonal(d)}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+        console.error(err);
+        $q.notify({ type: 'negative', message: 'Error al descargar el documento del personal.' });
     }
 }
 

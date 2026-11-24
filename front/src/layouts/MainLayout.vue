@@ -104,6 +104,11 @@
               <q-item-section avatar><q-icon name="folder_shared" /></q-item-section>
               <q-item-section>Tipos de Documentos</q-item-section>
             </q-item>
+            <q-item clickable v-ripple to="/admin/catalogos/tipo_documento_trabajador"
+              v-if="isAdmin() || hasPermission('view_tipo_documento_trabajador')" class="q-pl-lg">
+              <q-item-section avatar><q-icon name="badge" /></q-item-section>
+              <q-item-section>Tipos de Documento de Trabajador</q-item-section>
+            </q-item>
             <q-item clickable v-ripple to="/admin/catalogos/servicios_catalogo"
               v-if="isAdmin() || hasPermission('view_servicios_catalogo')" class="q-pl-lg">
               <q-item-section avatar><q-icon name="medical_services" /></q-item-section>

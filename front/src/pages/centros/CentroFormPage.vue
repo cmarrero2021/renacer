@@ -1113,7 +1113,69 @@
                         </template>
                     </q-table>
 
+                    <!-- ── Documentos por trabajador (personal especializado) ─────── -->
+                    <section-header icon="badge" label="Documentos del Personal" />
+                    <div class="text-caption text-grey-7 q-mb-sm">
+                        <q-icon name="info" color="primary" class="q-mr-xs" />
+                        Cada persona indicada en <strong>PERSONAL</strong> (Asistencial y de Salud, y Responsables
+                        de Farmacia) requiere <strong>un Certificado de Salud</strong> y <strong>un Resumen
+                        Curricular</strong>. Estos documentos son obligatorios para finalizar el registro.
+                    </div>
+
+                    <template v-if="gruposDocsPersonal.length">
+                        <div v-for="grupo in gruposDocsPersonal" :key="grupo.field" class="q-mb-md">
+                            <div class="text-subtitle2 text-weight-bold q-mb-xs">
+                                {{ grupo.label }} ({{ grupo.cantidad }})
+                            </div>
+                            <q-list bordered dense separator class="rounded-borders">
+                                <q-item v-for="fila in grupo.filas"
+                                    :key="fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero">
+                                    <q-item-section side class="text-caption text-grey-7" style="width: 40px">
+                                        #{{ fila.numero }}
+                                    </q-item-section>
+                                    <q-item-section style="min-width: 220px">
+                                        {{ fila.tipo_documento_label }}
+                                    </q-item-section>
+                                    <q-item-section>
+                                        <!-- Archivo cargado (en sesión o guardado previamente) -->
+                                        <div v-if="fila.tiene_archivo || fila.archivo_nombre" class="row items-center q-gutter-xs">
+                                            <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf"
+                                                removable @remove="removeDocFile(fila)" :title="fila.archivo_nombre || 'Archivo'">
+                                                <span class="ellipsis" style="max-width: 160px">
+                                                    {{ fila.archivo_nombre || 'documento' }}
+                                                </span>
+                                                <span v-if="fila.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
+                                                    ({{ formatFileSize(fila.archivo_tamano) }})
+                                                </span>
+                                            </q-chip>
+                                            <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                                @click="previewDoc(fila)" title="Ver archivo" />
+                                            <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                                @click="downloadDoc(fila)" title="Descargar" />
+                                        </div>
+                                        <!-- Sin archivo -->
+                                        <div v-else class="row items-center">
+                                            <input type="file"
+                                                accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
+                                                :id="'file-upload-per-' + fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero"
+                                                style="display: none"
+                                                @change="onDocFileSelected($event, fila)" />
+                                            <q-btn outline dense size="sm" color="primary" icon="upload_file"
+                                                label="Subir archivo" @click="triggerFileUploadPersonal(fila)" />
+                                            <span class="text-caption text-grey-5 q-ml-sm">PDF, PNG, JPG (máx. 10MB)</span>
+                                        </div>
+                                    </q-item-section>
+                                </q-item>
+                            </q-list>
+                        </div>
+                    </template>
+                    <div v-else class="text-caption text-grey-6 q-pa-sm bg-grey-2 rounded-borders">
+                        No hay personal especializado indicado en el tab PERSONAL; no se requieren documentos por trabajador.
+                    </div>
+
                     <div class="row justify-end q-mt-md q-gutter-sm">
+                        <q-btn unelevated color="primary" icon="save" label="GUARDAR DOCUMENTOS"
+                            :loading="saving" @click="saveDocumentosParcial" />
                         <q-btn unelevated color="positive" icon="check_circle" label="Guardar y Finalizar"
                             :loading="saving" @click="saveDocumentos" />
                     </div>
@@ -1682,6 +1744,155 @@ function syncDocsFromCatalog() {
 watch(() => catalogosStore.opcionesDocumentos, () => {
     syncDocsFromCatalog();
 }, { immediate: true, deep: true });
+
+// ── Documentos por trabajador (personal especializado) ──────────────────────
+// Roles que requieren documentos: Personal Asistencial y de Salud + Responsables de Farmacia
+const ROLES_DOC_PERSONAL = [
+    { key: 'medicos', field: 'num_medicos', label: 'Médicos' },
+    { key: 'gerontologos', field: 'num_gerontologos', label: 'Gerontólogos' },
+    { key: 'psicologos', field: 'num_psicologos', label: 'Psicólogos' },
+    { key: 'enfermeros', field: 'num_enfermeros', label: 'Enfermeros' },
+    { key: 'auxiliares_enfermeria', field: 'num_auxiliares_enfermeria', label: 'Aux. Enfermería' },
+    { key: 'cuidadores', field: 'num_cuidadores', label: 'Cuidadores' },
+    { key: 'responsables_farmacia', field: 'num_responsables_farmacia', label: 'Responsables de Farmacia' },
+];
+
+// Normaliza un rol recibido del backend a la clave semántica (tolerante a "num_")
+const rolDocPersonalKey = (valor) => {
+    const v = String(valor || '').trim().toLowerCase();
+    return v.startsWith('num_') ? v.slice(4) : v;
+};
+
+const docsPersonal = ref([]);            // slots vigentes (conteos × tipos del catálogo)
+const docsPersonalGuardados = ref([]);   // filas persistidas en ficha_documentos_personal
+
+const keyDocPersonal = (rol, codigoTipo, numero) => `${rol}|${String(codigoTipo || '').toLowerCase()}|${numero}`;
+
+// Reconstruye los slots requeridos a partir de los conteos de PERSONAL y de los
+// tipos activos del catálogo, conservando el estado de archivos ya cargados.
+function syncDocsPersonal() {
+    const local = new Map(docsPersonal.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
+    const guardados = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
+    const slots = [];
+    for (const rol of ROLES_DOC_PERSONAL) {
+        const n = Number(pers.value[rol.field] ?? 0) || 0;
+        for (let i = 1; i <= n; i++) {
+            for (const t of catalogosStore.opcionesDocsTrabajador) {
+                const key = keyDocPersonal(rol.field, t.codigo, i);
+                const prev = local.get(key) || guardados.get(key) || {};
+                slots.push({
+                    rol: rol.key,
+                    rol_label: rol.label,
+                    numero: i,
+                    tipo_documento_id: t.id,
+                    tipo_documento_codigo: t.codigo,
+                    tipo_documento_label: t.label,
+                    id: prev.id,
+                    archivo_base64: prev.archivo_base64 || null,
+                    archivo_nombre: prev.archivo_nombre || null,
+                    archivo_tamano: prev.archivo_tamano || null,
+                    archivo_mimetype: prev.archivo_mimetype || 'application/pdf',
+                    tiene_archivo: !!(prev.tiene_archivo || prev.archivo_nombre),
+                    nuevo_archivo: !!prev.nuevo_archivo,
+                    eliminar_archivo: !!prev.eliminar_archivo,
+                });
+            }
+        }
+    }
+    docsPersonal.value = slots;
+}
+
+// Un slot sobrante (conteo reducido o tipo desactivado) sale de docsPersonal y
+// se purga en el servidor al guardar (saveDocumentosPersonal purga por conteo vigente).
+watch(() => ROLES_DOC_PERSONAL.map(r => pers.value[r.field]), syncDocsPersonal, { immediate: true });
+watch(() => catalogosStore.opcionesDocsTrabajador, syncDocsPersonal);
+
+const gruposDocsPersonal = computed(() => {
+    return ROLES_DOC_PERSONAL
+        .map(rol => ({
+            ...rol,
+            cantidad: Number(pers.value[rol.field] ?? 0) || 0,
+            filas: docsPersonal.value.filter(d => d.rol === rol.key),
+        }))
+        .filter(g => g.cantidad > 0);
+});
+
+const docsPersonalCompletos = computed(() => {
+    return docsPersonal.value.every(d => (d.tiene_archivo || d.archivo_nombre || d.archivo_base64) && !d.eliminar_archivo);
+});
+
+function faltantesDocsPersonal() {
+    return docsPersonal.value
+        .filter(d => !(d.tiene_archivo || d.archivo_nombre || d.archivo_base64) || d.eliminar_archivo)
+        .map(d => `${d.tipo_documento_label} — ${d.rol_label} #${d.numero}`);
+}
+
+function triggerFileUploadPersonal(row) {
+    const el = document.getElementById('file-upload-per-' + row.rol + '-' + row.tipo_documento_codigo + '-' + row.numero);
+    if (el) {
+        el.value = '';
+        el.click();
+    }
+}
+
+function getDocsPersonalPayload() {
+    return docsPersonal.value.map(d => ({
+        id: d.id || undefined,
+        rol_personal: d.rol,
+        tipo_documento_id: d.tipo_documento_id,
+        tipo_documento_codigo: d.tipo_documento_codigo,
+        numero: d.numero,
+        archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
+        archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
+        archivo_tamano: d.nuevo_archivo ? d.archivo_tamano : undefined,
+        archivo_mimetype: d.nuevo_archivo ? d.archivo_mimetype : undefined,
+        eliminar_archivo: !!d.eliminar_archivo
+    }));
+}
+
+function markDocsPersonalSaved() {
+    docsPersonal.value.forEach(d => {
+        if (d.eliminar_archivo) {
+            d.archivo_base64 = null;
+            d.archivo_nombre = null;
+            d.archivo_tamano = null;
+            d.tiene_archivo = false;
+        } else if (d.nuevo_archivo) {
+            d.tiene_archivo = true;
+        }
+        d.nuevo_archivo = false;
+        d.eliminar_archivo = false;
+    });
+}
+
+function aplicarDocsPersonalGuardados(rows) {
+    docsPersonalGuardados.value = (rows || []).map(d => ({
+        id: d.id,
+        rol: rolDocPersonalKey(d.rol_personal),
+        numero: Number(d.numero),
+        tipo_documento_id: d.tipo_documento_id,
+        tipo_documento_codigo: d.tipo_documento_codigo,
+        tipo_documento_label: d.tipo_documento_nombre,
+        archivo_nombre: d.archivo_nombre,
+        archivo_tamano: d.archivo_tamano,
+        archivo_mimetype: d.archivo_mimetype,
+        tiene_archivo: !!d.tiene_archivo,
+    }));
+    // Propagar ids del backend a los slots locales
+    const g = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
+    docsPersonal.value.forEach(d => {
+        const gd = g.get(keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero));
+        if (gd && gd.id) d.id = gd.id;
+    });
+    syncDocsPersonal();
+}
+
+async function persistirDocsPersonal() {
+    const res = await fichasService.saveDocumentosPersonal(fichaId.value, { documentos: getDocsPersonalPayload() });
+    markDocsPersonalSaved();
+    aplicarDocsPersonalGuardados(res.data?.documentos);
+}
+
 
 // ── Columnas de tablas ────────────────────────────────────────────────────────
 const colsPob = [
@@ -2387,6 +2598,11 @@ async function getDocBlob(row) {
         const res = await centrosService.getRifArchivo(centroId.value);
         return res.data;
     }
+    // Documentos por trabajador: viven en ficha_documentos_personal
+    if (row.rol && fichaId.value && row.id) {
+        const res = await fichasService.getDocumentoPersonalArchivo(fichaId.value, row.id);
+        return res.data;
+    }
     if (fichaId.value && (row.id || row.tipo_documento)) {
         const identifier = row.id || row.tipo_documento;
         const res = await fichasService.getDocumentoArchivo(fichaId.value, identifier);
@@ -2501,8 +2717,7 @@ function markDocsSaved() {
     });
 }
 
-async function saveDocumentos() {
-    if (!fichaId.value) return warn();
+async function guardarDocumentosContenido(finalizar) {
     saving.value = true;
     try {
         // ── Guardar SOLO secciones con datos reales y no guardadas aún ──
@@ -2558,7 +2773,9 @@ async function saveDocumentos() {
                     .then(() => { savedTabs.value.accesibilidad = true; })
             );
         }
-        if ((isEdit.value || !savedTabs.value.personal) && hasPersonal) {
+        // El personal debe estar persistido antes de los documentos por trabajador
+        // (el servidor valida cada documento contra el conteo vigente del rol)
+        if (hasPersonal || docsPersonal.value.length) {
             pendientes.push(
                 fichasService.savePersonal(fichaId.value, pers.value)
                     .then(() => { savedTabs.value.personal = true; })
@@ -2578,20 +2795,32 @@ async function saveDocumentos() {
         // ── Guardar documentos ──
         await fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() });
         markDocsSaved();
-        savedTabs.value.documentos = allDocsHaveFile.value;
+        await persistirDocsPersonal();
+        const fichaDocumentosCompleta = allDocsHaveFile.value && docsPersonalCompletos.value;
+        savedTabs.value.documentos = fichaDocumentosCompleta;
 
-        if (allDocsHaveFile.value) {
+        if (finalizar && fichaDocumentosCompleta) {
             finalizacionRegistroOpen.value = true;
         } else {
             const contables = docs.value.filter(d => !esRifPrecargado(d) && !d.tiene_archivo && !d.archivo_nombre && !d.nuevo_archivo);
-            const faltantes = contables.length;
-            Notify.create({
-                type: 'warning',
-                icon: 'warning',
-                message: faltantes
-                    ? `Documentos guardados. Faltan ${faltantes} archivo(s) PDF por subir para completar el progreso de la ficha.`
-                    : 'Documentos guardados.'
-            });
+            const faltantes = contables.length + faltantesDocsPersonal().length;
+            if (finalizar) {
+                Notify.create({
+                    type: 'warning',
+                    icon: 'warning',
+                    message: faltantes
+                        ? `Documentos guardados. Faltan ${faltantes} archivo(s) por subir para completar el progreso de la ficha.`
+                        : 'Documentos guardados.'
+                });
+            } else if (faltantes) {
+                Notify.create({
+                    type: 'info',
+                    icon: 'save',
+                    message: `Documentos guardados. Faltan ${faltantes} archivo(s) por subir para poder finalizar el registro.`
+                });
+            } else {
+                Notify.create({ type: 'positive', icon: 'check_circle', message: 'Documentos guardados exitosamente.' });
+            }
         }
     } catch (err) {
         console.error(err);
@@ -2599,6 +2828,33 @@ async function saveDocumentos() {
     } finally {
         saving.value = false;
     }
+}
+
+// GUARDAR DOCUMENTOS ▸ guardado parcial del tab (sin exigir completitud)
+async function saveDocumentosParcial() {
+    if (!fichaId.value) return warn();
+    await guardarDocumentosContenido(false);
+}
+
+// GUARDAR Y FINALIZAR ▸ exige todos los documentos del personal antes de guardar
+async function saveDocumentos() {
+    if (!fichaId.value) return warn();
+
+    // Obligatoriedad: cada trabajador indicado en PERSONAL debe tener sus documentos
+    if (!docsPersonalCompletos.value) {
+        const faltantes = faltantesDocsPersonal();
+        Notify.create({
+            type: 'negative',
+            icon: 'warning',
+            multiLine: true,
+            message: `No se puede finalizar el registro: faltan ${faltantes.length} documento(s) del personal. `
+                + `Por ejemplo: ${faltantes.slice(0, 5).join('; ')}${faltantes.length > 5 ? '; …' : ''}. `
+                + `Cárguelos en la sección "Documentos del Personal" o use "GUARDAR DOCUMENTOS" para guardar el avance.`
+        });
+        return;
+    }
+
+    await guardarDocumentosContenido(true);
 }
 
 async function saveAll() {
@@ -2652,10 +2908,9 @@ async function saveAll() {
         }
 
         // 4. Guardar Personal
-        tareas.push(
-            fichasService.savePersonal(fichaId.value, pers.value)
-                .then(() => { savedTabs.value.personal = true; })
-        );
+        const tareaPersonal = fichasService.savePersonal(fichaId.value, pers.value)
+            .then(() => { savedTabs.value.personal = true; });
+        tareas.push(tareaPersonal);
 
         // 5. Guardar Servicios
         tareas.push(
@@ -2672,10 +2927,13 @@ async function saveAll() {
                 fichasService.saveDocumentos(fichaId.value, { documentos: getDocsPayload() })
                     .then(() => {
                         markDocsSaved();
-                        savedTabs.value.documentos = allDocsHaveFile.value;
+                        savedTabs.value.documentos = allDocsHaveFile.value && docsPersonalCompletos.value;
                     })
             );
         }
+
+        // 8. Guardar Documentos por trabajador (tras persistir el personal)
+        tareas.push(tareaPersonal.then(() => persistirDocsPersonal()));
 
         const results = await Promise.allSettled(tareas);
         const rejected = results.filter(r => r.status === 'rejected');
@@ -2898,7 +3156,11 @@ onMounted(async () => {
                         String(r.tipo_documento || '').trim().toLowerCase() === String(d.tipo_documento || '').trim().toLowerCase());
                     if (row) Object.assign(row, d);
                 });
-                savedTabs.value.documentos = allDocsHaveFile.value;
+                savedTabs.value.documentos = allDocsHaveFile.value && docsPersonalCompletos.value;
+            }
+            // Documentos por trabajador (ficha_documentos_personal)
+            if (Array.isArray(ficha.documentos_personal)) {
+                aplicarDocsPersonalGuardados(ficha.documentos_personal);
             }
         }
     }

@@ -60,6 +60,11 @@ const DEFAULT_TIPOS_PLANTA = [
     { value: 5, label: 'Estaciones de baterías portátiles', es_baterias: true },
 ];
 
+const DEFAULT_TIPOS_DOC_TRABAJADOR = [
+    { value: 'certificado_salud', label: 'Certificado de Salud' },
+    { value: 'resumen_curricular', label: 'Resumen Curricular' },
+];
+
 export const useCatalogosStore = defineStore('catalogos', () => {
     // ─── Estado ───────────────────────────────────────────────────────────────
     const tiposEstablecimiento = ref([]);
@@ -68,6 +73,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
     const serviciosCatalogo = ref([]);
     const estadosInmueble = ref([]);
     const tiposPlanta = ref([]);
+    const tiposDocumentoTrabajador = ref([]);
     const loading = ref(false);
     const initialized = ref(false);
 
@@ -135,6 +141,19 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         return DEFAULT_TIPOS_PLANTA;
     });
 
+    const opcionesDocsTrabajador = computed(() => {
+        if (tiposDocumentoTrabajador.value.length > 0) {
+            return tiposDocumentoTrabajador.value
+                .filter(t => t.activo !== false)
+                .map(t => ({
+                    id: Number(t.id),
+                    codigo: t.codigo,
+                    label: t.nombre
+                }));
+        }
+        return DEFAULT_TIPOS_DOC_TRABAJADOR.map((t, i) => ({ id: i + 1, ...t }));
+    });
+
     // ─── Acciones de consulta ────────────────────────────────────────────────
     async function fetchCatalog(catalogKey) {
         try {
@@ -151,6 +170,8 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 serviciosCatalogo.value = items;
             } else if (catalogKey === 'estados_inmueble') {
                 estadosInmueble.value = items;
+            } else if (catalogKey === 'tipo_documento_trabajador') {
+                tiposDocumentoTrabajador.value = items;
             } else if (catalogKey === 'tipo_planta') {
                 tiposPlanta.value = items;
             }
@@ -169,6 +190,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 fetchCatalog('tipos_documentos'),
                 fetchCatalog('servicios_catalogo'),
                 fetchCatalog('estados_inmueble'),
+                fetchCatalog('tipo_documento_trabajador'),
                 fetchCatalog('tipo_planta')
             ]);
             initialized.value = true;
@@ -207,6 +229,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         serviciosCatalogo,
         estadosInmueble,
         tiposPlanta,
+        tiposDocumentoTrabajador,
         loading,
         initialized,
         // Getters reactivos
@@ -216,6 +239,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         opcionesServicios,
         opcionesEstadoInmueble,
         opcionesTiposPlanta,
+        opcionesDocsTrabajador,
         // Acciones
         fetchCatalog,
         fetchAll,

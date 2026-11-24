@@ -69,6 +69,27 @@ const CATALOGS_CONFIG = {
         requiredFields: ['codigo', 'nombre'],
         orderBy: 'nombre ASC'
     },
+    tipo_documento_trabajador: {
+        key: 'tipo_documento_trabajador',
+        tableName: 'public.tipo_documento_trabajador',
+        resource: 'tipo_documento_trabajador',
+        label: 'Tipos de Documento de Trabajador',
+        icon: 'badge',
+        description: 'Documentos exigidos por cada trabajador del personal especializado (Certificado de Salud, Resumen Curricular, etc.)',
+        primaryKey: 'id',
+        columns: [
+            { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
+            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
+            { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
+            { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
+            { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
+            { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
+        ],
+        searchColumns: ['codigo', 'nombre', 'descripcion'],
+        fields: ['codigo', 'nombre', 'descripcion', 'activo'],
+        requiredFields: ['codigo', 'nombre'],
+        orderBy: 'nombre ASC'
+    },
     servicios_catalogo: {
         key: 'servicios_catalogo',
         tableName: 'public.servicios_catalogo',

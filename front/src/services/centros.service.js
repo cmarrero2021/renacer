@@ -55,6 +55,11 @@ export const fichasService = {
     saveInfraestructura: (fichaId, data) => authApi.put(`/fichas/${fichaId}/infraestructura`, data),
     saveAccesibilidad: (fichaId, data) => authApi.put(`/fichas/${fichaId}/accesibilidad`, data),
     saveDocumentos: (fichaId, data) => authApi.put(`/fichas/${fichaId}/documentos`, data),
+    saveDocumentosPersonal: (fichaId, data) => authApi.put(`/fichas/${fichaId}/documentos-personal`, data),
+    getDocumentoPersonalArchivo: (fichaId, docId, download = false) =>
+        authApi.get(`/fichas/${fichaId}/documentos-personal/${docId}/archivo${download ? '?download=1' : ''}`, {
+            responseType: 'blob'
+        }),
     getDocumentoArchivo: (fichaId, docId, download = false) =>
         authApi.get(`/fichas/${fichaId}/documentos/${docId}/archivo${download ? '?download=1' : ''}`, {
             responseType: 'blob'

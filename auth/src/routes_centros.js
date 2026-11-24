@@ -7,7 +7,7 @@ const {
     listFichas, getFichaActual, createFicha, updateFicha, addPoblacion,
     listCentroUsers, grantCentroAccess, revokeCentroAccess, listUserCentros,
     getMiCentro, saveCapacidad, saveServicios, savePersonal, saveInfraestructura, saveAccesibilidad, saveDocumentos,
-    descargarArchivoDocumento,
+    descargarArchivoDocumento, saveDocumentosPersonal, descargarArchivoDocumentoPersonal,
     getRifArchivo, reemplazarRifArchivo,
     purgeDeletedRecords, listMaintenanceLogs,
     proxyGeocode, proxyReverseGeocode, resolveGeoEntities,
@@ -65,6 +65,10 @@ router.put('/fichas/:fichaId/infraestructura', saveInfraestructura);
 router.put('/fichas/:fichaId/accesibilidad', saveAccesibilidad);
 router.put('/fichas/:fichaId/documentos', saveDocumentos);
 router.get('/fichas/:fichaId/documentos/:docId/archivo', descargarArchivoDocumento);
+
+// ─── Documentos por trabajador (personal especializado) ───────────────────
+router.put('/fichas/:fichaId/documentos-personal', saveDocumentosPersonal);
+router.get('/fichas/:fichaId/documentos-personal/:docId/archivo', descargarArchivoDocumentoPersonal);
 
 
 // ─── Población (histórico) ─────────────────────────────────────────────────

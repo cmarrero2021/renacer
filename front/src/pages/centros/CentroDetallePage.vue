@@ -1045,7 +1045,7 @@
 
                         <!-- Documentos por trabajador (personal especializado) -->
                         <q-expansion-item v-if="documentosPersonal.length" icon="badge"
-                            label="Documentos del Personal" class="q-mb-sm">
+                            label="Documentos del Personal" default-opened class="q-mb-sm">
                             <q-card flat bordered>
                                 <q-card-section>
                                     <div class="text-caption text-grey-7 q-mb-sm">

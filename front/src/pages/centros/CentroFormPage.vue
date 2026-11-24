@@ -1123,51 +1123,59 @@
                     </div>
 
                     <template v-if="gruposDocsPersonal.length">
-                        <div v-for="grupo in gruposDocsPersonal" :key="grupo.field" class="q-mb-md">
-                            <div class="text-subtitle2 text-weight-bold q-mb-xs">
-                                {{ grupo.label }} ({{ grupo.cantidad }})
-                            </div>
-                            <q-list bordered dense separator class="rounded-borders">
-                                <q-item v-for="fila in grupo.filas"
-                                    :key="fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero">
-                                    <q-item-section side class="text-caption text-grey-7" style="width: 40px">
-                                        #{{ fila.numero }}
-                                    </q-item-section>
-                                    <q-item-section style="min-width: 220px">
-                                        {{ fila.tipo_documento_label }}
-                                    </q-item-section>
-                                    <q-item-section>
-                                        <!-- Archivo cargado (en sesión o guardado previamente) -->
-                                        <div v-if="fila.tiene_archivo || fila.archivo_nombre" class="row items-center q-gutter-xs">
-                                            <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf"
-                                                removable @remove="removeDocFile(fila)" :title="fila.archivo_nombre || 'Archivo'">
-                                                <span class="ellipsis" style="max-width: 160px">
-                                                    {{ fila.archivo_nombre || 'documento' }}
-                                                </span>
-                                                <span v-if="fila.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
-                                                    ({{ formatFileSize(fila.archivo_tamano) }})
-                                                </span>
-                                            </q-chip>
-                                            <q-btn flat round dense size="sm" icon="visibility" color="primary"
-                                                @click="previewDoc(fila)" title="Ver archivo" />
-                                            <q-btn flat round dense size="sm" icon="download" color="grey-8"
-                                                @click="downloadDoc(fila)" title="Descargar" />
-                                        </div>
-                                        <!-- Sin archivo -->
-                                        <div v-else class="row items-center">
-                                            <input type="file"
-                                                accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
-                                                :id="'file-upload-per-' + fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero"
-                                                style="display: none"
-                                                @change="onDocFileSelected($event, fila)" />
-                                            <q-btn outline dense size="sm" color="primary" icon="upload_file"
-                                                label="Subir archivo" @click="triggerFileUploadPersonal(fila)" />
-                                            <span class="text-caption text-grey-5 q-ml-sm">PDF, PNG, JPG (máx. 10MB)</span>
-                                        </div>
-                                    </q-item-section>
-                                </q-item>
-                            </q-list>
-                        </div>
+                        <q-expansion-item v-for="grupo in gruposDocsPersonal" :key="grupo.field"
+                            default-opened icon="badge"
+                            :label="`${grupo.label} (${grupo.cantidad})`"
+                            :caption="grupo.filas.some(f => f.tiene_archivo || f.archivo_nombre)
+                                ? 'Documentos cargados'
+                                : 'Documentos pendientes'"
+                            header-class="text-weight-medium bg-grey-1"
+                            class="q-mb-sm" bordered dense>
+                            <q-card flat>
+                                <q-card-section>
+                                    <q-list bordered dense separator class="rounded-borders">
+                                        <q-item v-for="fila in grupo.filas"
+                                            :key="fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero">
+                                            <q-item-section side class="text-caption text-grey-7" style="width: 40px">
+                                                #{{ fila.numero }}
+                                            </q-item-section>
+                                            <q-item-section style="min-width: 220px">
+                                                {{ fila.tipo_documento_label }}
+                                            </q-item-section>
+                                            <q-item-section>
+                                                <!-- Archivo cargado (en sesión o guardado previamente) -->
+                                                <div v-if="fila.tiene_archivo || fila.archivo_nombre" class="row items-center q-gutter-xs">
+                                                    <q-chip dense color="red-1" text-color="negative" icon="picture_as_pdf"
+                                                        removable @remove="removeDocFile(fila)" :title="fila.archivo_nombre || 'Archivo'">
+                                                        <span class="ellipsis" style="max-width: 160px">
+                                                            {{ fila.archivo_nombre || 'documento' }}
+                                                        </span>
+                                                        <span v-if="fila.archivo_tamano" class="text-caption text-grey-7 q-ml-xs">
+                                                            ({{ formatFileSize(fila.archivo_tamano) }})
+                                                        </span>
+                                                    </q-chip>
+                                                    <q-btn flat round dense size="sm" icon="visibility" color="primary"
+                                                        @click="previewDoc(fila)" title="Ver archivo" />
+                                                    <q-btn flat round dense size="sm" icon="download" color="grey-8"
+                                                        @click="downloadDoc(fila)" title="Descargar" />
+                                                </div>
+                                                <!-- Sin archivo -->
+                                                <div v-else class="row items-center">
+                                                    <input type="file"
+                                                        accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
+                                                        :id="'file-upload-per-' + fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero"
+                                                        style="display: none"
+                                                        @change="onDocFileSelected($event, fila)" />
+                                                    <q-btn outline dense size="sm" color="primary" icon="upload_file"
+                                                        label="Subir archivo" @click="triggerFileUploadPersonal(fila)" />
+                                                    <span class="text-caption text-grey-5 q-ml-sm">PDF, PNG, JPG (máx. 10MB)</span>
+                                                </div>
+                                            </q-item-section>
+                                        </q-item>
+                                    </q-list>
+                                </q-card-section>
+                            </q-card>
+                        </q-expansion-item>
                     </template>
                     <div v-else class="text-caption text-grey-6 q-pa-sm bg-grey-2 rounded-borders">
                         No hay personal especializado indicado en el tab PERSONAL; no se requieren documentos por trabajador.

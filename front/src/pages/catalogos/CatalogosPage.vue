@@ -100,6 +100,13 @@
           </div>
         </template>
 
+        <!-- Celda de Código: se muestra en MAYÚSCULAS (se almacena en minúsculas) -->
+        <template v-slot:body-cell-codigo="props">
+          <q-td :props="props" class="text-left text-weight-medium" style="text-transform: uppercase">
+            {{ props.row.codigo }}
+          </q-td>
+        </template>
+
         <!-- Celda de ¿Es baterías? (tipo_planta) -->
         <template v-slot:body-cell-es_baterias="props">
           <q-td :props="props" class="text-center">

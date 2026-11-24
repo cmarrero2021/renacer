@@ -1364,6 +1364,57 @@ const generarPdfPrinterFriendly = async () => {
     currentY += numRows * rowHeight + 2;
   };
 
+  // Tabla con encabezados en columnas (para no repetir etiquetas por fila):
+  // headers = ['Rol', 'Certificado de Salud', 'Resumen Curricular', ...]
+  // rows = [{ label: 'Médicos', cells: ['2 de 4', '2 de 4'] }, ...]
+  const drawMatrix = (headers, rows, firstColWidth = 40) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    const restCols = Math.max(headers.length - 1, 1);
+    const restWidth = contentWidth - firstColWidth;
+    const colRestW = restWidth / restCols;
+    const colX = (i) => marginLeft + (i === 0 ? 0 : firstColWidth + (i - 1) * colRestW);
+    const colW = (i) => (i === 0 ? firstColWidth : colRestW);
+
+    // Altura del encabezado (los nombres de tipo pueden ocupar varias líneas)
+    const headerLines = headers.map((h, i) => doc.splitTextToSize(toTitleCase(h), colW(i) - 4).length);
+    const headerH = Math.max(...headerLines, 1) * 3.4 + 2.5;
+    const totalH = headerH + rows.length * 4.2 + 2;
+    checkPageBreak(totalH);
+
+    // Encabezado
+    let y = currentY;
+    doc.setFillColor(242, 245, 249);
+    doc.rect(marginLeft, y, contentWidth, headerH, 'F');
+    doc.setTextColor(0, 51, 102);
+    headers.forEach((h, i) => {
+      doc.splitTextToSize(toTitleCase(h), colW(i) - 4).forEach((ln, li) => {
+        doc.text(ln, colX(i) + 2, y + 3.4 + li * 3.4);
+      });
+    });
+    y += headerH;
+
+    // Filas (cebreo suave + separadores)
+    rows.forEach((row, r) => {
+      if (r % 2 === 1) {
+        doc.setFillColor(249, 250, 252);
+        doc.rect(marginLeft, y, contentWidth, 4.2, 'F');
+      }
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(90, 95, 105);
+      doc.text(toTitleCase(row.label), marginLeft + 2, y + 3);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(20, 25, 35);
+      row.cells.forEach((cell, c) => {
+        doc.text(String(cell ?? ''), colX(c + 1) + 2, y + 3);
+      });
+      y += 4.2;
+      doc.setDrawColor(235, 238, 243);
+      doc.line(marginLeft, y, marginLeft + contentWidth, y);
+    });
+    currentY = y + 2;
+  };
+
   const drawFullRow = (label, value) => {
     doc.setFontSize(6.8);
     doc.setFont('helvetica', 'bold');
@@ -1775,37 +1826,96 @@ const generarPdfPrinterFriendly = async () => {
       drawKeyValueGrid(accItems, 2);
     }
 
-    // 6.8 Documentación Consignada
+    // 6.8 Documentación Consignada (nombre del documento + Si si fue cargado)
     const docs = fichaData.documentos || [];
-    if (docs.length || centroData?.rif_archivo) {
-      drawSectionHeader('Documentación Consignada (ficha_documentos)');
-      const docItems = [];
-      if (centroData?.rif_archivo) {
-        docItems.push({ label: 'RIF (Cargado en registro)', value: 'Archivo Digital' });
-      }
-      docs.forEach(d => {
-        const estatus = [
-          d.tiene_original ? 'Original' : null,
-          d.tiene_copia ? 'Copia' : null,
-          d.tiene_archivo || d.archivo_nombre ? 'Digital' : null,
-        ].filter(Boolean).join(' / ') || 'Registrado';
-        const desc = d.descripcion ? ` - ${d.descripcion}` : '';
-        docItems.push({ label: labelTipoDoc(d.tipo_documento), value: `${estatus}${desc}` });
+    if (docs.length) {
+      drawSectionHeader('Documentación Consignada');
+      const docItems = docs.map(d => {
+        // El RIF se consigna en el registro inicial (centros.rif_archivo): su fila en
+        // ficha_documentos no tiene archivo propio, pero sí fue consignado
+        const rifCargado = String(d.tipo_documento || '').trim().toLowerCase() === 'rif'
+          && !!centroData?.rif_archivo;
+        return {
+          label: labelTipoDoc(d.tipo_documento),
+          value: (d.tiene_archivo || d.archivo_nombre || rifCargado) ? 'Sí' : ''
+        };
       });
       drawKeyValueGrid(docItems, 2);
     }
 
-    // 6.9 Documentación del Personal (por trabajador)
+    // 6.9 Documentos del Personal: por rol y tipo, "m de n" donde n es el total
+    // de personas del rol y m las que tienen TODA su documentación completa
+    // (si a una persona le falta algún documento, no se cuenta: está incompleta)
     const docsPersonal = fichaData.documentos_personal || [];
     if (docsPersonal.length) {
-      drawSectionHeader('Documentos del Personal (por trabajador)');
-      const itemsPersonal = docsPersonal.map(d => {
-        const rolLabel = LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal;
-        const etiqueta = `${d.tipo_documento_nombre || d.tipo_documento_codigo} — ${rolLabel} #${d.numero}`;
-        const estatus = d.tiene_archivo || d.archivo_nombre ? 'Archivo Digital' : 'Registrado';
-        return { label: etiqueta, value: estatus };
+      drawSectionHeader('Documentos del Personal');
+
+      // Tipos de documento exigidos por trabajador (códigos del catálogo activo;
+      // si el catálogo no cargó, los tipos presentes en los documentos guardados)
+      const porCodigoRows = new Map(docsPersonal
+        .filter(d => d.tipo_documento_codigo)
+        .map(d => [String(d.tipo_documento_codigo).trim().toLowerCase(),
+          capitalizarNombre(d.tipo_documento_nombre || d.tipo_documento_codigo)]));
+      const tiposCatalogo = (catalogosStore.opcionesDocsTrabajador || [])
+        .map(t => ({ codigo: String(t.codigo || '').trim().toLowerCase(), label: t.label }))
+        .filter(t => t.codigo);
+      const tiposReq = tiposCatalogo.length
+        ? tiposCatalogo
+        : [...porCodigoRows.entries()].map(([codigo, label]) => ({ codigo, label }));
+
+      // Archivos cargados: rol#numero → conjunto de códigos de tipo cargados
+      const porPersona = new Map();
+      docsPersonal.forEach(d => {
+        if (!d.rol_personal || !d.numero) return;
+        if (!(d.tiene_archivo || d.archivo_nombre)) return;
+        const k = `${String(d.rol_personal).toLowerCase()}#${d.numero}`;
+        if (!porPersona.has(k)) porPersona.set(k, new Set());
+        if (d.tipo_documento_codigo) porPersona.get(k).add(String(d.tipo_documento_codigo).trim().toLowerCase());
       });
-      drawKeyValueGrid(itemsPersonal, 2);
+
+      // Conteo vigente del rol en ficha_personal
+      const CAMPOS_CONTEO = {
+        medicos: 'num_medicos',
+        gerontologos: 'num_gerontologos',
+        psicologos: 'num_psicologos',
+        enfermeros: 'num_enfermeros',
+        auxiliares_enfermeria: 'num_auxiliares_enfermeria',
+        cuidadores: 'num_cuidadores',
+        responsables_farmacia: 'num_responsables_farmacia',
+      };
+      const totalRol = (rol) => {
+        const p = fichaData.personal;
+        const campo = CAMPOS_CONTEO[rol];
+        let v = (p && campo) ? (parseInt(p[campo] ?? 0, 10) || 0) : 0;
+        if (!v) {
+          // Respaldo: mayor número de persona visto en los documentos guardados
+          v = docsPersonal.reduce((max, d) =>
+            String(d.rol_personal).toLowerCase() === rol ? Math.max(max, parseInt(d.numero, 10) || 0) : max, 0);
+        }
+        return v;
+      };
+
+      const itemsPersonal = [];
+      const roles = [...new Set(docsPersonal.map(d => String(d.rol_personal || '').toLowerCase()).filter(Boolean))];
+      roles.forEach(rol => {
+        const total = totalRol(rol);
+        if (!total) return;
+        const rolLabel = LABELS_ROLES_DOC_PERSONAL[rol] || rol;
+        // Personas con todos los tipos exigidos cargados
+        let completos = 0;
+        for (let i = 1; i <= total; i++) {
+          const tipos = porPersona.get(`${rol}#${i}`);
+          if (tipos && tiposReq.length && tiposReq.every(t => tipos.has(t.codigo))) completos++;
+        }
+        itemsPersonal.push({
+          label: rolLabel,
+          cells: tiposReq.map(() => `${completos} de ${total}`),
+        });
+      });
+      // Tabla: filas por rol, columnas por tipo de documento (sin repetir nombres)
+      if (itemsPersonal.length) {
+        drawMatrix(['Rol', ...tiposReq.map(t => t.label)], itemsPersonal);
+      }
     }
   }
 
@@ -1837,11 +1947,25 @@ const pdfViewerTitle = ref('');
 const currentPdfBlob = ref(null);
 const currentPdfFilename = ref('');
 
+// Capitaliza un nombre para su visualización: primera letra en mayúsculas, resto en minúsculas
+function capitalizarNombreDoc(s) {
+    const str = String(s || '').trim();
+    return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+}
+
+// Normaliza un código/clave para comparación: minúsculas y sin separadores
+// (tolera diferencias de capitalización y de '_' vs espacios entre lo guardado y el catálogo)
+const normalizarClaveDoc = (s) =>
+    String(s || '').trim().toLowerCase().replace(/[\s_-]+/g, '');
+
 function labelTipoDoc(tipo) {
     if (!tipo) return '—';
-    const found = catalogosStore.opcionesDocumentos.find(d => d.tipo_documento === tipo);
+    const clave = normalizarClaveDoc(tipo);
+    const found = catalogosStore.opcionesDocumentos.find(d =>
+        normalizarClaveDoc(d.tipo_documento) === clave ||
+        normalizarClaveDoc(d.tipo_documento_label) === clave);
     if (found && found.tipo_documento_label) return found.tipo_documento_label;
-    return tipo.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    return capitalizarNombreDoc(String(tipo).replace(/[_-]+/g, ' '));
 }
 
 // Solo documentos cuyo tipo esté activo en el catálogo (los inactivos no se muestran)
@@ -1877,6 +2001,12 @@ function formatFileSize(bytes) {
 }
 
 // ── Documentos por trabajador (personal especializado) ──
+// Capitaliza un nombre para su visualización: primera letra en mayúsculas, resto en minúsculas
+const capitalizarNombre = (s) => {
+    const str = String(s || '').trim();
+    return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+};
+
 const LABELS_ROLES_DOC_PERSONAL = {
     medicos: 'Médicos',
     gerontologos: 'Gerontólogos',
@@ -1889,7 +2019,7 @@ const LABELS_ROLES_DOC_PERSONAL = {
 
 // Etiqueta unívoca: "{Nombre del tipo} — {Rol} #{número de persona}"
 const etiquetaDocPersonal = (d) =>
-    `${d.tipo_documento_nombre || d.tipo_documento_codigo} — ${LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal} #${d.numero}`;
+    `${capitalizarNombre(d.tipo_documento_nombre || d.tipo_documento_codigo)} — ${LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal} #${d.numero}`;
 
 const documentosPersonal = computed(() => {
     const rows = ficha.value?.documentos_personal;

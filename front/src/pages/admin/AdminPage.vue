@@ -1556,7 +1556,10 @@ const confirmPurge = () => {
         prompt: {
             model: '',
             isValid: val => val === 'PURGAR',
-            type: 'text'
+            type: 'text',
+            // Mostrar exactamente lo tecleado (el CSS global muestra los inputs
+            // en mayúsculas; sin esta clase, "purgar" se ve "PURGAR" pero no valida)
+            class: 'no-uppercase'
         },
         cancel: true,
         persistent: true,

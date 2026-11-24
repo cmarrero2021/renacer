@@ -65,6 +65,13 @@ const DEFAULT_TIPOS_DOC_TRABAJADOR = [
     { value: 'resumen_curricular', label: 'Resumen Curricular' },
 ];
 
+// Capitaliza un nombre para su visualización: primera letra en mayúsculas,
+// resto en minúsculas, independientemente de cómo esté almacenado
+const capitalizarNombre = (s) => {
+    const str = String(s || '').trim();
+    return str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : str;
+};
+
 export const useCatalogosStore = defineStore('catalogos', () => {
     // ─── Estado ───────────────────────────────────────────────────────────────
     const tiposEstablecimiento = ref([]);
@@ -102,7 +109,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 .filter(d => d.activo !== false)
                 .map(d => ({
                     tipo_documento: d.codigo,
-                    tipo_documento_label: d.nombre,
+                    tipo_documento_label: capitalizarNombre(d.nombre),
                     descripcion: d.descripcion || ''
                 }));
         }
@@ -148,7 +155,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
                 .map(t => ({
                     id: Number(t.id),
                     codigo: t.codigo,
-                    label: t.nombre
+                    label: capitalizarNombre(t.nombre)
                 }));
         }
         return DEFAULT_TIPOS_DOC_TRABAJADOR.map((t, i) => ({ id: i + 1, ...t }));

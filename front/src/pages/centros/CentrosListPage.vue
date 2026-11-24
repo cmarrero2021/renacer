@@ -48,9 +48,9 @@
                 </q-td>
             </template>
 
-            <!-- Tipo -->
+            <!-- Tipo: mayúsculas sostenidas solo visual (en BD se conserva como esté) -->
             <template #body-cell-tipo_establecimiento="{ value }">
-                <q-td>{{ labelTipo(value) }}</q-td>
+                <q-td class="text-weight-medium" style="text-transform: uppercase">{{ labelTipo(value) }}</q-td>
             </template>
 
             <!-- Acciones -->

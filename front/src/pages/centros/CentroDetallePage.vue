@@ -1179,6 +1179,8 @@ import { ref, computed, onMounted, watch, } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { LocalStorage, Notify, useQuasar } from 'quasar';
 import { jsPDF } from 'jspdf';
+// Generador de QR (UMD, sin dependencias) — src/lib/qrcode-generator.js
+import qrcode from 'src/lib/qrcode-generator';
 import { useCentrosStore } from 'src/stores/centros.store';
 import { useCatalogosStore } from 'src/stores/catalogos.store';
 import { centrosService, fichasService } from 'src/services/centros.service';
@@ -1438,19 +1440,37 @@ const generarPdfPrinterFriendly = async () => {
   // CUERPO DEL REPORTE
   // ══════════════════════════════════════════════════════════════════════════
 
-  // 1. Título principal del centro
+  // ── QR de verificación (borde derecho, junto a los datos generales) ──
+  // Al escanearlo se abre la página pública de verificación del registro
+  let qrCells = null;
+  try {
+    const qrUrl = `${window.location.origin}/verificacion/centro/${centroData.id}`;
+    const qr = qrcode(0, 'M');
+    qr.addData(qrUrl);
+    qr.make();
+    qrCells = { count: qr.getModuleCount(), isDark: (r, c) => qr.isDark(r, c) };
+  } catch (e) {
+    console.error('No se pudo generar el QR de verificación:', e);
+  }
+  const qrSize = 22; // mm
+  const qrX = pageWidth - marginRight - qrSize;
+  const qrY = topMargin;
+
+  // 1. Título principal del centro (el ancho se reduce para no chocar con el QR)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
   doc.setTextColor(0, 51, 102);
   const nombreCentro = centroData?.nombre_establecimiento || 'Centro de Atención';
   const nombreUpper = nombreCentro.toUpperCase();
 
+  const tituloWidth = qrCells ? contentWidth - qrSize - 4 : contentWidth;
+
   // Si el nombre excede los 64 caracteres, se parte en varias líneas:
   // el resto del contenido se desplaza hacia abajo automáticamente porque
   // todo se posiciona con currentY.
   const LIMITE_CARACTERES_TITULO = 64;
   const tituloLines = nombreUpper.length > LIMITE_CARACTERES_TITULO
-    ? doc.splitTextToSize(nombreUpper, contentWidth)
+    ? doc.splitTextToSize(nombreUpper, tituloWidth)
     : [nombreUpper];
   const tituloLineHeight = 4.5;
 
@@ -1462,8 +1482,30 @@ const generarPdfPrinterFriendly = async () => {
   doc.setTextColor(100, 105, 115);
   const estadoBadge = (centroData?.estado_centro || 'activo').toUpperCase();
   const subtitulo = `RIF: ${centroData?.rif || '—'}   ·   Estado: ${estadoBadge}   ·   ${labelTipo(centroData?.tipo_establecimiento)}   ·   ${labelClasif(centroData?.tipo_clasificacion)}`;
-  doc.text(subtitulo, marginLeft, currentY);
-  currentY += 5;
+  const subLines = doc.splitTextToSize(subtitulo, tituloWidth);
+  doc.text(subLines, marginLeft, currentY);
+  currentY += subLines.length * 5;
+
+  // Dibujar el QR (módulos vectoriales, con marco blanco)
+  if (qrCells) {
+    const cell = qrSize / qrCells.count;
+    doc.setFillColor(255, 255, 255);
+    doc.rect(qrX - 1, qrY - 1, qrSize + 2, qrSize + 2, 'F');
+    doc.setFillColor(0, 0, 0);
+    for (let r = 0; r < qrCells.count; r++) {
+      for (let c = 0; c < qrCells.count; c++) {
+        if (qrCells.isDark(r, c)) {
+          doc.rect(qrX + c * cell, qrY + r * cell, cell + 0.15, cell + 0.15, 'F');
+        }
+      }
+    }
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5);
+    doc.setTextColor(120, 125, 135);
+    doc.text('Escanee para verificar', qrX + qrSize / 2, qrY + qrSize + 3.5, { align: 'center' });
+    // El contenido continúa debajo del QR
+    if (currentY < qrY + qrSize + 6) currentY = qrY + qrSize + 6;
+  }
 
   // 2. Datos Generales del Centro
   drawSectionHeader('Datos Generales del Centro');

@@ -17,6 +17,11 @@ const routes = [
         component: () => import("pages/login/RegisterPage.vue"),
         meta: { requiresGuest: true },
       },
+      {
+        // Verificación pública del QR del PDF de la ficha (sin autenticación)
+        path: "verificacion/centro/:id",
+        component: () => import("pages/public/VerificacionCentroPage.vue"),
+      },
     ],
   },
   {

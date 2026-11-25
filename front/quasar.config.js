@@ -27,7 +27,9 @@ export default configure(function (ctx) {
 
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-js#build
     build: {
-      distDir: 'D:\\quasar-dist\\rencaam\\dist',
+      // Salida del build; se puede redirigir con la variable de entorno
+      // QUASAR_DIST_DIR (útil si D:\quasar-dist está bloqueado por otro proceso)
+      distDir: process.env.QUASAR_DIST_DIR || 'D:\\quasar-dist\\rencaam\\dist',
       target: {
         browser: ["es2019", "edge88", "firefox78", "chrome87", "safari13.1"],
         node: "node20",

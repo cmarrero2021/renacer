@@ -1,7 +1,9 @@
 <template>
-  <q-layout view="hHh lpR fFf">
+  <!-- Modo container (como MainLayout): habilita el scroll interno de la página,
+       necesario porque html/body tienen overflow: hidden global -->
+  <q-layout view="hHh Lpr lff" container style="height: 100vh">
     <q-header elevated class="bg-primary text-white" height-hint="98">
-      <img src="img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
+      <img src="/img/cintillo.png" alt="Cintillo institucional" class="cintillo" />
       <q-toolbar>
         <q-toolbar-title>
           RENACER - Registro Nacional de Centros de Atención al Adulto Mayor

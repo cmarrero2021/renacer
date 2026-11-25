@@ -415,8 +415,13 @@ exports.createCatalogoItem = async (req, res) => {
 
         for (const field of config.fields) {
             if (req.body[field] !== undefined) {
+                // El código de negocio se almacena normalizado en minúsculas
+                // (la unicidad y las comparaciones son sensibles a mayúsculas)
+                const valor = field === 'codigo' && typeof req.body[field] === 'string'
+                    ? req.body[field].trim().toLowerCase()
+                    : req.body[field];
                 insertFields.push(field);
-                insertValues.push(req.body[field]);
+                insertValues.push(valor);
                 insertPlaceholders.push(`$${insertValues.length}`);
             }
         }
@@ -484,7 +489,11 @@ exports.updateCatalogoItem = async (req, res) => {
 
         for (const field of config.fields) {
             if (req.body[field] !== undefined) {
-                updateValues.push(req.body[field]);
+                // El código de negocio se almacena normalizado en minúsculas
+                // (la unicidad y las comparaciones son sensibles a mayúsculas)
+                updateValues.push(field === 'codigo' && typeof req.body[field] === 'string'
+                    ? req.body[field].trim().toLowerCase()
+                    : req.body[field]);
                 updateSets.push(`${field} = $${updateValues.length}`);
             }
         }

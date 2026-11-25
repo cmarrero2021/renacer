@@ -78,6 +78,11 @@ export const centroAccessService = {
     revoke: (centroId, userId) => authApi.delete(`/centros/${centroId}/usuarios/${userId}`),
 };
 
+// ─── Verificación pública (QR del PDF, sin autenticación) ───────────────────
+export const verificacionService = {
+    getCentro: (centroId) => authApi.get(`/verificacion/centros/${centroId}`),
+};
+
 // ─── Mantenimiento ──────────────────────────────────────────────────────────
 export const maintenanceService = {
     purgeDeleted: () => authApi.post('/maintenance/purge'),

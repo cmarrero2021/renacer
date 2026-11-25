@@ -11,6 +11,7 @@ const routesCatalogos = require('./routes_catalogos');
 const routesRegistro = require('./routes_registro');
 const routesRif = require('./routes_rif');
 const routesCedula = require('./routes_cedula');
+const routesVerificacion = require('./routes_verificacion');
 const pool = require('./db');
 const listEndpoints = require('./endpointlister');
 const { setupWebSocket } = require('./websocket');
@@ -55,6 +56,7 @@ if (!fs.existsSync(uploadsDocsPath)) {
 app.use('/auth', routesRegistro);
 app.use('/auth', routesRif);
 app.use('/auth', routesCedula);
+app.use('/auth', routesVerificacion);
 
 // Rutas principales
 app.use('/auth', routes);

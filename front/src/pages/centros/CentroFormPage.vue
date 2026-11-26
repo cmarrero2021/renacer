@@ -1786,7 +1786,7 @@ function syncDocsPersonal() {
         const n = Number(pers.value[rol.field] ?? 0) || 0;
         for (let i = 1; i <= n; i++) {
             for (const t of catalogosStore.opcionesDocsTrabajador) {
-                const key = keyDocPersonal(rol.field, t.codigo, i);
+                const key = keyDocPersonal(rol.key, t.codigo, i);
                 const prev = local.get(key) || guardados.get(key) || {};
                 slots.push({
                     rol: rol.key,

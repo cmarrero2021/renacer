@@ -43,99 +43,71 @@
                 </q-card-section>
 
                 <q-card-section class="q-pt-sm q-gutter-y-sm">
-                    <!-- Datos Generales -->
-                    <seccion-publica icon="domain" titulo="Datos Generales del Centro">
-                        <fila-dato label="RIF" :value="mayus(centro.rif)" />
-                        <fila-dato label="Nro. Reg. Mercantil" :value="mayus(centro.nro_registro_mercantil)" />
-                        <fila-dato label="Tipo de Establecimiento" :value="mayus(centro.tipo_establecimiento)" />
-                        <fila-dato label="Clasificación" :value="mayus(centro.tipo_clasificacion)" />
-                        <fila-dato label="Estado" :value="mayus(centro.estado)" />
-                        <fila-dato label="Municipio" :value="mayus(centro.municipio)" />
-                        <fila-dato label="Parroquia" :value="mayus(centro.parroquia)" />
-                        <fila-dato label="Estado del Centro" :value="mayus(centro.estado_centro)" />
-                        <fila-dato v-if="ficha?.direccion" label="Dirección" :value="mayus(ficha.direccion)" ancho />
-                    </seccion-publica>
+                    <!-- Secciones (marcado inline: los componentes con template-runtime no renderizan
+                         en el build runtime-only de Vue/Quasar) -->
+                    <q-expansion-item v-for="sec in secciones" :key="sec.titulo" default-opened dense-toggled
+                        :icon="sec.icon" :label="sec.titulo" header-class="text-weight-medium bg-grey-1"
+                        class="rounded-borders" bordered>
+                        <q-card flat>
+                            <q-card-section class="row q-col-gutter-sm">
+                                <!-- Fotografía -->
+                                <div v-if="sec.tipo === 'foto'" class="col-12">
+                                    <q-img :src="fotoSrc" contain style="max-height: 260px" class="rounded-borders" />
+                                </div>
 
-                    <!-- Fotografía -->
-                    <seccion-publica v-if="centro.foto_base64" icon="photo_camera" titulo="Fotografía del Centro">
-                        <q-img :src="fotoSrc" contain style="max-height: 260px" class="rounded-borders" />
-                    </seccion-publica>
+                                <!-- Población atendida -->
+                                <div v-else-if="sec.tipo === 'poblacion'" class="col-12">
+                                    <table class="tabla-pob">
+                                        <thead>
+                                            <tr class="bg-primary text-white">
+                                                <th class="text-left">Modalidad</th>
+                                                <th class="text-left">Categoría</th>
+                                                <th class="text-center">Fecha Corte</th>
+                                                <th class="text-center">Fem.</th>
+                                                <th class="text-center">Masc.</th>
+                                                <th class="text-center">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr v-for="(r, i) in poblacion" :key="i" :class="i % 2 ? 'bg-grey-1' : ''">
+                                                <td>{{ r.modalidad || '—' }}</td>
+                                                <td>{{ r.categoria || '—' }}</td>
+                                                <td class="text-center">{{ r.fecha_corte || '—' }}</td>
+                                                <td class="text-center">{{ r.femenino ?? 0 }}</td>
+                                                <td class="text-center">{{ r.masculino ?? 0 }}</td>
+                                                <td class="text-center">{{ r.total ?? 0 }}</td>
+                                            </tr>
+                                            <tr class="text-weight-bold bg-blue-1">
+                                                <td colspan="3">TOTAL GENERAL</td>
+                                                <td class="text-center">{{ totalesPoblacion.fem }}</td>
+                                                <td class="text-center">{{ totalesPoblacion.masc }}</td>
+                                                <td class="text-center">{{ totalesPoblacion.total }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
 
-                    <!-- Propietarios y Representantes (sin cédulas) -->
-                    <seccion-publica v-if="propietarios.length || representantes.length"
-                        icon="groups" titulo="Propietarios y Representantes Legales">
-                        <template v-if="propietarios.length">
-                            <div class="text-caption text-weight-bold text-grey-8">Propietario(s):</div>
-                            <div v-for="(p, i) in propietarios" :key="'p' + i" class="q-ml-md">
-                                • {{ mayus(p.nombre) }}<span v-if="p.es_principal"> (Principal)</span>
-                            </div>
-                        </template>
-                        <template v-if="representantes.length">
-                            <div class="text-caption text-weight-bold text-grey-8">Representante(s) Legal(es):</div>
-                            <div v-for="(r, i) in representantes" :key="'r' + i" class="q-ml-md">
-                                • {{ mayus(r.nombre) }}<span v-if="r.cargo"> ({{ r.cargo }})</span>
-                            </div>
-                        </template>
-                    </seccion-publica>
+                                <!-- Listas de personas (propietarios / representantes) -->
+                                <div v-else-if="sec.lineas" class="col-12">
+                                    <template v-for="(ln, i) in sec.lineas" :key="i">
+                                        <div v-if="ln.bold" class="text-caption text-weight-bold text-grey-8 q-pt-xs">
+                                            {{ ln.label }}
+                                        </div>
+                                        <div v-else :class="ln.sangria ? 'q-ml-md' : ''">{{ ln.label }}</div>
+                                    </template>
+                                </div>
 
-                    <!-- Contacto -->
-                    <seccion-publica v-if="telefonos.length || correos.length"
-                        icon="contact_phone" titulo="Información de Contacto">
-                        <fila-dato v-if="telefonos.length" label="Teléfonos" :value="telefonosTexto" ancho />
-                        <fila-dato v-if="correos.length" label="Correos" :value="correosTexto" ancho />
-                    </seccion-publica>
-
-                    <!-- Ficha Técnica -->
-                    <seccion-publica v-if="ficha" icon="description" titulo="Datos de la Ficha Técnica Vigente">
-                        <fila-dato label="Tipo de Solicitud" :value="mayus(ficha.tipo_solicitud)" />
-                        <fila-dato label="Nro. Reg. Nacional" :value="mayus(ficha.nro_registro_nacional)" />
-                        <fila-dato label="Fecha Solicitud" :value="fecha(ficha.fecha_solicitud)" />
-                        <fila-dato label="Fecha Fundación" :value="fecha(ficha.fecha_fundacion)" />
-                        <fila-dato label="Costo Mensual" :value="costoMensual" />
-                        <fila-dato label="Versión Ficha" :value="'v' + (ficha.version || 1)" />
-                    </seccion-publica>
-
-                    <!-- Capacidad -->
-                    <seccion-publica v-if="ficha?.capacidad" icon="king_bed"
-                        titulo="Capacidad Instalada y Atención">
-                        <fila-dato label="Cap. Total Residentes" :value="ficha.capacidad.capacidad_total_residente" />
-                        <fila-dato label="Residentes Actuales" :value="ficha.capacidad.capacidad_actual_residente" />
-                        <fila-dato label="Atención Ambulatoria"
-                            :value="ficha.capacidad.atencion_ambulatoria ? 'Sí' : 'No'" />
-                        <fila-dato label="Cupos Ambulatorios"
-                            :value="ficha.capacidad.atencion_ambulatoria ? (ficha.capacidad.num_atencion_ambulatoria ?? 'N/A') : 'N/A'" />
-                    </seccion-publica>
-
-                    <!-- Población -->
-                    <seccion-publica v-if="poblacion.length" icon="diversity_3" titulo="Población Atendida">
-                        <tabla-poblacion :filas="poblacion" />
-                    </seccion-publica>
-
-                    <!-- Servicios -->
-                    <seccion-publica v-if="ficha?.servicios" icon="room_service" titulo="Servicios Prestados">
-                        <fila-dato v-for="s in serviciosItems" :key="s.label" :label="s.label" :value="s.value" />
-                    </seccion-publica>
-
-                    <!-- Personal -->
-                    <seccion-publica v-if="ficha?.personal" icon="badge" titulo="Personal y Talento Humano">
-                        <fila-dato v-for="p in personalItems" :key="p.label" :label="p.label" :value="p.value" />
-                        <fila-dato v-if="ficha.personal.descripcion_no_adscrito"
-                            label="Detalle Personal No Adscrito" :value="ficha.personal.descripcion_no_adscrito" ancho />
-                    </seccion-publica>
-
-                    <!-- Infraestructura -->
-                    <seccion-publica v-if="ficha?.infraestructura" icon="apartment"
-                        titulo="Infraestructura del Inmueble">
-                        <fila-dato v-for="x in infraItems" :key="x.label" :label="x.label" :value="x.value" />
-                        <fila-dato v-if="ficha.infraestructura.descripcion_otros"
-                            label="Observaciones" :value="ficha.infraestructura.descripcion_otros" ancho />
-                    </seccion-publica>
-
-                    <!-- Accesibilidad -->
-                    <seccion-publica v-if="ficha?.accesibilidad" icon="accessible"
-                        titulo="Accesibilidad y Barreras Arquitectónicas">
-                        <fila-dato v-for="a in accesItems" :key="a.label" :label="a.label" :value="a.value" />
-                    </seccion-publica>
+                                <!-- Filas etiqueta:valor -->
+                                <template v-else>
+                                    <div v-for="fila in sec.filas" :key="fila.label"
+                                        :class="fila.ancho ? 'col-12' : 'col-12 col-sm-6'">
+                                        <div class="text-caption text-grey">{{ fila.label }}</div>
+                                        <div class="text-body2">{{ textoValor(fila.value) }}</div>
+                                    </div>
+                                </template>
+                            </q-card-section>
+                        </q-card>
+                    </q-expansion-item>
                 </q-card-section>
 
                 <q-separator />
@@ -154,95 +126,16 @@ import { useRoute } from 'vue-router';
 import { verificacionService } from 'src/services/centros.service';
 import { Notify } from 'quasar';
 
-// ── Sección colapsable ──
-const SeccionPublica = {
-    name: 'SeccionPublica',
-    props: { icon: String, titulo: { type: String, required: true } },
-    template: `
-        <q-expansion-item default-opened dense-toggled
-            :icon="icon" :label="titulo" header-class="text-weight-medium bg-grey-1"
-            class="rounded-borders" bordered>
-            <q-card flat>
-                <q-card-section class="row q-col-gutter-sm">
-                    <slot />
-                </q-card-section>
-            </q-card>
-        </q-expansion-item>
-    `,
-};
-
-// ── Fila etiqueta:valor ──
-const FilaDato = {
-    name: 'FilaDato',
-    props: { label: { type: String, required: true }, value: { type: [String, Number], default: '' }, ancho: Boolean },
-    computed: {
-        texto() {
-            return (this.value === null || this.value === undefined || this.value === '') ? '—' : String(this.value);
-        },
-    },
-    template: `
-        <div :class="ancho ? 'col-12' : 'col-12 col-sm-6'">
-            <div class="text-caption text-grey">{{ label }}</div>
-            <div class="text-body2">{{ texto }}</div>
-        </div>
-    `,
-};
-
-// ── Tabla de población atendida ──
-const TablaPoblacion = {
-    name: 'TablaPoblacion',
-    props: { filas: { type: Array, default: () => [] } },
-    computed: {
-        totales() {
-            return this.filas.reduce((a, r) => ({
-                fem: a.fem + (Number(r.femenino) || 0),
-                masc: a.masc + (Number(r.masculino) || 0),
-                total: a.total + (Number(r.total) || 0),
-            }), { fem: 0, masc: 0, total: 0 });
-        },
-    },
-    template: `
-        <div class="col-12">
-            <table class="tabla-pob">
-                <thead>
-                    <tr class="bg-primary text-white">
-                        <th class="text-left">Modalidad</th>
-                        <th class="text-left">Categoría</th>
-                        <th class="text-center">Fecha Corte</th>
-                        <th class="text-center">Fem.</th>
-                        <th class="text-center">Masc.</th>
-                        <th class="text-center">Total</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(r, i) in filas" :key="i" :class="i % 2 ? 'bg-grey-1' : ''">
-                        <td>{{ r.modalidad || '—' }}</td>
-                        <td>{{ r.categoria || '—' }}</td>
-                        <td class="text-center">{{ r.fecha_corte || '—' }}</td>
-                        <td class="text-center">{{ r.femenino ?? 0 }}</td>
-                        <td class="text-center">{{ r.masculino ?? 0 }}</td>
-                        <td class="text-center">{{ r.total ?? 0 }}</td>
-                    </tr>
-                    <tr class="text-weight-bold bg-blue-1">
-                        <td colspan="3">TOTAL GENERAL</td>
-                        <td class="text-center">{{ totales.fem }}</td>
-                        <td class="text-center">{{ totales.masc }}</td>
-                        <td class="text-center">{{ totales.total }}</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    `,
-};
-
 // Utilidades
 const mayus = (s) => String(s ?? '').toUpperCase();
 const siNo = (v) => (v ? 'Sí' : 'No');
 const conDesc = (v, desc) => (v ? ('Sí' + (desc ? `: ${desc}` : '')) : 'No');
 
+// Texto de una celda valor (vacío/null → guion)
+const textoValor = (v) => (v === null || v === undefined || v === '' ? '—' : String(v));
+
 export default {
     name: 'VerificacionCentroPage',
-    components: { SeccionPublica, FilaDato, TablaPoblacion },
     setup() {
         const route = useRoute();
         const centro = ref(null);
@@ -291,6 +184,12 @@ export default {
 
         // Población atendida
         const poblacion = computed(() => ficha.value?.poblacion || []);
+
+        const totalesPoblacion = computed(() => poblacion.value.reduce((a, r) => ({
+            fem: a.fem + (Number(r.femenino) || 0),
+            masc: a.masc + (Number(r.masculino) || 0),
+            total: a.total + (Number(r.total) || 0),
+        }), { fem: 0, masc: 0, total: 0 }));
 
         // ── Servicios Prestados (como el PDF) ──
         const serviciosItems = computed(() => {
@@ -429,6 +328,127 @@ export default {
             ];
         });
 
+        // ── Secciones a renderizar (orden igual que el PDF) ──
+        const secciones = computed(() => {
+            const secs = [];
+            const c = centro.value;
+            if (!c) return secs;
+            const f = ficha.value;
+
+            // Datos generales
+            const filasGenerales = [
+                { label: 'RIF', value: mayus(c.rif) },
+                { label: 'Nro. Reg. Mercantil', value: mayus(c.nro_registro_mercantil) },
+                { label: 'Tipo de Establecimiento', value: mayus(c.tipo_establecimiento) },
+                { label: 'Clasificación', value: mayus(c.tipo_clasificacion) },
+                { label: 'Estado', value: mayus(c.estado) },
+                { label: 'Municipio', value: mayus(c.municipio) },
+                { label: 'Parroquia', value: mayus(c.parroquia) },
+                { label: 'Estado del Centro', value: mayus(c.estado_centro) },
+            ];
+            if (f?.direccion) filasGenerales.push({ label: 'Dirección', value: mayus(f.direccion), ancho: true });
+            secs.push({ icon: 'domain', titulo: 'Datos Generales del Centro', filas: filasGenerales });
+
+            // Fotografía
+            if (c.foto_base64) {
+                secs.push({ icon: 'photo_camera', titulo: 'Fotografía del Centro', tipo: 'foto' });
+            }
+
+            // Propietarios y representantes (SIN cédulas)
+            const lineasPersonas = [];
+            if (propietarios.value.length) {
+                lineasPersonas.push({ label: 'Propietario(s):', bold: true });
+                propietarios.value.forEach(p => lineasPersonas.push({
+                    label: `• ${mayus(p.nombre)}${p.es_principal ? ' (Principal)' : ''}`,
+                    sangria: true,
+                }));
+            }
+            if (representantes.value.length) {
+                lineasPersonas.push({ label: 'Representante(s) Legal(es):', bold: true });
+                representantes.value.forEach(r => lineasPersonas.push({
+                    label: `• ${mayus(r.nombre)}${r.cargo ? ` (${r.cargo})` : ''}`,
+                    sangria: true,
+                }));
+            }
+            if (lineasPersonas.length) {
+                secs.push({ icon: 'groups', titulo: 'Propietarios y Representantes Legales', lineas: lineasPersonas });
+            }
+
+            // Contacto
+            const filasContacto = [];
+            if (telefonos.value.length) filasContacto.push({ label: 'Teléfonos', value: telefonosTexto.value, ancho: true });
+            if (correos.value.length) filasContacto.push({ label: 'Correos', value: correosTexto.value, ancho: true });
+            if (filasContacto.length) {
+                secs.push({ icon: 'contact_phone', titulo: 'Información de Contacto', filas: filasContacto });
+            }
+
+            // Ficha técnica vigente
+            if (f) {
+                secs.push({
+                    icon: 'description',
+                    titulo: 'Datos de la Ficha Técnica Vigente',
+                    filas: [
+                        { label: 'Tipo de Solicitud', value: mayus(f.tipo_solicitud) },
+                        { label: 'Nro. Reg. Nacional', value: mayus(f.nro_registro_nacional) },
+                        { label: 'Fecha Solicitud', value: fecha(f.fecha_solicitud) },
+                        { label: 'Fecha Fundación', value: fecha(f.fecha_fundacion) },
+                        { label: 'Costo Mensual', value: costoMensual.value },
+                        { label: 'Versión Ficha', value: 'v' + (f.version || 1) },
+                    ],
+                });
+            }
+
+            // Capacidad
+            if (f?.capacidad) {
+                const cap = f.capacidad;
+                secs.push({
+                    icon: 'king_bed',
+                    titulo: 'Capacidad Instalada y Atención',
+                    filas: [
+                        { label: 'Cap. Total Residentes', value: cap.capacidad_total_residente },
+                        { label: 'Residentes Actuales', value: cap.capacidad_actual_residente },
+                        { label: 'Atención Ambulatoria', value: siNo(cap.atencion_ambulatoria) },
+                        { label: 'Cupos Ambulatorios', value: cap.atencion_ambulatoria ? (cap.num_atencion_ambulatoria ?? 'N/A') : 'N/A' },
+                    ],
+                });
+            }
+
+            // Población
+            if (poblacion.value.length) {
+                secs.push({ icon: 'diversity_3', titulo: 'Población Atendida', tipo: 'poblacion' });
+            }
+
+            // Servicios
+            if (serviciosItems.value.length) {
+                secs.push({ icon: 'room_service', titulo: 'Servicios Prestados', filas: serviciosItems.value });
+            }
+
+            // Personal
+            if (personalItems.value.length) {
+                const filasPersonal = [...personalItems.value];
+                if (f?.personal?.descripcion_no_adscrito) {
+                    filasPersonal.push({ label: 'Detalle Personal No Adscrito', value: f.personal.descripcion_no_adscrito, ancho: true });
+                }
+                secs.push({ icon: 'badge', titulo: 'Personal y Talento Humano', filas: filasPersonal });
+            }
+
+            // Infraestructura
+            if (infraItems.value.length) {
+                const filasInfra = [...infraItems.value];
+                if (f?.infraestructura?.descripcion_otros) {
+                    filasInfra.push({ label: 'Observaciones', value: f.infraestructura.descripcion_otros, ancho: true });
+                }
+                secs.push({ icon: 'apartment', titulo: 'Infraestructura del Inmueble', filas: filasInfra });
+            }
+
+            // Accesibilidad
+            if (accesItems.value.length) {
+                secs.push({ icon: 'accessible', titulo: 'Accesibilidad y Barreras Arquitectónicas', filas: accesItems.value });
+            }
+
+            return secs;
+        });
+
         onMounted(async () => {
             try {
                 const { data } = await verificacionService.getCentro(route.params.id);
@@ -460,10 +480,8 @@ export default {
         });
 
         return {
-            centro, ficha, propietarios, representantes, telefonos, correos,
-            loading, error, mayus, fecha, fotoSrc, fechaConsulta, costoMensual,
-            telefonosTexto, correosTexto, poblacion,
-            serviciosItems, personalItems, infraItems, accesItems,
+            centro, ficha, loading, error, fechaConsulta, fotoSrc,
+            secciones, textoValor, poblacion, totalesPoblacion,
         };
     },
 };

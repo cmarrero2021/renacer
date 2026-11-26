@@ -4,10 +4,10 @@ module.exports = {
       name: "auth-service",
       cwd: "/var/www/html/renacer/auth",
       script: "src/index.js",
-      instances: "max",
+      instances: 3,
       exec_mode: "cluster",
       watch: false,
-      max_memory_restart: "1G",
+      max_memory_restart: "300M",
       env_development: {
         NODE_ENV: "development",
         PORT: 4110,
@@ -24,6 +24,7 @@ module.exports = {
       cwd: "/var/www/html/renacer/analytics",
       script: "src/index.js",
       instances: 2,
+      max_memory_restart: "250M",
       exec_mode: "cluster",
       watch: false,
       env_development: {

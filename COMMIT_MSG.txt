@@ -1,0 +1,87 @@
+20261126_2007 Migrar catálogos de código a ID y eliminar columna codigo
+
+Migración completa de los catálogos tipos_establecimiento, 
+tipos_clasificacion y tipo_documento_trabajador para usar identificadores 
+numéricos (id) en lugar de códigos VARCHAR, eliminando la columna codigo 
+de la base de datos.
+
+## Cambios en Base de Datos
+
+- **Scripts de migración:**
+  - `bd/migration_catalogos.sql`: Creación de tablas de catálogos con id SERIAL
+  - `bd/20261126_1000_tipo_documento_trabajador_sin_codigo.sql`: 
+    Eliminar columna codigo de tipo_documento_trabajador
+  - `bd/20261126_1100_tipos_establecimiento_clasificacion_sin_codigo.sql`:
+    - Agregar columna requiere_descripcion a tipos_establecimiento
+    - Agregar FKs tipo_establecimiento_id y tipo_clasificacion_id a centros
+    - Eliminar columna codigo de tipos_establecimiento y tipos_clasificacion
+  - `scripts/apply_catalogos_migration.js`: Script de aplicación y seed
+
+## Cambios en Backend (auth/)
+
+- **controllers_catalogos.js:**
+  - Eliminar columna codigo de SELECT en endpoints CRUD de catálogos
+  - Actualizar lógica de búsqueda y validación para usar id
+
+- **controllers_centros.js:**
+  - Cambiar tipo_establecimiento y tipo_clasificacion de VARCHAR a INTEGER
+  - Usar FKs tipo_establecimiento_id y tipo_clasificacion_id
+  - Actualizar validaciones y JOINs a tablas de catálogos
+
+- **controllers_verificacion.js:**
+  - Cambiar respuesta QR para incluir tipo_establecimiento_id en lugar de codigo
+  - Actualizar endpoint /auth/verificacion/centros/:id
+
+- **Scripts de seed:**
+  - seed_all_centros.js, seed_centros.js, seed_geospatial.js:
+    Actualizar para usar id en lugar de codigo
+
+## Cambios en Analytics
+
+- **graphql/resolvers.js:**
+  - Cambiar JOINs de `ON c.tipo_establecimiento = te.codigo` 
+    a `ON c.tipo_establecimiento_id = te.id`
+  - Cambiar JOINs de `ON c.tipo_clasificacion = tc.codigo`
+    a `ON c.tipo_clasificacion_id = tc.id`
+
+## Cambios en Frontend (front/)
+
+- **stores/catalogos.store.js:**
+  - Eliminar constantes hardcodeadas TIPO_DOCUMENTO, TIPO_ESTABLECIMIENTO, etc.
+  - Implementar carga dinámica de catálogos desde API
+  - Usar id en lugar de codigo para todas las operaciones
+
+- **pages/catalogos/CatalogosPage.vue:**
+  - Eliminar columna "Código" de las grillas CRUD
+  - Mantener solo columnas id, nombre, descripcion, activo
+
+- **pages/centros/CentroFormPage.vue:**
+  - Cambiar v-model de tipo_establecimiento y tipo_clasificacion a IDs
+  - Actualizar validaciones y lógica de formulario
+
+- **pages/centros/CentroDetallePage.vue:**
+  - Mostrar nombres de catálogos mediante lookups por id
+  - Actualizar display de tipo_establecimiento y tipo_clasificacion
+
+- **pages/centros/CentrosListPage.vue:**
+  - Actualizar grilla para mostrar nombres desde relaciones id
+
+- **boot/axios.js:**
+  - Ajustes menores en interceptores
+
+- **test/centro-form-page.spec.js:**
+  - Actualizar tests para usar IDs en lugar de códigos
+
+## Impacto
+
+✅ Elimina dependencia de códigos VARCHAR en catálogos
+✅ Mejora integridad referencial con FKs numéricos
+✅ Elimina constantes hardcodeadas en frontend
+✅ Simplifica grillas CRUD (sin columna Código)
+✅ Mantiene compatibilidad con flujo QR de verificación
+✅ Build exitoso en desarrollo y producción
+
+## Migraciones Aplicadas
+
+- ✅ Desarrollo: Todas las migraciones aplicadas y verificadas
+- ✅ Producción: migration_catalogos.sql aplicado

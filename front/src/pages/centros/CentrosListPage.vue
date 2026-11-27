@@ -149,7 +149,7 @@ const opcionesTipo = computed(() => catalogosStore.opcionesTipoEstab);
 // Columnas
 const columns = [
     { name: 'nombre_establecimiento', label: 'Nombre', field: 'nombre_establecimiento', align: 'left', sortable: true },
-    { name: 'tipo_establecimiento', label: 'Tipo', field: 'tipo_establecimiento', align: 'center', sortable: true },
+    { name: 'tipo_establecimiento', label: 'Tipo', field: 'tipo_establecimiento_id', align: 'center', sortable: true },
     { name: 'municipio', label: 'Municipio', field: 'municipio', align: 'left', sortable: true },
     { name: 'estado', label: 'Estado', field: 'estado', align: 'left', sortable: true },
     { name: 'estado_centro', label: 'Estatus', field: 'estado_centro', align: 'center' },
@@ -170,7 +170,7 @@ const centrosFiltrados = computed(() => {
     }
 
     if (filtroEstado.value) rows = rows.filter(c => c.estado_centro === filtroEstado.value);
-    if (filtroTipo.value) rows = rows.filter(c => c.tipo_establecimiento === filtroTipo.value);
+    if (filtroTipo.value) rows = rows.filter(c => c.tipo_establecimiento_id === filtroTipo.value);
 
     return rows;
 });
@@ -181,7 +181,7 @@ function colorEstado(estado) {
 }
 
 function labelTipo(tipo) {
-    return (opcionesTipo.value || []).find(o => o.value === tipo)?.label || tipo || '—';
+    return (opcionesTipo.value || []).find(o => o.value === tipo)?.label || '—';
 }
 
 function confirmarEliminar(row) {

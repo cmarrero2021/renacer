@@ -24,8 +24,8 @@ exports.getCentroVerificacion = async (req, res) => {
                     c.nombre_establecimiento,
                     c.rif,
                     c.nro_registro_mercantil,
-                    c.tipo_establecimiento,
-                    c.tipo_clasificacion,
+                    te.nombre AS tipo_establecimiento,
+                    tc.nombre AS tipo_clasificacion,
                     c.estado_centro,
                     c.foto_base64,
                     g.parroquia,
@@ -44,6 +44,8 @@ exports.getCentroVerificacion = async (req, res) => {
                      (g.parish_id = c.parroquia_id) DESC
                  LIMIT 1
              ) g ON TRUE
+             LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id
+             LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id
              WHERE c.id = $1 AND c.deleted_at IS NULL`,
             [centroId]
         );

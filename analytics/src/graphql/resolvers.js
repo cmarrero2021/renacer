@@ -6,8 +6,8 @@ const { getAccessibleCentroIds, buildTenantClause } = require('../tenant-filter'
 const FIELD_MAP = {
     // Centro
     'centro.nombre': { sql: 'c.nombre_establecimiento', table: 'centros', label: 'Nombre del Centro', category: 'Centro' },
-    'centro.tipo_establecimiento': { sql: 'c.tipo_establecimiento', table: 'centros', label: 'Tipo de Establecimiento', category: 'Centro' },
-    'centro.tipo_clasificacion': { sql: 'c.tipo_clasificacion', table: 'centros', label: 'Clasificación', category: 'Centro' },
+    'centro.tipo_establecimiento': { sql: 'te.nombre', table: 'tipo_estab', label: 'Tipo de Establecimiento', category: 'Centro' },
+    'centro.tipo_clasificacion': { sql: 'tc.nombre', table: 'tipo_clasif', label: 'Clasificación', category: 'Centro' },
     'centro.estado_centro': { sql: 'c.estado_centro', table: 'centros', label: 'Estado del Centro', category: 'Centro' },
     'centro.rif': { sql: 'c.rif', table: 'centros', label: 'RIF', category: 'Centro' },
     'centro.nro_registro_mercantil': { sql: 'c.nro_registro_mercantil', table: 'centros', label: 'Nº Registro Mercantil', category: 'Centro' },
@@ -166,6 +166,12 @@ function buildJoins(requiredTables) {
     const joins = [];
     const unique = new Set(requiredTables);
 
+    if (unique.has('tipo_estab')) {
+        joins.push(`LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id`);
+    }
+    if (unique.has('tipo_clasif')) {
+        joins.push(`LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id`);
+    }
     if (unique.has('geo')) {
         joins.push(`LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id`);
     }
@@ -233,12 +239,12 @@ const resolvers = {
             let paramIdx = nextParam || 1;
 
             if (args.tipo_establecimiento) {
-                filterClauses.push(`c.tipo_establecimiento = $${paramIdx}`);
+                filterClauses.push(`te.nombre = $${paramIdx}`);
                 filterParams.push(args.tipo_establecimiento);
                 paramIdx++;
             }
             if (args.tipo_clasificacion) {
-                filterClauses.push(`c.tipo_clasificacion = $${paramIdx}`);
+                filterClauses.push(`tc.nombre = $${paramIdx}`);
                 filterParams.push(args.tipo_clasificacion);
                 paramIdx++;
             }
@@ -252,8 +258,10 @@ const resolvers = {
             const filterSQL = filterClauses.length ? 'AND ' + filterClauses.join(' AND ') : '';
 
             const sql = `
-                SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
+                SELECT c.*, te.nombre AS tipo_establecimiento, tc.nombre AS tipo_clasificacion, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
                 FROM public.centros c
+                LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id
+                LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id
                 LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
                 WHERE c.deleted_at IS NULL ${tenantClause} ${filterSQL}
                 ORDER BY c.nombre_establecimiento
@@ -276,9 +284,11 @@ const resolvers = {
             }
 
             const result = await client.query(
-                `SELECT c.*, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
+                `SELECT c.*, te.nombre AS tipo_establecimiento, tc.nombre AS tipo_clasificacion, g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado
                  FROM public.centros c
                  LEFT JOIN public.geografia g ON g.parish_id = c.parroquia_id
+                 LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id
+                 LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id
                  WHERE c.id = $1 AND c.deleted_at IS NULL`,
                 [args.id]
             );

@@ -7,7 +7,7 @@
                 <div class="text-h5">{{ centro?.nombre_establecimiento || 'Cargando...' }}</div>
                 <div class="text-caption text-grey" v-if="centro">
                     <q-badge :color="colorEstado(centro.estado_centro)" :label="centro.estado_centro" />
-                    &nbsp;·&nbsp;{{ labelTipo(centro.tipo_establecimiento) }}
+                    &nbsp;·&nbsp;{{ (centro.tipo_establecimiento_nombre || '—') }}
                     &nbsp;·&nbsp;{{ centro.municipio }}, {{ centro.estado }}
                 </div>
             </div>
@@ -81,13 +81,13 @@
                                         <tr>
                                             <td class="text-caption text-grey" style="padding:2px 4px">Tipo</td>
                                             <td class="text-body2" style="padding:2px 4px">{{
-                                                labelTipo(centro.tipo_establecimiento) }}</td>
+                                                (centro.tipo_establecimiento_nombre || '—') }}</td>
                                         </tr>
                                         <tr>
                                             <td class="text-caption text-grey" style="padding:2px 4px">Clasificación
                                             </td>
                                             <td class="text-body2" style="padding:2px 4px">{{
-                                                labelClasif(centro.tipo_clasificacion) }}</td>
+                                                (centro.tipo_clasificacion_nombre || '—') }}</td>
                                         </tr>
                                         <tr>
                                             <td class="text-caption text-grey" style="padding:2px 4px">Parroquia</td>
@@ -1481,7 +1481,7 @@ const generarPdfPrinterFriendly = async () => {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 105, 115);
   const estadoBadge = (centroData?.estado_centro || 'activo').toUpperCase();
-  const subtitulo = `RIF: ${centroData?.rif || '—'}   ·   Estado: ${estadoBadge}   ·   ${labelTipo(centroData?.tipo_establecimiento)}   ·   ${labelClasif(centroData?.tipo_clasificacion)}`;
+  const subtitulo = `RIF: ${centroData?.rif || '—'}   ·   Estado: ${estadoBadge}   ·   ${(centroData?.tipo_establecimiento_nombre || '—')}   ·   ${(centroData?.tipo_clasificacion_nombre || '—')}`;
   const subLines = doc.splitTextToSize(subtitulo, tituloWidth);
   doc.text(subLines, marginLeft, currentY);
   currentY += subLines.length * 5;
@@ -1512,8 +1512,8 @@ const generarPdfPrinterFriendly = async () => {
   const infoGeneral = [
     { label: 'RIF', value: centroData?.rif || '—' },
     { label: 'Nro. Reg. Mercantil', value: centroData?.nro_registro_mercantil || '—' },
-    { label: 'Tipo Establecimiento', value: labelTipo(centroData?.tipo_establecimiento) },
-    { label: 'Clasificación', value: labelClasif(centroData?.tipo_clasificacion) },
+    { label: 'Tipo Establecimiento', value: (centroData?.tipo_establecimiento_nombre || '—') },
+    { label: 'Clasificación', value: (centroData?.tipo_clasificacion_nombre || '—') },
     { label: 'Estado', value: centroData?.estado || '—' },
     { label: 'Municipio', value: centroData?.municipio || '—' },
     { label: 'Parroquia', value: centroData?.parroquia || '—' },
@@ -1894,16 +1894,14 @@ const generarPdfPrinterFriendly = async () => {
 
       // Tipos de documento exigidos por trabajador (códigos del catálogo activo;
       // si el catálogo no cargó, los tipos presentes en los documentos guardados)
-      const porCodigoRows = new Map(docsPersonal
-        .filter(d => d.tipo_documento_codigo)
-        .map(d => [String(d.tipo_documento_codigo).trim().toLowerCase(),
-          capitalizarNombre(d.tipo_documento_nombre || d.tipo_documento_codigo)]));
+      const porIdRows = new Map(docsPersonal
+        .filter(d => d.tipo_documento_id)
+        .map(d => [Number(d.tipo_documento_id), capitalizarNombre(d.tipo_documento_nombre)]));
       const tiposCatalogo = (catalogosStore.opcionesDocsTrabajador || [])
-        .map(t => ({ codigo: String(t.codigo || '').trim().toLowerCase(), label: t.label }))
-        .filter(t => t.codigo);
+        .map(t => ({ id: Number(t.id), label: t.label }));
       const tiposReq = tiposCatalogo.length
         ? tiposCatalogo
-        : [...porCodigoRows.entries()].map(([codigo, label]) => ({ codigo, label }));
+        : [...porIdRows.entries()].map(([id, label]) => ({ id, label }));
 
       // Archivos cargados: rol#numero → conjunto de códigos de tipo cargados
       const porPersona = new Map();
@@ -1912,7 +1910,7 @@ const generarPdfPrinterFriendly = async () => {
         if (!(d.tiene_archivo || d.archivo_nombre)) return;
         const k = `${String(d.rol_personal).toLowerCase()}#${d.numero}`;
         if (!porPersona.has(k)) porPersona.set(k, new Set());
-        if (d.tipo_documento_codigo) porPersona.get(k).add(String(d.tipo_documento_codigo).trim().toLowerCase());
+        if (d.tipo_documento_id) porPersona.get(k).add(Number(d.tipo_documento_id));
       });
 
       // Conteo vigente del rol en ficha_personal
@@ -1947,7 +1945,7 @@ const generarPdfPrinterFriendly = async () => {
         let completos = 0;
         for (let i = 1; i <= total; i++) {
           const tipos = porPersona.get(`${rol}#${i}`);
-          if (tipos && tiposReq.length && tiposReq.every(t => tipos.has(t.codigo))) completos++;
+          if (tipos && tiposReq.length && tiposReq.every(t => tipos.has(t.id))) completos++;
         }
         itemsPersonal.push({
           label: rolLabel,
@@ -2061,7 +2059,7 @@ const LABELS_ROLES_DOC_PERSONAL = {
 
 // Etiqueta unívoca: "{Nombre del tipo} — {Rol} #{número de persona}"
 const etiquetaDocPersonal = (d) =>
-    `${capitalizarNombre(d.tipo_documento_nombre || d.tipo_documento_codigo)} — ${LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal} #${d.numero}`;
+    `${capitalizarNombre(d.tipo_documento_nombre)} — ${LABELS_ROLES_DOC_PERSONAL[d.rol_personal] || d.rol_personal} #${d.numero}`;
 
 const documentosPersonal = computed(() => {
     const rows = ficha.value?.documentos_personal;
@@ -2308,12 +2306,6 @@ const canManageAccess = computed(() => {
 
 function colorEstado(e) {
     return { activo: 'positive', inactivo: 'grey', suspendido: 'negative' }[e] || 'grey';
-}
-function labelTipo(t) {
-    return { publico: 'Público', afiliada_ivss: 'Afiliada IVSS', privado: 'Privado', religiosa: 'Religioso', otra: 'Otro' }[t] || t || '—';
-}
-function labelClasif(c) {
-    return { geriatrico: 'Geriátrico', gronto_psiquiatrico: 'Gronto-Psiquiátrico', casa_hogar: 'Casa Hogar', unidades_gerontologicas: 'Unidades Gerontológicas', fundacion: 'Fundación', otras: 'Otras' }[c] || c || '—';
 }
 function labelSolicitud(s) {
     return { registro_autorizacion: 'Registro y Autorización', renovacion_autorizacion: 'Renovación' }[s] || s || '—';

@@ -40,7 +40,7 @@ async function runSeeder() {
         }
         
         const prefixes = ['Hospital', 'Clínica', 'Ambulatorio', 'Centro Médico', 'Maternidad', 'Polideportivo', 'Unidad Sanitaria', 'Geriátrico', 'Residencia'];
-        const types = ['publico', 'afiliada_ivss', 'privado', 'religiosa', 'otra'];
+        const types = (await client.query('SELECT id FROM public.tipos_establecimiento WHERE deleted_at IS NULL ORDER BY id')).rows.map(r => r.id);
         
         let inserted = 0;
         
@@ -68,7 +68,7 @@ async function runSeeder() {
 
             // Insert Centro with location
             const centroRes = await client.query(`
-                INSERT INTO centros (nombre_establecimiento, parroquia_id, rif, tipo_establecimiento, estado_centro, latitud, longitud, created_at, updated_at) 
+                INSERT INTO centros (nombre_establecimiento, parroquia_id, rif, tipo_establecimiento_id, estado_centro, latitud, longitud, created_at, updated_at) 
                 VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW()) RETURNING id
             `, [name, parroquiaId, rif, tipo, status, lat, lng]);
             

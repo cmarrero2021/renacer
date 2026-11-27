@@ -137,17 +137,17 @@
                             </div>
                             <div class="col-12 col-md-6">
                                 <div class="text-caption q-mb-xs">j) Tipo de Establecimiento *</div>
-                                <q-select v-model="datos.tipo_establecimiento" :options="opcionesTipoEstab"
+                                <q-select v-model="datos.tipo_establecimiento_id" :options="opcionesTipoEstab"
                                     option-value="value" option-label="label" emit-value map-options
                                     outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
-                            <div class="col-12 col-md-6" v-if="datos.tipo_establecimiento === 'otra'">
+                            <div class="col-12 col-md-6" v-if="opcionesTipoEstab.find(o => o.value === datos.tipo_establecimiento_id)?.requiere_descripcion">
                                 <div class="text-caption q-mb-xs">Explique el tipo</div>
                                 <q-input v-model="datos.tipo_establecimiento_descripcion" outlined dense />
                             </div>
                             <div class="col-12 col-md-6">
                                 <div class="text-caption q-mb-xs">k) Tipo de Clasificación *</div>
-                                <q-select v-model="datos.tipo_clasificacion" :options="opcionesTipoClasif"
+                                <q-select v-model="datos.tipo_clasificacion_id" :options="opcionesTipoClasif"
                                     option-value="value" option-label="label" emit-value map-options
                                     outlined dense :rules="[v => !!v || 'Requerido']" />
                             </div>
@@ -1135,7 +1135,7 @@
                                 <q-card-section>
                                     <q-list bordered dense separator class="rounded-borders">
                                         <q-item v-for="fila in grupo.filas"
-                                            :key="fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero">
+                                            :key="fila.rol + '-' + fila.tipo_documento_id + '-' + fila.numero">
                                             <q-item-section side class="text-caption text-grey-7" style="width: 40px">
                                                 #{{ fila.numero }}
                                             </q-item-section>
@@ -1163,7 +1163,7 @@
                                                 <div v-else class="row items-center">
                                                     <input type="file"
                                                         accept="application/pdf,image/png,image/jpeg,.pdf,.png,.jpg,.jpeg"
-                                                        :id="'file-upload-per-' + fila.rol + '-' + fila.tipo_documento_codigo + '-' + fila.numero"
+                                                        :id="'file-upload-per-' + fila.rol + '-' + fila.tipo_documento_id + '-' + fila.numero"
                                                         style="display: none"
                                                         @change="onDocFileSelected($event, fila)" />
                                                     <q-btn outline dense size="sm" color="primary" icon="upload_file"
@@ -1375,8 +1375,8 @@ function tabEnabled(name) { return savedTabs.value.datos; }
 const camposObligatoriosDatos = computed(() => {
     const faltantes = [];
     if (!datos.value.tipo_solicitud) faltantes.push('Registro / Autorización');
-    if (!datos.value.tipo_establecimiento) faltantes.push('Tipo de Establecimiento');
-    if (!datos.value.tipo_clasificacion) faltantes.push('Tipo de Clasificación');
+    if (!datos.value.tipo_establecimiento_id) faltantes.push('Tipo de Establecimiento');
+    if (!datos.value.tipo_clasificacion_id) faltantes.push('Tipo de Clasificación');
     if (!estadoSel.value) faltantes.push('Estado');
     if (!municipioSel.value) faltantes.push('Municipio');
     if (!datos.value.parroquia_id) faltantes.push('Parroquia');
@@ -1499,8 +1499,8 @@ const datos = ref({
     nombre_establecimiento: '', rif_tipo: 'J', rif_numero: '', nro_registro_mercantil: '',
     fecha_solicitud: hoyDisplay, tipo_solicitud: null,
     fecha_fundacion: '', direccion: '',
-    parroquia_id: null, tipo_establecimiento: null,
-    tipo_establecimiento_descripcion: '', tipo_clasificacion: null,
+    parroquia_id: null, tipo_establecimiento_id: null,
+    tipo_establecimiento_descripcion: '', tipo_clasificacion_id: null,
     latitud: null, longitud: null,
     foto_base64: null,
     propietarios: [], representantes: [], telefonos: [], correos: [],
@@ -1774,26 +1774,25 @@ const rolDocPersonalKey = (valor) => {
 const docsPersonal = ref([]);            // slots vigentes (conteos × tipos del catálogo)
 const docsPersonalGuardados = ref([]);   // filas persistidas en ficha_documentos_personal
 
-const keyDocPersonal = (rol, codigoTipo, numero) => `${rol}|${String(codigoTipo || '').toLowerCase()}|${numero}`;
+const keyDocPersonal = (rol, tipoId, numero) => `${rol}|${Number(tipoId) || 0}|${numero}`;
 
 // Reconstruye los slots requeridos a partir de los conteos de PERSONAL y de los
 // tipos activos del catálogo, conservando el estado de archivos ya cargados.
 function syncDocsPersonal() {
-    const local = new Map(docsPersonal.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
-    const guardados = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
+    const local = new Map(docsPersonal.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_id, d.numero), d]));
+    const guardados = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_id, d.numero), d]));
     const slots = [];
     for (const rol of ROLES_DOC_PERSONAL) {
         const n = Number(pers.value[rol.field] ?? 0) || 0;
         for (let i = 1; i <= n; i++) {
             for (const t of catalogosStore.opcionesDocsTrabajador) {
-                const key = keyDocPersonal(rol.key, t.codigo, i);
+                const key = keyDocPersonal(rol.key, t.id, i);
                 const prev = local.get(key) || guardados.get(key) || {};
                 slots.push({
                     rol: rol.key,
                     rol_label: rol.label,
                     numero: i,
                     tipo_documento_id: t.id,
-                    tipo_documento_codigo: t.codigo,
                     tipo_documento_label: t.label,
                     id: prev.id,
                     archivo_base64: prev.archivo_base64 || null,
@@ -1836,7 +1835,7 @@ function faltantesDocsPersonal() {
 }
 
 function triggerFileUploadPersonal(row) {
-    const el = document.getElementById('file-upload-per-' + row.rol + '-' + row.tipo_documento_codigo + '-' + row.numero);
+    const el = document.getElementById('file-upload-per-' + row.rol + '-' + row.tipo_documento_id + '-' + row.numero);
     if (el) {
         el.value = '';
         el.click();
@@ -1848,7 +1847,6 @@ function getDocsPersonalPayload() {
         id: d.id || undefined,
         rol_personal: d.rol,
         tipo_documento_id: d.tipo_documento_id,
-        tipo_documento_codigo: d.tipo_documento_codigo,
         numero: d.numero,
         archivo_base64: d.nuevo_archivo ? d.archivo_base64 : undefined,
         archivo_nombre: d.nuevo_archivo ? d.archivo_nombre : undefined,
@@ -1879,7 +1877,6 @@ function aplicarDocsPersonalGuardados(rows) {
         rol: rolDocPersonalKey(d.rol_personal),
         numero: Number(d.numero),
         tipo_documento_id: d.tipo_documento_id,
-        tipo_documento_codigo: d.tipo_documento_codigo,
         tipo_documento_label: d.tipo_documento_nombre,
         archivo_nombre: d.archivo_nombre,
         archivo_tamano: d.archivo_tamano,
@@ -1887,9 +1884,9 @@ function aplicarDocsPersonalGuardados(rows) {
         tiene_archivo: !!d.tiene_archivo,
     }));
     // Propagar ids del backend a los slots locales
-    const g = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero), d]));
+    const g = new Map(docsPersonalGuardados.value.map(d => [keyDocPersonal(d.rol, d.tipo_documento_id, d.numero), d]));
     docsPersonal.value.forEach(d => {
-        const gd = g.get(keyDocPersonal(d.rol, d.tipo_documento_codigo, d.numero));
+        const gd = g.get(keyDocPersonal(d.rol, d.tipo_documento_id, d.numero));
         if (gd && gd.id) d.id = gd.id;
     });
     syncDocsPersonal();
@@ -1931,8 +1928,8 @@ function countFields(obj, fields) {
 }
 
 const tabFieldDefs = {
-    datos: ['nombre_establecimiento', 'parroquia_id', 'tipo_establecimiento',
-        'tipo_clasificacion', 'fecha_solicitud', 'tipo_solicitud', 'direccion',
+    datos: ['nombre_establecimiento', 'parroquia_id', 'tipo_establecimiento_id',
+        'tipo_clasificacion_id', 'fecha_solicitud', 'tipo_solicitud', 'direccion',
         'rif', 'propietarios', 'telefonos', 'latitud', 'longitud'],
     capacidad: ['capacidad_total_residente', 'capacidad_actual_residente', 'atencion_ambulatoria'],
     poblacion: ['fecha_corte', 'registros'],
@@ -2268,9 +2265,9 @@ function buildCentroPayload() {
         parroquia_id: datos.value.parroquia_id,
         rif: rifCompleto,
         nro_registro_mercantil: datos.value.nro_registro_mercantil,
-        tipo_establecimiento: datos.value.tipo_establecimiento,
+        tipo_establecimiento_id: datos.value.tipo_establecimiento_id,
         tipo_establecimiento_descripcion: datos.value.tipo_establecimiento_descripcion,
-        tipo_clasificacion: datos.value.tipo_clasificacion,
+        tipo_clasificacion_id: datos.value.tipo_clasificacion_id,
         latitud: datos.value.latitud,
         longitud: datos.value.longitud,
         foto_base64: datos.value.foto_base64,
@@ -3016,9 +3013,9 @@ onMounted(async () => {
                 rif: centro.rif,
                 nro_registro_mercantil: centro.nro_registro_mercantil,
                 parroquia_id: centro.parroquia_id,
-                tipo_establecimiento: centro.tipo_establecimiento,
+                tipo_establecimiento_id: centro.tipo_establecimiento_id,
                 tipo_establecimiento_descripcion: centro.tipo_establecimiento_descripcion,
-                tipo_clasificacion: centro.tipo_clasificacion,
+                tipo_clasificacion_id: centro.tipo_clasificacion_id,
                 latitud: centro.latitud !== undefined ? Number(centro.latitud) : null,
                 longitud: centro.longitud !== undefined ? Number(centro.longitud) : null,
                 foto_base64: centro.foto_base64 || null,

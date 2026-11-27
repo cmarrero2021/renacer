@@ -38,7 +38,7 @@ async function runSeeder() {
 
         // 2. Prepare data generation
         const prefixes = ['Hospital', 'Clínica', 'Ambulatorio', 'Centro Médico', 'Maternidad', 'Polideportivo', 'Unidad Sanitaria'];
-        const types = ['publico', 'afiliada_ivss', 'privado', 'religiosa', 'otra'];
+        const types = (await client.query('SELECT id FROM public.tipos_establecimiento WHERE deleted_at IS NULL ORDER BY id')).rows.map(r => r.id);
         
         await client.query('BEGIN');
         
@@ -76,7 +76,7 @@ async function runSeeder() {
                     nombre_establecimiento, 
                     parroquia_id, 
                     rif, 
-                    tipo_establecimiento, 
+                    tipo_establecimiento_id, 
                     estado_centro, 
                     created_at, 
                     updated_at

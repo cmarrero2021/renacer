@@ -100,19 +100,23 @@
           </div>
         </template>
 
-        <!-- Celda de Código: se muestra en MAYÚSCULAS (se almacena en minúsculas) -->
-        <template v-slot:body-cell-codigo="props">
-          <q-td :props="props" class="text-left text-weight-medium" style="text-transform: uppercase">
-            {{ props.row.codigo }}
-          </q-td>
-        </template>
-
         <!-- Celda de ¿Es baterías? (tipo_planta) -->
         <template v-slot:body-cell-es_baterias="props">
           <q-td :props="props" class="text-center">
             <q-badge
               :color="props.row.es_baterias ? 'primary' : 'grey-5'"
               :label="props.row.es_baterias ? 'Sí' : 'No'"
+              class="q-px-sm q-py-xs text-weight-medium"
+            />
+          </q-td>
+        </template>
+
+        <!-- Celda de ¿Requiere descripción? (tipos_establecimiento) -->
+        <template v-slot:body-cell-requiere_descripcion="props">
+          <q-td :props="props" class="text-center">
+            <q-badge
+              :color="props.row.requiere_descripcion ? 'primary' : 'grey-5'"
+              :label="props.row.requiere_descripcion ? 'Sí' : 'No'"
               class="q-px-sm q-py-xs text-weight-medium"
             />
           </q-td>
@@ -237,6 +241,16 @@
                 v-model="formData.es_baterias"
                 color="primary"
                 :label="formData.es_baterias ? 'Sí' : 'No'"
+              />
+            </div>
+
+            <!-- Requiere descripción (para tipos_establecimiento) -->
+            <div v-if="hasField('requiere_descripcion')" class="row items-center justify-between q-mt-sm">
+              <span class="text-body2 text-grey-8">¿Exige que el centro describa el tipo?</span>
+              <q-toggle
+                v-model="formData.requiere_descripcion"
+                color="primary"
+                :label="formData.requiere_descripcion ? 'Sí' : 'No'"
               />
             </div>
 
@@ -419,7 +433,8 @@ function openCreateModal() {
   editingId.value = null;
   formData.value = {
     activo: true,
-    es_baterias: false
+    es_baterias: false,
+    requiere_descripcion: false
   };
   modalOpen.value = true;
 }
@@ -464,7 +479,7 @@ function confirmDelete(row) {
   const currentCat = activeCatalog.value;
   Dialog.create({
     title: 'Confirmar Eliminación',
-    message: `¿Estás seguro de que deseas eliminar "${row.nombre || row.codigo}"? Se realizará un borrado lógico en el sistema.`,
+    message: `¿Estás seguro de que deseas eliminar "${row.nombre}"? Se realizará un borrado lógico en el sistema.`,
     cancel: { label: 'Cancelar', flat: true, color: 'grey-8' },
     ok: { label: 'Eliminar', color: 'negative', unelevated: true },
     persistent: true

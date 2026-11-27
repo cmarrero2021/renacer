@@ -16,15 +16,15 @@ const CATALOGS_CONFIG = {
         primaryKey: 'id',
         columns: [
             { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
             { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
             { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
+            { name: 'requiere_descripcion', label: 'Requiere descripción', field: 'requiere_descripcion', sortable: true, align: 'center' },
             { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
             { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
         ],
-        searchColumns: ['codigo', 'nombre', 'descripcion'],
-        fields: ['codigo', 'nombre', 'descripcion', 'activo'],
-        requiredFields: ['codigo', 'nombre'],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'requiere_descripcion', 'activo'],
+        requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
     },
     tipos_clasificacion: {
@@ -37,15 +37,14 @@ const CATALOGS_CONFIG = {
         primaryKey: 'id',
         columns: [
             { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
             { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
             { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
             { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
             { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
         ],
-        searchColumns: ['codigo', 'nombre', 'descripcion'],
-        fields: ['codigo', 'nombre', 'descripcion', 'activo'],
-        requiredFields: ['codigo', 'nombre'],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'activo'],
+        requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
     },
     tipos_documentos: {
@@ -58,15 +57,14 @@ const CATALOGS_CONFIG = {
         primaryKey: 'id',
         columns: [
             { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
             { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
             { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
             { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
             { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
         ],
-        searchColumns: ['codigo', 'nombre', 'descripcion'],
-        fields: ['codigo', 'nombre', 'descripcion', 'activo'],
-        requiredFields: ['codigo', 'nombre'],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'activo'],
+        requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
     },
     tipo_documento_trabajador: {
@@ -79,15 +77,14 @@ const CATALOGS_CONFIG = {
         primaryKey: 'id',
         columns: [
             { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
             { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
             { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
             { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
             { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
         ],
-        searchColumns: ['codigo', 'nombre', 'descripcion'],
-        fields: ['codigo', 'nombre', 'descripcion', 'activo'],
-        requiredFields: ['codigo', 'nombre'],
+        searchColumns: ['nombre', 'descripcion'],
+        fields: ['nombre', 'descripcion', 'activo'],
+        requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
     },
     servicios_catalogo: {

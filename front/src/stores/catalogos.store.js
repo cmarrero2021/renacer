@@ -4,23 +4,6 @@ import { ref, computed } from 'vue';
 import { catalogosService } from 'src/services/catalogos.service';
 
 // Valores por defecto como salvaguarda
-const DEFAULT_TIPOS_ESTAB = [
-    { value: 'publico', label: 'Público' },
-    { value: 'afiliada_ivss', label: 'Afiliada IVSS' },
-    { value: 'privado', label: 'Privado' },
-    { value: 'religiosa', label: 'Religioso' },
-    { value: 'otra', label: 'Otra' },
-];
-
-const DEFAULT_TIPOS_CLASIF = [
-    { value: 'geriatrico', label: 'Geriátrico' },
-    { value: 'gronto_psiquiatrico', label: 'Gronto-Psiquiátrico' },
-    { value: 'casa_hogar', label: 'Casa Hogar' },
-    { value: 'unidades_gerontologicas', label: 'Unidades Gerontológicas' },
-    { value: 'fundacion', label: 'Fundación' },
-    { value: 'otras', label: 'Otras' },
-];
-
 const DEFAULT_DOCS = [
     { tipo_documento: 'carta_solicitud', tipo_documento_label: 'Carta de solicitud' },
     { tipo_documento: 'copia_cedula_propietario', tipo_documento_label: 'Copia cédula propietario' },
@@ -60,11 +43,6 @@ const DEFAULT_TIPOS_PLANTA = [
     { value: 5, label: 'Estaciones de baterías portátiles', es_baterias: true },
 ];
 
-const DEFAULT_TIPOS_DOC_TRABAJADOR = [
-    { value: 'certificado_salud', label: 'Certificado de Salud' },
-    { value: 'resumen_curricular', label: 'Resumen Curricular' },
-];
-
 // Capitaliza un nombre para su visualización: primera letra en mayúsculas,
 // resto en minúsculas, independientemente de cómo esté almacenado
 const capitalizarNombre = (s) => {
@@ -85,23 +63,17 @@ export const useCatalogosStore = defineStore('catalogos', () => {
     const initialized = ref(false);
 
     // ─── Getters formateados para componentes ────────────────────────────────
-    const opcionesTipoEstab = computed(() => {
-        if (tiposEstablecimiento.value.length > 0) {
-            return tiposEstablecimiento.value
-                .filter(t => t.activo !== false)
-                .map(t => ({ value: t.codigo, label: t.nombre }));
-        }
-        return DEFAULT_TIPOS_ESTAB;
-    });
+    const opcionesTipoEstab = computed(() =>
+        tiposEstablecimiento.value
+            .filter(t => t.activo !== false)
+            .map(t => ({ value: Number(t.id), label: t.nombre, requiere_descripcion: !!t.requiere_descripcion }))
+    );
 
-    const opcionesTipoClasif = computed(() => {
-        if (tiposClasificacion.value.length > 0) {
-            return tiposClasificacion.value
-                .filter(t => t.activo !== false)
-                .map(t => ({ value: t.codigo, label: t.nombre }));
-        }
-        return DEFAULT_TIPOS_CLASIF;
-    });
+    const opcionesTipoClasif = computed(() =>
+        tiposClasificacion.value
+            .filter(t => t.activo !== false)
+            .map(t => ({ value: Number(t.id), label: t.nombre }))
+    );
 
     const opcionesDocumentos = computed(() => {
         if (tiposDocumentos.value.length > 0) {
@@ -148,18 +120,11 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         return DEFAULT_TIPOS_PLANTA;
     });
 
-    const opcionesDocsTrabajador = computed(() => {
-        if (tiposDocumentoTrabajador.value.length > 0) {
-            return tiposDocumentoTrabajador.value
-                .filter(t => t.activo !== false)
-                .map(t => ({
-                    id: Number(t.id),
-                    codigo: t.codigo,
-                    label: capitalizarNombre(t.nombre)
-                }));
-        }
-        return DEFAULT_TIPOS_DOC_TRABAJADOR.map((t, i) => ({ id: i + 1, ...t }));
-    });
+    const opcionesDocsTrabajador = computed(() =>
+        tiposDocumentoTrabajador.value
+            .filter(t => t.activo !== false)
+            .map(t => ({ id: Number(t.id), label: capitalizarNombre(t.nombre) }))
+    );
 
     // ─── Acciones de consulta ────────────────────────────────────────────────
     async function fetchCatalog(catalogKey) {

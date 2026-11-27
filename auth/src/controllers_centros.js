@@ -310,8 +310,10 @@ exports.listCentros = async (req, res) => {
         const paramIdx = isArray ? params.length : 0;
 
         const sql = `
-      SELECT c.id, c.nombre_establecimiento, c.tipo_establecimiento,
-             c.tipo_clasificacion, c.estado_centro, c.rif, c.nro_registro_mercantil,
+      SELECT c.id, c.nombre_establecimiento,
+             c.tipo_establecimiento_id, te.nombre AS tipo_establecimiento_nombre,
+             c.tipo_clasificacion_id, tc.nombre AS tipo_clasificacion_nombre,
+             c.estado_centro, c.rif, c.nro_registro_mercantil,
              c.latitud, c.longitud,
              g.parroquia AS parroquia, g.municipio AS municipio, g.estado AS estado,
              f.id AS ficha_id, f.tipo_solicitud,
@@ -342,6 +344,8 @@ exports.listCentros = async (req, res) => {
              (g.parish_id = c.parroquia_id) DESC
           LIMIT 1
       ) g ON TRUE
+      LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id
+      LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id
       LEFT JOIN public.fichas_establecimiento f ON f.centro_id = c.id AND f.is_current = TRUE AND f.deleted_at IS NULL
       WHERE c.deleted_at IS NULL
       ${filter.replace('$__PARAM__', `$${paramIdx}`)}
@@ -376,7 +380,10 @@ exports.getCentro = async (req, res) => {
                     g.estado AS estado,
                     g.cod_munici AS municipio_id,
                     g.cod_entida AS estado_id,
-                    g.codigo_ine AS codigo_ine
+                    g.codigo_ine AS codigo_ine,
+                    te.nombre AS tipo_establecimiento_nombre,
+                    tc.nombre AS tipo_clasificacion_nombre,
+                    COALESCE(te.requiere_descripcion, FALSE) AS tipo_establecimiento_requiere_descripcion
              FROM public.centros c
              LEFT JOIN LATERAL (
                  SELECT g.parroquia, g.municipio, g.estado, g.cod_entida, g.cod_munici, g.codigo_ine
@@ -394,6 +401,8 @@ exports.getCentro = async (req, res) => {
                     (g.parish_id = c.parroquia_id) DESC
                  LIMIT 1
              ) g ON TRUE
+             LEFT JOIN public.tipos_establecimiento te ON te.id = c.tipo_establecimiento_id
+             LEFT JOIN public.tipos_clasificacion tc ON tc.id = c.tipo_clasificacion_id
              WHERE c.id = $${centroParam} AND c.deleted_at IS NULL ${filterSql}`,
             allParams
         );
@@ -441,8 +450,8 @@ function validateFotoSize(fotoBase64) {
 exports.createCentro = async (req, res) => {
     const {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-        tipo_establecimiento, tipo_establecimiento_descripcion,
-        tipo_clasificacion, estado_centro = 'activo',
+        tipo_establecimiento_id, tipo_establecimiento_descripcion,
+        tipo_clasificacion_id, estado_centro = 'activo',
         latitud = null, longitud = null,
         foto_base64 = null,
         propietarios = [], representantes = [], telefonos = [], correos = []
@@ -459,11 +468,11 @@ exports.createCentro = async (req, res) => {
         const centroResult = await client.query(
             `INSERT INTO public.centros
        (nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-        tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+        tipo_establecimiento_id, tipo_establecimiento_descripcion, tipo_clasificacion_id, estado_centro,
         latitud, longitud, foto_base64)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+                tipo_establecimiento_id, tipo_establecimiento_descripcion, tipo_clasificacion_id, estado_centro,
                 latitud, longitud, foto_base64]
         );
         const centro = centroResult.rows[0];
@@ -525,8 +534,8 @@ exports.updateCentro = async (req, res) => {
     const { id } = req.params;
     const {
         nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-        tipo_establecimiento, tipo_establecimiento_descripcion,
-        tipo_clasificacion, estado_centro,
+        tipo_establecimiento_id, tipo_establecimiento_descripcion,
+        tipo_clasificacion_id, estado_centro,
         latitud, longitud,
         foto_base64,
         propietarios, representantes, telefonos, correos
@@ -558,9 +567,9 @@ exports.updateCentro = async (req, res) => {
          parroquia_id = COALESCE($2, parroquia_id),
          nro_registro_mercantil = COALESCE($3, nro_registro_mercantil),
          rif = COALESCE($4, rif),
-         tipo_establecimiento = COALESCE($5, tipo_establecimiento),
+         tipo_establecimiento_id = COALESCE($5, tipo_establecimiento_id),
          tipo_establecimiento_descripcion = COALESCE($6, tipo_establecimiento_descripcion),
-         tipo_clasificacion = COALESCE($7, tipo_clasificacion),
+         tipo_clasificacion_id = COALESCE($7, tipo_clasificacion_id),
          estado_centro = COALESCE($8, estado_centro),
          latitud = COALESCE($9, latitud),
          longitud = COALESCE($10, longitud),
@@ -568,7 +577,7 @@ exports.updateCentro = async (req, res) => {
          updated_at = NOW()
        WHERE id = $13 AND deleted_at IS NULL RETURNING *`,
             [nombre_establecimiento, parroquia_id, nro_registro_mercantil, rif,
-                tipo_establecimiento, tipo_establecimiento_descripcion, tipo_clasificacion, estado_centro,
+                tipo_establecimiento_id, tipo_establecimiento_descripcion, tipo_clasificacion_id, estado_centro,
                 latitud, longitud, foto_base64 ?? null, updateFoto, id]
         );
 
@@ -840,7 +849,7 @@ exports.getFichaActual = async (req, res) => {
             `, [ficha.id]),
             client.query(`
                 SELECT d.id, d.ficha_id, d.rol_personal, d.tipo_documento_id, d.numero,
-                       t.codigo AS tipo_documento_codigo, t.nombre AS tipo_documento_nombre,
+                       t.nombre AS tipo_documento_nombre,
                        d.archivo_nombre, d.archivo_tamano, d.archivo_mimetype, d.archivo_ruta,
                        (d.archivo_ruta IS NOT NULL) AS tiene_archivo,
                        d.created_at, d.updated_at
@@ -1808,10 +1817,9 @@ exports.saveDocumentosPersonal = async (req, res) => {
 
         // Tipos activos del catálogo
         const tiposResult = await client.query(
-            'SELECT id, codigo, nombre FROM public.tipo_documento_trabajador WHERE activo = TRUE AND deleted_at IS NULL'
+            'SELECT id, nombre FROM public.tipo_documento_trabajador WHERE activo = TRUE AND deleted_at IS NULL'
         );
         const tiposPorId = new Map(tiposResult.rows.map(t => [t.id, t]));
-        const tiposPorCodigo = new Map(tiposResult.rows.map(t => [String(t.codigo).toLowerCase(), t]));
 
         // Conteos vigentes del personal
         const personalResult = await client.query('SELECT * FROM public.ficha_personal WHERE ficha_id = $1', [fichaId]);
@@ -1820,9 +1828,6 @@ exports.saveDocumentosPersonal = async (req, res) => {
         // Validaciones previas de coherencia, formato y peso
         for (const doc of documentos) {
             let tipo = tiposPorId.get(parseInt(doc.tipo_documento_id, 10));
-            if (!tipo && doc.tipo_documento_codigo) {
-                tipo = tiposPorCodigo.get(String(doc.tipo_documento_codigo).trim().toLowerCase());
-            }
             if (!tipo) {
                 return res.status(400).json({ error: 'Tipo de documento de trabajador inválido o inactivo.' });
             }
@@ -1872,9 +1877,6 @@ exports.saveDocumentosPersonal = async (req, res) => {
 
         for (const doc of documentos) {
             let tipo = tiposPorId.get(parseInt(doc.tipo_documento_id, 10));
-            if (!tipo && doc.tipo_documento_codigo) {
-                tipo = tiposPorCodigo.get(String(doc.tipo_documento_codigo).trim().toLowerCase());
-            }
             const tipoId = tipo.id;
             const numero = parseInt(doc.numero, 10);
             const eliminar = !!doc.eliminar_archivo;
@@ -1888,7 +1890,7 @@ exports.saveDocumentosPersonal = async (req, res) => {
                     const m = doc.archivo_nombre.toLowerCase().match(/\.(pdf|png|jpe?g)$/);
                     if (m) extension = m[1] === 'pdf' ? '.pdf' : `.${m[1].replace('jpeg', 'jpg')}`;
                 }
-                const nombreDisco = `${doc.rol_personal}_${tipo.codigo}_${numero}`;
+                const nombreDisco = `${doc.rol_personal}_${tipo.id}_${numero}`;
                 archivoRuta = writeFileToDisk(fichaId, nombreDisco, doc.archivo_base64, extension || '.pdf');
             }
 
@@ -1973,7 +1975,7 @@ exports.saveDocumentosPersonal = async (req, res) => {
         // Devolver los documentos vigentes (con id) para refrescar el formulario
         const guardados = await client.query(`
             SELECT d.id, d.rol_personal, d.tipo_documento_id, d.numero,
-                   t.codigo AS tipo_documento_codigo, t.nombre AS tipo_documento_nombre,
+                   t.nombre AS tipo_documento_nombre,
                    d.archivo_nombre, d.archivo_tamano, d.archivo_mimetype,
                    (d.archivo_ruta IS NOT NULL) AS tiene_archivo
             FROM public.ficha_documentos_personal d

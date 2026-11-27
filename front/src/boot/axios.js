@@ -104,8 +104,8 @@ const transformPayload = (obj) => {
         lowKey.includes('sitio_web') ||
         [
           'status', 'type', 'action', 'resource', 'state', 'method', 'mode',
-          'tipo_solicitud', 'tipo_clasificacion', 'tipo_establecimiento', 'tipo_documento',
-          'tipo_documento_codigo', 'rol_personal', 'codigo',
+          'tipo_solicitud', 'tipo_documento',
+          'rol_personal', 'codigo',
           'categoria', 'modalidad', 'estado_centro'
         ].includes(lowKey)) {
         newObj[key] = value.toLowerCase().trim();

@@ -17,35 +17,37 @@ async function applyMigration() {
 
         // Tipos de establecimiento
         const tiposEstab = [
-            { codigo: 'publico', nombre: 'Público', descripcion: 'Establecimiento público / estatal' },
-            { codigo: 'afiliada_ivss', nombre: 'Afiliada IVSS', descripcion: 'Institución afiliada al IVSS' },
-            { codigo: 'privado', nombre: 'Privado', descripcion: 'Establecimiento privado' },
-            { codigo: 'religiosa', nombre: 'Religioso', descripcion: 'Institución de congregación o confesión religiosa' },
-            { codigo: 'otra', nombre: 'Otra', descripcion: 'Otro tipo de institución no clasificada' },
+            { nombre: 'Público',       descripcion: 'Establecimiento público / estatal',                        requiere_descripcion: false },
+            { nombre: 'Afiliada IVSS', descripcion: 'Institución afiliada al IVSS',                               requiere_descripcion: false },
+            { nombre: 'Privado',       descripcion: 'Establecimiento privado',                                     requiere_descripcion: false },
+            { nombre: 'Religioso',     descripcion: 'Institución de congregación o confesión religiosa',           requiere_descripcion: false },
+            { nombre: 'Otra',          descripcion: 'Otro tipo de institución no clasificada',                     requiere_descripcion: true  },
         ];
         for (const item of tiposEstab) {
             await client.query(`
-                INSERT INTO public.tipos_establecimiento (codigo, nombre, descripcion)
+                INSERT INTO public.tipos_establecimiento (nombre, descripcion, requiere_descripcion)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion
-            `, [item.codigo, item.nombre, item.descripcion]);
+                ON CONFLICT (nombre) WHERE deleted_at IS NULL
+                DO UPDATE SET descripcion = EXCLUDED.descripcion, requiere_descripcion = EXCLUDED.requiere_descripcion
+            `, [item.nombre, item.descripcion, item.requiere_descripcion]);
         }
 
         // Tipos de clasificación
         const tiposClasif = [
-            { codigo: 'geriatrico', nombre: 'Geriátrico', descripcion: 'Atención integral geriátrica' },
-            { codigo: 'gronto_psiquiatrico', nombre: 'Gronto-Psiquiátrico', descripcion: 'Atención geronto-psiquiátrica especializada' },
-            { codigo: 'casa_hogar', nombre: 'Casa Hogar', descripcion: 'Residencia y hogar de estadía' },
-            { codigo: 'unidades_gerontologicas', nombre: 'Unidades Gerontológicas', descripcion: 'Unidades asistenciales gerontológicas' },
-            { codigo: 'fundacion', nombre: 'Fundación', descripcion: 'Entidad de carácter benéfico o fundacional' },
-            { codigo: 'otras', nombre: 'Otras', descripcion: 'Otras clasificaciones' },
+            { nombre: 'Geriátrico',              descripcion: 'Atención integral geriátrica' },
+            { nombre: 'Gronto-Psiquiátrico',      descripcion: 'Atención geronto-psiquiátrica especializada' },
+            { nombre: 'Casa Hogar',               descripcion: 'Residencia y hogar de estadía' },
+            { nombre: 'Unidades Gerontológicas',  descripcion: 'Unidades asistenciales gerontológicas' },
+            { nombre: 'Fundación',                descripcion: 'Entidad de carácter benéfico o fundacional' },
+            { nombre: 'Otras',                    descripcion: 'Otras clasificaciones' },
         ];
         for (const item of tiposClasif) {
             await client.query(`
-                INSERT INTO public.tipos_clasificacion (codigo, nombre, descripcion)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion
-            `, [item.codigo, item.nombre, item.descripcion]);
+                INSERT INTO public.tipos_clasificacion (nombre, descripcion)
+                VALUES ($1, $2)
+                ON CONFLICT (nombre) WHERE deleted_at IS NULL
+                DO UPDATE SET descripcion = EXCLUDED.descripcion
+            `, [item.nombre, item.descripcion]);
         }
 
         // Tipos de documentos

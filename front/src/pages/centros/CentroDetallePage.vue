@@ -344,7 +344,7 @@
                                         <q-chip v-if="ficha.servicios.otros" color="positive" text-color="white"
                                             dense>Otros{{ ficha.servicios.otros_descripcion ? ': ' + toTitleCase(ficha.servicios.otros_descripcion) : '' }}</q-chip>
                                         <!-- Servicios adicionales del catálogo (persistidos en ficha_servicios.extras) -->
-                                        <q-chip v-for="s in serviciosExtras" :key="s.codigo" color="positive"
+                                        <q-chip v-for="s in serviciosExtras" :key="s.id" color="positive"
                                             text-color="white" dense>{{ s.label }}</q-chip>
                                         <span v-if="!tieneServicios" class="text-grey text-body2">Ningún servicio
                                             registrado</span>
@@ -1182,7 +1182,7 @@ import { jsPDF } from 'jspdf';
 // Generador de QR (UMD, sin dependencias) — src/lib/qrcode-generator.js
 import qrcode from 'src/lib/qrcode-generator';
 import { useCentrosStore } from 'src/stores/centros.store';
-import { useCatalogosStore } from 'src/stores/catalogos.store';
+import { useCatalogosStore, esTipoDocRif, ID_TIPO_DOC_RIF } from 'src/stores/catalogos.store';
 import { centrosService, fichasService } from 'src/services/centros.service';
 
 // autoTable no está instalado – se usa renderizado manual de tablas en el PDF
@@ -1875,8 +1875,7 @@ const generarPdfPrinterFriendly = async () => {
       const docItems = docs.map(d => {
         // El RIF se consigna en el registro inicial (centros.rif_archivo): su fila en
         // ficha_documentos no tiene archivo propio, pero sí fue consignado
-        const rifCargado = String(d.tipo_documento || '').trim().toLowerCase() === 'rif'
-          && !!centroData?.rif_archivo;
+        const rifCargado = esTipoDocRif(d.tipo_documento) && !!centroData?.rif_archivo;
         return {
           label: labelTipoDoc(d.tipo_documento),
           value: (d.tiene_archivo || d.archivo_nombre || rifCargado) ? 'Sí' : ''
@@ -2018,7 +2017,7 @@ const documentosActivos = computed(() => {
     return docs.filter(d => activos.has(String(d.tipo_documento || '').trim().toLowerCase()));
 });
 
-const esRifRow = (d) => String(d.tipo_documento || '').trim().toLowerCase() === 'rif';
+const esRifRow = (d) => esTipoDocRif(d?.tipo_documento);
 
 // Documentos a mostrar: si el RIF está precargado (centros.rif_archivo), la fila RIF de
 // ficha_documentos (sin archivo) se sustituye por una fila sintética con ver/descargar
@@ -2026,7 +2025,7 @@ const documentosVisibles = computed(() => {
     const docs = documentosActivos.value;
     if (!centro.value?.rif_archivo) return docs;
     return [
-        { id: '__rif_precargado__', tipo_documento: 'rif', es_rif_precargado: true, tiene_archivo: true },
+        { id: '__rif_precargado__', tipo_documento: String(ID_TIPO_DOC_RIF), es_rif_precargado: true, tiene_archivo: true },
         ...docs.filter(d => !esRifRow(d)),
     ];
 });
@@ -2243,8 +2242,8 @@ const tieneServicios = computed(() => {
 });
 
 // Servicios adicionales del catálogo guardados en ficha_servicios.extras (jsonb,
-// { codigo: boolean }). Se rotulan con el nombre del catálogo; si el código ya no
-// existe en el catálogo, se muestra el código "humanizado" en title case.
+// { id: boolean } con el id como texto). Se rotulan con el nombre del catálogo; si el
+// id ya no existe en el catálogo, se muestra el id "humanizado" en title case.
 const serviciosExtras = computed(() => {
     const extras = ficha.value?.servicios?.extras;
     if (!extras || typeof extras !== 'object') return [];

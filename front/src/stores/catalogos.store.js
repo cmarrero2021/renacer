@@ -3,17 +3,17 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { catalogosService } from 'src/services/catalogos.service';
 
-// Valores por defecto como salvaguarda
+// Valores por defecto como salvaguarda (ids alineados con bd/20261126_2100_tipos_documentos_sin_codigo.sql)
 const DEFAULT_DOCS = [
-    { tipo_documento: 'carta_solicitud', tipo_documento_label: 'Carta de solicitud' },
-    { tipo_documento: 'copia_cedula_propietario', tipo_documento_label: 'Copia cédula propietario' },
-    { tipo_documento: 'registro_mercantil', tipo_documento_label: 'Registro mercantil' },
-    { tipo_documento: 'rif', tipo_documento_label: 'RIF' },
-    { tipo_documento: 'documento_inmueble', tipo_documento_label: 'Documento del inmueble' },
-    { tipo_documento: 'conformidad_uso', tipo_documento_label: 'Conformidad de uso' },
-    { tipo_documento: 'permiso_sanitario_local', tipo_documento_label: 'Permiso sanitario local' },
-    { tipo_documento: 'permiso_sanitario_alimentos', tipo_documento_label: 'Permiso sanitario alimentos' },
-    { tipo_documento: 'plano_inmueble', tipo_documento_label: 'Plano del inmueble' },
+    { tipo_documento: '1', tipo_documento_label: 'Carta de solicitud' },
+    { tipo_documento: '2', tipo_documento_label: 'Copia cédula propietario' },
+    { tipo_documento: '3', tipo_documento_label: 'Registro mercantil' },
+    { tipo_documento: '4', tipo_documento_label: 'RIF' },
+    { tipo_documento: '5', tipo_documento_label: 'Documento del inmueble' },
+    { tipo_documento: '6', tipo_documento_label: 'Conformidad de uso' },
+    { tipo_documento: '7', tipo_documento_label: 'Permiso sanitario local' },
+    { tipo_documento: '8', tipo_documento_label: 'Permiso sanitario alimentos' },
+    { tipo_documento: '9', tipo_documento_label: 'Plano del inmueble' },
 ];
 
 const DEFAULT_SERVICIOS = [
@@ -27,6 +27,28 @@ const DEFAULT_SERVICIOS = [
     { field: 'barberia_peluqueria', label: 'Barbería / Peluquería' },
     { field: 'otros', label: 'Otros Servicios', desc: 'otros_descripcion' },
 ];
+
+// Id del RIF en tipos_documentos (estable en dev y producción); acepta también el
+// codigo legado 'rif' por compatibilidad con datos viejos
+export const ID_TIPO_DOC_RIF = 4;
+export const esTipoDocRif = (v) => {
+    const s = String(v ?? '').trim();
+    return s === String(ID_TIPO_DOC_RIF) || s.toLowerCase() === 'rif';
+};
+
+// Columnas fijas de ficha_servicios para los ids 1-9 del catálogo; los demás
+// servicios se guardan en ficha_servicios.extras con el id (como texto) como clave
+const SERVICIOS_FIJOS = {
+    1: { field: 'farmacia' },
+    2: { field: 'evaluacion_nutricional' },
+    3: { field: 'actividades_recreativas' },
+    4: { field: 'servicio_emergencia' },
+    5: { field: 'servicio_funerario' },
+    6: { field: 'medicos', desc: 'medicos_descripcion' },
+    7: { field: 'lavanderia', desc: 'lavanderia_descripcion' },
+    8: { field: 'barberia_peluqueria' },
+    9: { field: 'otros', desc: 'otros_descripcion' },
+};
 
 const DEFAULT_ESTADOS_INMUEBLE = [
     { value: 1, label: 'Excelente' },
@@ -80,7 +102,7 @@ export const useCatalogosStore = defineStore('catalogos', () => {
             return tiposDocumentos.value
                 .filter(d => d.activo !== false)
                 .map(d => ({
-                    tipo_documento: d.codigo,
+                    tipo_documento: String(d.id),
                     tipo_documento_label: capitalizarNombre(d.nombre),
                     descripcion: d.descripcion || ''
                 }));
@@ -92,12 +114,15 @@ export const useCatalogosStore = defineStore('catalogos', () => {
         if (serviciosCatalogo.value.length > 0) {
             return serviciosCatalogo.value
                 .filter(s => s.activo !== false)
-                .map(s => ({
-                    field: s.codigo,
-                    label: s.nombre,
-                    categoria: s.categoria || 'General',
-                    desc: ['medicos', 'lavanderia', 'otros'].includes(s.codigo) ? `${s.codigo}_descripcion` : null
-                }));
+                .map(s => {
+                    const fijo = SERVICIOS_FIJOS[s.id];
+                    return {
+                        field: fijo?.field ?? String(s.id),
+                        label: s.nombre,
+                        categoria: s.categoria || 'General',
+                        desc: fijo?.desc ?? null
+                    };
+                });
         }
         return DEFAULT_SERVICIOS;
     });

@@ -1236,7 +1236,7 @@ import { ref, computed, onMounted, watch, defineComponent, h } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { LocalStorage, Notify, useQuasar } from 'quasar';
 import { useCentrosStore } from 'src/stores/centros.store';
-import { useCatalogosStore } from 'src/stores/catalogos.store';
+import { useCatalogosStore, esTipoDocRif } from 'src/stores/catalogos.store';
 import { miCentroService, fichasService, geoService, centrosService } from 'src/services/centros.service';
 
 // ── Sub-componentes inline ────────────────────────────────────────────────────
@@ -1675,7 +1675,8 @@ const docs = ref([]);
 const rifPrecargado = ref(null);            // ruta relativa del archivo (ej: documentos/5/rif.pdf)
 const rifReemplazando = ref(false);
 
-const esFilaRif = (row) => String(row.tipo_documento || '').toLowerCase() === 'rif';
+// RIF = id 4 en tipos_documentos (ver esTipoDocRif; también acepta el codigo legado 'rif')
+const esFilaRif = (row) => esTipoDocRif(row?.tipo_documento);
 const esRifPrecargado = (row) => esFilaRif(row) && !!rifPrecargado.value;
 const rifNombrePrecargado = computed(() => {
     const ruta = String(rifPrecargado.value || '');

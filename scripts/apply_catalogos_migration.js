@@ -50,24 +50,25 @@ async function applyMigration() {
             `, [item.nombre, item.descripcion]);
         }
 
-        // Tipos de documentos
+        // Tipos de documentos (ids 1-9 alineados con bd/20261126_2100_tipos_documentos_sin_codigo.sql;
+        // RIF = 4 lo asume el frontend)
         const tiposDocs = [
-            { codigo: 'carta_solicitud', nombre: 'Carta de solicitud', descripcion: 'Carta formal de solicitud de registro o trámite' },
-            { codigo: 'copia_cedula_propietario', nombre: 'Copia cédula propietario', descripcion: 'Copia de documento de identidad del propietario' },
-            { codigo: 'registro_mercantil', nombre: 'Registro mercantil', descripcion: 'Copia de acta constitutiva y registro mercantil' },
-            { codigo: 'rif', nombre: 'RIF', descripcion: 'Registro de Información Fiscal actualizado' },
-            { codigo: 'documento_inmueble', nombre: 'Documento del inmueble', descripcion: 'Título de propiedad o contrato de arrendamiento' },
-            { codigo: 'conformidad_uso', nombre: 'Conformidad de uso', descripcion: 'Permiso municipal o constancia de conformidad de uso' },
-            { codigo: 'permiso_sanitario_local', nombre: 'Permiso sanitario local', descripcion: 'Permiso sanitario vigente emitido por autoridad competente' },
-            { codigo: 'permiso_sanitario_alimentos', nombre: 'Permiso sanitario alimentos', descripcion: 'Permiso y manipulación higiénica de alimentos' },
-            { codigo: 'plano_inmueble', nombre: 'Plano del inmueble', descripcion: 'Planos arquitectónicos o de distribución del establecimiento' },
+            { id: 1, nombre: 'Carta de solicitud', descripcion: 'Carta formal de solicitud de registro o trámite' },
+            { id: 2, nombre: 'Copia cédula propietario', descripcion: 'Copia de documento de identidad del propietario' },
+            { id: 3, nombre: 'Registro mercantil', descripcion: 'Copia de acta constitutiva y registro mercantil' },
+            { id: 4, nombre: 'RIF', descripcion: 'Registro de Información Fiscal actualizado' },
+            { id: 5, nombre: 'Documento del inmueble', descripcion: 'Título de propiedad o contrato de arrendamiento' },
+            { id: 6, nombre: 'Conformidad de uso', descripcion: 'Permiso municipal o constancia de conformidad de uso' },
+            { id: 7, nombre: 'Permiso sanitario local', descripcion: 'Permiso sanitario vigente emitido por autoridad competente' },
+            { id: 8, nombre: 'Permiso sanitario alimentos', descripcion: 'Permiso y manipulación higiénica de alimentos' },
+            { id: 9, nombre: 'Plano del inmueble', descripcion: 'Planos arquitectónicos o de distribución del establecimiento' },
         ];
         for (const item of tiposDocs) {
             await client.query(`
-                INSERT INTO public.tipos_documentos (codigo, nombre, descripcion)
+                INSERT INTO public.tipos_documentos (id, nombre, descripcion)
                 VALUES ($1, $2, $3)
-                ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion
-            `, [item.codigo, item.nombre, item.descripcion]);
+                ON CONFLICT (id) DO UPDATE SET nombre = EXCLUDED.nombre, descripcion = EXCLUDED.descripcion, activo = TRUE, deleted_at = NULL
+            `, [item.id, item.nombre, item.descripcion]);
         }
 
         // Servicios de catálogo

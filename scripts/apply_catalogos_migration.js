@@ -71,23 +71,40 @@ async function applyMigration() {
         }
 
         // Servicios de catálogo
+        // Asegurar UNIQUE(nombre) (idempotente); la migración que elimina codigo la agrega,
+        // pero si esta versión antigua ya corrió sin ella, la creamos aquí.
+        await client.query(`
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_constraint
+                     WHERE conname = 'servicios_catalogo_nombre_key'
+                       AND conrelid = 'public.servicios_catalogo'::regclass
+                ) THEN
+                    DELETE FROM public.servicios_catalogo a
+                     USING public.servicios_catalogo b
+                     WHERE a.nombre = b.nombre AND a.id > b.id;
+                    ALTER TABLE public.servicios_catalogo ADD CONSTRAINT servicios_catalogo_nombre_key UNIQUE (nombre);
+                END IF;
+            END $$;
+        `);
         const servicios = [
-            { codigo: 'farmacia', nombre: 'Farmacia', categoria: 'Salud', descripcion: 'Servicio interno de dispensación de medicamentos' },
-            { codigo: 'evaluacion_nutricional', nombre: 'Evaluación Nutricional', categoria: 'Salud / Nutrición', descripcion: 'Seguimiento y control nutricional de los adultos mayores' },
-            { codigo: 'actividades_recreativas', nombre: 'Actividades Recreativas', categoria: 'Bienestar', descripcion: 'Talleres, paseos, dinámicas y esparcimiento' },
-            { codigo: 'servicio_emergencia', nombre: 'Servicio de Emergencia', categoria: 'Salud', descripcion: 'Atención médica y traslados de urgencia' },
-            { codigo: 'servicio_funerario', nombre: 'Servicio Funerario', categoria: 'Asistencia', descripcion: 'Convenio o servicio de asistencia funeraria' },
-            { codigo: 'medicos', nombre: 'Médicos', categoria: 'Salud', descripcion: 'Consultas y atención de médicos especialistas' },
-            { codigo: 'lavanderia', nombre: 'Lavandería', categoria: 'Servicios Generales', descripcion: 'Lavado y desinfección de lencería y prendas' },
-            { codigo: 'barberia_peluqueria', nombre: 'Barbería / Peluquería', categoria: 'Cuidado Personal', descripcion: 'Aseo, corte de cabello y estética personal' },
-            { codigo: 'otros', nombre: 'Otros Servicios', categoria: 'Otros', descripcion: 'Otros servicios asistenciales' },
+            { nombre: 'Farmacia', categoria: 'Salud', descripcion: 'Servicio interno de dispensación de medicamentos' },
+            { nombre: 'Evaluación Nutricional', categoria: 'Salud / Nutrición', descripcion: 'Seguimiento y control nutricional de los adultos mayores' },
+            { nombre: 'Actividades Recreativas', categoria: 'Bienestar', descripcion: 'Talleres, paseos, dinámicas y esparcimiento' },
+            { nombre: 'Servicio de Emergencia', categoria: 'Salud', descripcion: 'Atención médica y traslados de urgencia' },
+            { nombre: 'Servicio Funerario', categoria: 'Asistencia', descripcion: 'Convenio o servicio de asistencia funeraria' },
+            { nombre: 'Médicos', categoria: 'Salud', descripcion: 'Consultas y atención de médicos especialistas' },
+            { nombre: 'Lavandería', categoria: 'Servicios Generales', descripcion: 'Lavado y desinfección de lencería y prendas' },
+            { nombre: 'Barbería / Peluquería', categoria: 'Cuidado Personal', descripcion: 'Aseo, corte de cabello y estética personal' },
+            { nombre: 'Otros Servicios', categoria: 'Otros', descripcion: 'Otros servicios asistenciales' },
         ];
         for (const item of servicios) {
             await client.query(`
-                INSERT INTO public.servicios_catalogo (codigo, nombre, categoria, descripcion)
-                VALUES ($1, $2, $3, $4)
-                ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre, categoria = EXCLUDED.categoria, descripcion = EXCLUDED.descripcion
-            `, [item.codigo, item.nombre, item.categoria, item.descripcion]);
+                INSERT INTO public.servicios_catalogo (nombre, categoria, descripcion)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (nombre) DO UPDATE SET categoria = EXCLUDED.categoria, descripcion = EXCLUDED.descripcion
+            `, [item.nombre, item.categoria, item.descripcion]);
         }
 
         console.log('   Catálogos de negocio sembrados.');

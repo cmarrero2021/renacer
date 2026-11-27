@@ -97,16 +97,15 @@ const CATALOGS_CONFIG = {
         primaryKey: 'id',
         columns: [
             { name: 'id', label: 'ID', field: 'id', sortable: true, align: 'left' },
-            { name: 'codigo', label: 'Código', field: 'codigo', sortable: true, align: 'left', required: true },
             { name: 'nombre', label: 'Nombre', field: 'nombre', sortable: true, align: 'left', required: true },
             { name: 'categoria', label: 'Categoría', field: 'categoria', sortable: true, align: 'left' },
             { name: 'descripcion', label: 'Descripción', field: 'descripcion', sortable: true, align: 'left' },
             { name: 'activo', label: 'Estado', field: 'activo', sortable: true, align: 'center' },
             { name: 'actions', label: 'Acciones', field: 'actions', align: 'center' }
         ],
-        searchColumns: ['codigo', 'nombre', 'categoria', 'descripcion'],
-        fields: ['codigo', 'nombre', 'categoria', 'descripcion', 'activo'],
-        requiredFields: ['codigo', 'nombre'],
+        searchColumns: ['nombre', 'categoria', 'descripcion'],
+        fields: ['nombre', 'categoria', 'descripcion', 'activo'],
+        requiredFields: ['nombre'],
         orderBy: 'nombre ASC'
     },
     estados_inmueble: {
@@ -412,13 +411,8 @@ exports.createCatalogoItem = async (req, res) => {
 
         for (const field of config.fields) {
             if (req.body[field] !== undefined) {
-                // El código de negocio se almacena normalizado en minúsculas
-                // (la unicidad y las comparaciones son sensibles a mayúsculas)
-                const valor = field === 'codigo' && typeof req.body[field] === 'string'
-                    ? req.body[field].trim().toLowerCase()
-                    : req.body[field];
                 insertFields.push(field);
-                insertValues.push(valor);
+                insertValues.push(req.body[field]);
                 insertPlaceholders.push(`$${insertValues.length}`);
             }
         }
@@ -486,11 +480,7 @@ exports.updateCatalogoItem = async (req, res) => {
 
         for (const field of config.fields) {
             if (req.body[field] !== undefined) {
-                // El código de negocio se almacena normalizado en minúsculas
-                // (la unicidad y las comparaciones son sensibles a mayúsculas)
-                updateValues.push(field === 'codigo' && typeof req.body[field] === 'string'
-                    ? req.body[field].trim().toLowerCase()
-                    : req.body[field]);
+                updateValues.push(req.body[field]);
                 updateSets.push(`${field} = $${updateValues.length}`);
             }
         }

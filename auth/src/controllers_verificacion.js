@@ -119,21 +119,21 @@ exports.getCentroVerificacion = async (req, res) => {
                 ),
             ]);
 
-            // Servicios adicionales del catálogo (ficha_servicios.extras jsonb {codigo: true})
+            // Servicios adicionales del catálogo (ficha_servicios.extras jsonb {id: true})
             // rotulados con el nombre del catálogo servicios_catalogo
             let serviciosExtras = [];
             const sRow = servicios.rows[0];
             if (sRow?.extras && typeof sRow.extras === 'object') {
                 const catalogo = await client.query(
-                    'SELECT codigo, nombre FROM public.servicios_catalogo WHERE activo IS NOT FALSE'
+                    'SELECT id, nombre FROM public.servicios_catalogo WHERE activo IS NOT FALSE'
                 );
-                const nombres = new Map(catalogo.rows.map(c => [String(c.codigo), c.nombre]));
+                const nombres = new Map(catalogo.rows.map(c => [String(c.id), c.nombre]));
                 serviciosExtras = Object.entries(sRow.extras)
                     .filter(([, v]) => v)
-                    .map(([codigo]) => ({
-                        codigo,
-                        label: nombres.get(String(codigo))
-                            || String(codigo).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    .map(([id]) => ({
+                        id,
+                        label: nombres.get(String(id))
+                            || String(id).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                     }));
             }
 

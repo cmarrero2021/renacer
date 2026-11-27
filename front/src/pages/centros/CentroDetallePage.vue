@@ -2251,11 +2251,11 @@ const serviciosExtras = computed(() => {
     const cat = catalogosStore.serviciosCatalogo || [];
     return Object.entries(extras)
         .filter(([, v]) => v)
-        .map(([codigo]) => {
-            const found = cat.find(c => String(c.codigo) === String(codigo));
+        .map(([id]) => {
+            const found = cat.find(c => String(c.id) === String(id));
             const label = toTitleCase(found?.nombre
-                || String(codigo).replace(/_/g, ' '));
-            return { codigo, label };
+                || String(id).replace(/_/g, ' '));
+            return { id, label };
         });
     });
 
